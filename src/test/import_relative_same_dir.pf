@@ -1,0 +1,8 @@
+import animal { Animal, Dog }
+
+animal = Animal("Generic")
+print("Animal name:", animal.name)
+
+dog = Dog("Buddy")
+print("Dog name:", dog.name)
+dog.speak()

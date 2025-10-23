@@ -1,0 +1,73 @@
+// Binary Search Algorithm
+// Real implementation of efficient search in sorted arrays
+
+println("╔════════════════════════════════════════════╗")
+println("║   Binary Search Algorithm                 ║")
+println("╚════════════════════════════════════════════╝")
+println("")
+
+// Binary search function - returns index if found, -1 otherwise
+def binarySearch(arr, target):
+    let left = 0
+    let right = arr.length() - 1
+    
+    for step in range(arr.length()):
+        if left <= right:
+            let mid = left + (right - left) / 2
+            
+            if arr[mid] == target:
+                return mid
+            else:
+                if arr[mid] < target:
+                    left = mid + 1
+                else:
+                    right = mid - 1
+                end
+            end
+        else:
+            break
+        end
+    end
+    
+    return -1
+end
+
+// Test the algorithm
+let arr = [11, 12, 22, 23, 25, 34, 45, 50, 64, 88, 90]
+println("Sorted array: " + arr)
+println("")
+
+let target = 45
+let result = binarySearch(arr, target)
+
+if result != -1:
+    println("Searching for " + target + "...")
+    println("✓ Found at index " + result)
+else:
+    println("Searching for " + target + "...")
+    println("✗ Not found")
+end
+
+println("")
+target = 99
+result = binarySearch(arr, target)
+
+if result != -1:
+    println("Searching for " + target + "...")
+    println("✓ Found at index " + result)
+else:
+    println("Searching for " + target + "...")
+    println("✗ Not found")
+end
+
+println("")
+println("Algorithm properties:")
+println("  • Time complexity: O(log n)")
+println("  • Space complexity: O(1)")
+println("  • Requires sorted array")
+println("  • Much faster than linear search for large arrays")
+
+println("")
+println("╔════════════════════════════════════════════╗")
+println("║   Binary Search Complete!                 ║")
+println("╚════════════════════════════════════════════╝")

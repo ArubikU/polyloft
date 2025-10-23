@@ -1,0 +1,10 @@
+import test.utils.helper { greet }
+import test.utils.helper { CONSTANT, doubleValue }
+
+greeting = greet("Alice")
+print(greeting)
+
+doubled = doubleValue(21)
+print("Doubled:", doubled)
+
+print("Constant:", CONSTANT)

@@ -1,0 +1,36 @@
+// Test: Control flow
+println("=== Control Flow Test ===")
+
+// if-elif-else
+let age = 18
+if age >= 18:
+    println("Adult")
+elif age >= 13:
+    println("Teenager")
+else:
+    println("Child")
+end
+
+// for loop
+for i in range(5):
+    print(i.toString() + " ")
+end
+println("")
+
+// while loop
+let count = 0
+while count < 3:
+    println("Count: " + count.toString())
+    count = count + 1
+end
+
+// break
+for i in range(10):
+    if i == 3:
+        break
+    end
+    print(i.toString() + " ")
+end
+println("")
+
+println("✓ Control flow test passed")

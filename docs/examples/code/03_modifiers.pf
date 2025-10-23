@@ -1,0 +1,27 @@
+// Test: Access modifiers
+println("=== Access Modifiers Test ===")
+
+class BankAccount:
+    private let balance: Float
+    public let accountNumber: String
+    
+    BankAccount(accountNumber: String, initialBalance: Float):
+        this.accountNumber = accountNumber
+        this.balance = initialBalance
+    end
+    
+    public def getBalance() -> Float:
+        return this.balance
+    end
+    
+    public def deposit(amount: Float):
+        this.balance = this.balance + amount
+    end
+end
+
+let account = BankAccount("ACC123", 1000.0)
+println("Account: " + account.accountNumber)
+println("Balance: " + account.getBalance().toString())
+account.deposit(500.0)
+println("After deposit: " + account.getBalance().toString())
+println("✓ Access modifiers test passed")

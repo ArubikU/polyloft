@@ -1,0 +1,14 @@
+// Test: Generic Map
+println("=== Generic Map Test ===")
+
+let scores = Map<String, Int>()
+scores.set("Alice", 95)
+scores.set("Bob", 87)
+scores.set("Charlie", 92)
+
+println("Alice's score: " + scores.get("Alice").toString())
+println("Map size: " + scores.size().toString())
+
+println("Contains Bob: " + scores.containsKey("Bob").toString())
+
+println("✓ Generic Map test passed")

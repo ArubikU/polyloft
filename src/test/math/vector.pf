@@ -1,0 +1,17 @@
+class Vector:
+    x: Float
+    y: Float
+    
+    Vector(x: Float, y: Float):
+        this.x = x
+        this.y = y
+    end
+    
+    def magnitude() -> Float:
+        return Math.sqrt(this.x * this.x + this.y * this.y)
+    end
+    
+    def toString() -> String:
+        return "Vector(" + str(this.x) + ", " + str(this.y) + ")"
+    end
+end

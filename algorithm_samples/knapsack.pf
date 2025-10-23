@@ -1,0 +1,97 @@
+// 0/1 Knapsack Problem
+// Real implementation using dynamic programming
+
+println("╔════════════════════════════════════════════╗")
+println("║   0/1 Knapsack Problem                    ║")
+println("╚════════════════════════════════════════════╝")
+println("")
+
+let capacity = 10
+let weights = [2, 2, 3, 5]
+let values = [6, 10, 12, 15]
+let n = 4
+
+println("Problem Setup:")
+println("  Knapsack capacity: " + capacity + " kg")
+println("")
+println("  Items available:")
+println("    Item 1: Weight = 2 kg, Value = $6")
+println("    Item 2: Weight = 2 kg, Value = $10")
+println("    Item 3: Weight = 3 kg, Value = $12")
+println("    Item 4: Weight = 5 kg, Value = $15")
+println("")
+
+// DP table: dp[i][w] = max value with i items and capacity w
+// Initialize DP table
+let dp = []
+for i in range(n + 1):
+    let row = []
+    for w in range(capacity + 1):
+        row = row.concat([0])
+    end
+    dp = dp.concat([row])
+end
+
+// Fill DP table
+for i in range(1, n + 1):
+    for w in range(capacity + 1):
+        let itemWeight = weights[i - 1]
+        let itemValue = values[i - 1]
+        
+        // Can't include item if weight exceeds capacity
+        if itemWeight > w:
+            dp[i][w] = dp[i - 1][w]
+        else:
+            // Max of including or not including item
+            let without = dp[i - 1][w]
+            let with = dp[i - 1][w - itemWeight] + itemValue
+            if with > without:
+                dp[i][w] = with
+            else:
+                dp[i][w] = without
+            end
+        end
+    end
+end
+
+let maxValue = dp[n][capacity]
+
+println("Dynamic Programming Solution:")
+println("  Maximum value: $" + maxValue)
+println("")
+
+// Backtrack to find which items were selected
+let selected = []
+let w = capacity
+for i in range(n, 0, -1):
+    if dp[i][w] != dp[i - 1][w]:
+        selected = selected.concat([i])
+        w = w - weights[i - 1]
+    end
+end
+
+println("Items selected:")
+let totalWeight = 0
+let totalValue = 0
+for i in range(selected.length()):
+    let idx = selected[i]
+    println("  Item " + idx + ": Weight = " + weights[idx - 1] + " kg, Value = $" + values[idx - 1])
+    totalWeight = totalWeight + weights[idx - 1]
+    totalValue = totalValue + values[idx - 1]
+end
+
+println("  Total weight: " + totalWeight + " kg")
+println("  Total value: $" + totalValue)
+println("")
+
+println("Algorithm properties:")
+println("  • Time complexity: O(n × W)")
+println("  • Space complexity: O(n × W)")
+println("  • Guaranteed optimal solution")
+println("  • Bottom-up dynamic programming approach")
+println("  • Applications: Resource allocation, cargo loading, budgeting")
+
+println("")
+println("╔════════════════════════════════════════════╗")
+println("║   Knapsack Problem Complete!              ║")
+println("╚════════════════════════════════════════════╝")

@@ -1,0 +1,16 @@
+// Test: IO module
+println("=== IO Module Test ===")
+
+IO.writeFile("/tmp/test_polyloft.txt", "Hello from Polyloft!")
+println("File written")
+
+let content = IO.readFile("/tmp/test_polyloft.txt")
+println("File content: " + content)
+
+let exists = IO.exists("/tmp/test_polyloft.txt")
+println("File exists: " + exists.toString())
+
+IO.deleteFile("/tmp/test_polyloft.txt")
+println("File deleted")
+
+println("✓ IO module test passed")

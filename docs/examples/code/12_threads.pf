@@ -1,0 +1,12 @@
+// Test: Threads
+println("=== Threads Test ===")
+
+let t = thread spawn do
+    println("Thread executing")
+    return 42
+end
+
+println("Main thread")
+let result = thread join t
+println("Thread result: " + result.toString())
+println("✓ Threads test passed")

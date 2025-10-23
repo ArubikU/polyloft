@@ -1,0 +1,14 @@
+# Simple make-like instructions for reference (not an actual Makefile)
+# Use: these are hints; prefer `go` commands directly.
+#
+# Build the CLI:
+#   go build -o bin/polyloft ./cmd/polyloft
+#
+# Run tests:
+#   go test ./...
+#
+# Run REPL:
+#   go run ./cmd/polyloft repl
+#
+# Run a file:
+#   go run ./cmd/polyloft run path/to/file.hy

@@ -1,0 +1,13 @@
+// Test: Arrays and collections
+println("=== Collections Test ===")
+
+let numbers = [1, 2, 3, 4, 5]
+println("Original: " + numbers.toString())
+
+let doubled = numbers.map((x: Int) -> Int => x * 2)
+println("Doubled: " + doubled.toString())
+
+let evens = numbers.filter((x: Int) -> Boolean => x % 2 == 0)
+println("Evens: " + evens.toString())
+
+println("✓ Collections test passed")

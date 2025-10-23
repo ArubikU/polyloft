@@ -1,0 +1,348 @@
+// Advanced Algorithms Collection
+// Complex data structures and algorithms demonstration
+
+println("╔════════════════════════════════════════════╗")
+println("║   Advanced Algorithms - Part 1            ║")
+println("╚════════════════════════════════════════════╝")
+println("")
+
+// ============================================
+// 1. A* Pathfinding Algorithm
+// ============================================
+println("1. A* Pathfinding Algorithm")
+println("   Finding shortest path in a grid with obstacles")
+println("")
+
+// Grid: 0 = walkable, 1 = obstacle
+let grid = [
+    [0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0],
+    [0, 0, 0, 1, 0],
+    [0, 1, 0, 0, 0],
+    [0, 0, 0, 0, 0]
+]
+
+// Node structure for A*
+def createNode(x, y, g, h, parent):
+    return {
+        x: x,
+        y: y,
+        g: g,
+        h: h,
+        f: g + h,
+        parent: parent
+    }
+end
+
+// Manhattan distance heuristic
+def manhattan(x1, y1, x2, y2):
+    let dx = x1 - x2
+    let dy = y1 - y2
+    if dx < 0:
+        dx = -dx
+    end
+    if dy < 0:
+        dy = -dy
+    end
+    return dx + dy
+end
+
+// A* pathfinding
+def astar(grid, startX, startY, endX, endY):
+    let openList = []
+    let closedList = []
+    
+    // Add start node
+    let startNode = createNode(startX, startY, 0, manhattan(startX, startY, endX, endY), nil)
+    openList = openList.concat([startNode])
+    
+    let iterations = 0
+    let maxIter = 100
+    
+    for iter in 0...maxIter:
+        if openList.length() == 0:
+            return nil
+        end
+        
+        // Find node with lowest f score
+        let currentIdx = 0
+        let lowestF = openList[0]["f"]
+        let openLen = openList.length()
+        if openLen > 1:
+            for i in 1...openLen-1:
+                if openList[i]["f"] < lowestF:
+                    lowestF = openList[i]["f"]
+                    currentIdx = i
+                end
+            end
+        end
+        
+        let current = openList[currentIdx]
+        
+        // Check if reached goal
+        if current["x"] == endX && current["y"] == endY:
+            // Reconstruct path
+            let path = []
+            let node = current
+            for step in 0...50:
+                if node == nil:
+                    break
+                end
+                path = [{x: node["x"], y: node["y"]}].concat(path)
+                node = node["parent"]
+            end
+            return path
+        end
+        
+        // Move current from open to closed
+        let newOpen = []
+        let openLen = openList.length()
+        if openLen > 0:
+            for i in 0...openLen-1:
+                if i != currentIdx:
+                    newOpen = newOpen.concat([openList[i]])
+                end
+            end
+        end
+        openList = newOpen
+        closedList = closedList.concat([current])
+        
+        // Check neighbors (4-directional)
+        let neighbors = [
+            {dx: 0, dy: -1},  // up
+            {dx: 0, dy: 1},   // down
+            {dx: -1, dy: 0},  // left
+            {dx: 1, dy: 0}    // right
+        ]
+        
+        for n in 0...3:
+            let neighbor = neighbors[n]
+            let nx = current["x"] + neighbor["dx"]
+            let ny = current["y"] + neighbor["dy"]
+            
+            // Check bounds
+            if nx < 0 || nx >= 5 || ny < 0 || ny >= 5:
+                continue
+            end
+            
+            // Check if walkable
+            if grid[ny][nx] == 1:
+                continue
+            end
+            
+            // Check if in closed list
+            let inClosed = false
+            let closedLen = closedList.length()
+            if closedLen > 0:
+                for c in 0...closedLen-1:
+                    if closedList[c]["x"] == nx && closedList[c]["y"] == ny:
+                        inClosed = true
+                        break
+                    end
+                end
+            end
+            if inClosed:
+                continue
+            end
+            
+            // Calculate scores
+            let g = current["g"] + 1
+            let h = manhattan(nx, ny, endX, endY)
+            
+            // Check if in open list
+            let inOpen = false
+            let openLen2 = openList.length()
+            if openLen2 > 0:
+                for o in 0...openLen2-1:
+                    if openList[o]["x"] == nx && openList[o]["y"] == ny:
+                        inOpen = true
+                        if g < openList[o]["g"]:
+                            openList[o]["g"] = g
+                            openList[o]["f"] = g + h
+                            openList[o]["parent"] = current
+                        end
+                        break
+                    end
+                end
+            end
+            
+            if !inOpen:
+                let newNode = createNode(nx, ny, g, h, current)
+                openList = openList.concat([newNode])
+            end
+        end
+    end
+    
+    return nil
+end
+
+// Test A*
+println("   Grid (0=walkable, 1=obstacle):")
+for y in 0...4:
+    let row = "   "
+    for x in 0...4:
+        if grid[y][x] == 0:
+            row = row + ". "
+        else:
+            row = row + "# "
+        end
+    end
+    println(row)
+end
+
+let path = astar(grid, 0, 0, 4, 4)
+if path != nil:
+    println("")
+    println("   Path found from (0,0) to (4,4):")
+    let pathStr = "   "
+    for i in 0...path.length()-1:
+        let p = path[i]
+        pathStr = pathStr + "(" + p["x"] + "," + p["y"] + ")"
+        if i < path.length() - 1:
+            pathStr = pathStr + " -> "
+        end
+    end
+    println(pathStr)
+    println("   Path length: " + path.length() + " steps")
+else:
+    println("   No path found")
+end
+
+println("")
+println("═══════════════════════════════════════════")
+println("")
+
+// ============================================
+// 2. Longest Common Subsequence (LCS)
+// ============================================
+println("2. Longest Common Subsequence (Dynamic Programming)")
+println("   Finding longest subsequence common to two sequences")
+println("")
+
+def lcsLength(arr1, arr2):
+    let m = arr1.length()
+    let n = arr2.length()
+    
+    // Create DP table
+    let dp = []
+    for i in 0...m:
+        let row = []
+        for j in 0...n:
+            row = row.concat([0])
+        end
+        dp = dp.concat([row])
+    end
+    
+    // Fill DP table
+    for i in 1...m:
+        for j in 1...n:
+            if arr1[i-1] == arr2[j-1]:
+                dp[i][j] = dp[i-1][j-1] + 1
+            else:
+                let val1 = dp[i-1][j]
+                let val2 = dp[i][j-1]
+                if val1 > val2:
+                    dp[i][j] = val1
+                else:
+                    dp[i][j] = val2
+                end
+            end
+        end
+    end
+    
+    return dp[m][n]
+end
+
+// Using arrays of characters
+let seq1 = ["A", "G", "G", "T", "A", "B"]
+let seq2 = ["G", "X", "T", "X", "A", "Y", "B"]
+let lcsLen = lcsLength(seq1, seq2)
+
+println("   Sequence 1: " + seq1.toString())
+println("   Sequence 2: " + seq2.toString())
+println("   LCS Length: " + lcsLen)
+println("   (Common subsequence length)")
+
+println("")
+println("═══════════════════════════════════════════")
+println("")
+
+// ============================================
+// 3. Trie Data Structure (Prefix Tree)
+// ============================================
+println("3. Trie (Prefix Tree) Implementation")
+println("   Efficient string search and autocomplete")
+println("")
+
+def createTrieNode():
+    return {
+        children: {},
+        isEndOfWord: false
+    }
+end
+
+// Global trie root
+let trieRoot = createTrieNode()
+
+def trieInsert(word):
+    let node = trieRoot
+    for i in 0...word.length()-1:
+        let char = word[i]
+        if !node["children"].hasKey(char):
+            node["children"].set(char, createTrieNode())
+        end
+        node = node["children"].get(char)
+    end
+    println(Sys.type(node))
+    node["isEndOfWord"] = true
+end
+
+def trieSearch(word):
+    let node = trieRoot
+    for i in 0...word.length()-1:
+        let char = word[i]
+        if !node["children"].hasKey(char):
+            return false
+        end
+        node = node["children"].get(char)
+    end
+    return node["isEndOfWord"]
+end
+
+def trieStartsWith(prefix):
+    let node = trieRoot
+    for i in 0...prefix.length()-1:
+        let char = prefix[i]
+        if !node["children"].hasKey(char):
+            return false
+        end
+        node = node["children"].get(char)
+    end
+    return true
+end
+
+// Test Trie
+let words = ["apple", "app", "application", "apply", "banana", "band"]
+
+println("   Inserting words: " + words.toString())
+for i in 0...words.length()-1:
+    trieInsert(words[i])
+end
+
+println("")
+println("   Search tests:")
+println("     'apple': " + trieSearch("apple"))
+println("     'app': " + trieSearch("app"))
+println("     'appl': " + trieSearch("appl"))
+println("     'banana': " + trieSearch("banana"))
+
+println("")
+println("   Prefix tests:")
+println("     'app': " + trieStartsWith("app"))
+println("     'ban': " + trieStartsWith("ban"))
+println("     'cat': " + trieStartsWith("cat"))
+
+println("")
+println("╔════════════════════════════════════════════╗")
+println("║   Advanced Algorithms Complete!           ║")
+println("╚════════════════════════════════════════════╝")

@@ -1,0 +1,32 @@
+// Test: Variable declarations and types
+// Tests: let, const, var, type inference
+
+println("=== Variables and Types Test ===")
+
+// let - mutable variable
+let x = 42
+println("let x = 42: " + x.toString())
+x = 50
+println("x = 50: " + x.toString())
+
+// const - immutable
+const PI = 3.14159
+println("const PI: " + PI.toString())
+
+// var - uninitialized
+var count: Int
+count = 10
+println("var count: " + count.toString())
+
+// Type annotations
+let name: String = "Alice"
+let age: Int = 30
+let price: Float = 19.99
+let isActive: Bool = true
+
+println("String: " + name)
+println("Int: " + age.toString())
+println("Float: " + price.toString())
+println("Bool: " + isActive.toString())
+
+println("✓ Variables and types test passed")

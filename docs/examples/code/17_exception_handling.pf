@@ -1,0 +1,15 @@
+// Test: Exception handling
+println("=== Exception Handling Test ===")
+
+try:
+    println("In try block")
+    throw "Test error"
+    println("This should not print")
+catch e:
+    println("Caught: #{e}")
+finally:
+    println("Finally block")
+end
+
+println("After try-catch")
+println("✓ Exception handling test passed")

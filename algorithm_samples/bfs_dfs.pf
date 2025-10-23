@@ -1,0 +1,135 @@
+// Breadth-First Search (BFS) and Depth-First Search (DFS)
+// Real implementations of fundamental graph traversal algorithms
+
+println("╔════════════════════════════════════════════╗")
+println("║   BFS and DFS Graph Traversal             ║")
+println("╚════════════════════════════════════════════╝")
+println("")
+
+// Graph represented as adjacency list
+// Each vertex maps to an array of its neighbors
+let graph = {
+    A: ["B", "C", "D"],
+    B: ["E", "F"],
+    C: [],
+    D: ["G"],
+    E: [],
+    F: [],
+    G: []
+}
+
+// BFS implementation using a queue (array)
+def bfs(graph, start):
+    let visited = {}
+    let queue = [start]
+    let order = []
+    
+    visited.set(start, true)
+    
+    // Process queue
+    for step in range(20):  // Max iterations
+        if queue.length() == 0:
+            break
+        end
+        
+        // Dequeue (remove first element)
+        let current = queue[0]
+        let newQueue = []
+        for i in range(1, queue.length()):
+            newQueue = newQueue.concat([queue[i]])
+        end
+        queue = newQueue
+        
+        order = order.concat([current])
+        
+        // Get neighbors
+        let neighbors = graph.get(current)
+        for i in range(neighbors.length()):
+            let neighbor = neighbors[i]
+            let isVisited = visited.hasKey(neighbor)
+            if !isVisited:
+                visited.set(neighbor, true)
+                queue = queue.concat([neighbor])
+            end
+        end
+    end
+    
+    return order
+end
+
+// DFS implementation using recursion
+let dfsVisited = {}
+let dfsOrder = []
+
+def dfsHelper(graph, vertex):
+    dfsVisited.set(vertex, true)
+    dfsOrder = dfsOrder.concat([vertex])
+    
+    let neighbors = graph.get(vertex)
+    for i in range(neighbors.length()):
+        let neighbor = neighbors[i]
+        if !dfsVisited.hasKey(neighbor):
+            dfsHelper(graph, neighbor)
+        end
+    end
+end
+
+def dfs(graph, start):
+    dfsVisited = {}
+    dfsOrder = []
+    dfsHelper(graph, start)
+    return dfsOrder
+end
+
+// Test BFS
+println("Graph structure:")
+println("         A")
+println("       / | \\")
+println("      B  C  D")
+println("     / \\    |")
+println("    E   F   G")
+println("")
+
+println("BFS Traversal from A:")
+let bfsResult = bfs(graph, "A")
+let bfsStr = ""
+for i in range(bfsResult.length()):
+    bfsStr = bfsStr + bfsResult[i]
+    if i < bfsResult.length() - 1:
+        bfsStr = bfsStr + " -> "
+    end
+end
+println("  " + bfsStr)
+println("  (Level-order: visits all neighbors before going deeper)")
+println("")
+
+// Test DFS
+println("DFS Traversal from A:")
+let dfsResult = dfs(graph, "A")
+let dfsStr = ""
+for i in range(dfsResult.length()):
+    dfsStr = dfsStr + dfsResult[i]
+    if i < dfsResult.length() - 1:
+        dfsStr = dfsStr + " -> "
+    end
+end
+println("  " + dfsStr)
+println("  (Depth-first: explores as far as possible before backtracking)")
+println("")
+
+println("Algorithm properties:")
+println("  BFS:")
+println("    • Time complexity: O(V + E)")
+println("    • Space complexity: O(V)")
+println("    • Finds shortest path in unweighted graphs")
+println("    • Uses queue (FIFO)")
+println("  DFS:")
+println("    • Time complexity: O(V + E)")
+println("    • Space complexity: O(V)")
+println("    • Good for detecting cycles")
+println("    • Uses stack or recursion (LIFO)")
+
+println("")
+println("╔════════════════════════════════════════════╗")
+println("║   BFS and DFS Complete!                   ║")
+println("╚════════════════════════════════════════════╝")

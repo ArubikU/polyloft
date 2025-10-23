@@ -1,0 +1,29 @@
+// Test: HTTP Server Module
+println("=== HTTP Server Test ===")
+
+// HTTP Server is available via Http.createServer()
+println("HTTP Server Methods Available:")
+println("  - Http.createServer() -> server")
+println("  - Http.createServer(debug: Bool) -> server")
+println("")
+println("Server Methods:")
+println("  - server.get(path, handler)")
+println("  - server.post(path, handler)")
+println("  - server.put(path, handler)")
+println("  - server.delete(path, handler)")
+println("  - server.listen(port)")
+println("")
+println("Handler receives: (req, res)")
+println("  - req: HttpRequest (method, path, headers, query, body)")
+println("  - res: HttpResponse (status, header, send, json, html)")
+
+// Example usage (commented to allow test completion):
+// let server = Http.createServer()
+// 
+// server.get("/hello", (req, res) => {
+//     // Send response
+// })
+//
+// server.listen(":8080")
+
+println("✓ HTTP Server module documented")
