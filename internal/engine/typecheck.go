@@ -631,7 +631,7 @@ func isClassInstanceOf(instance *common.ClassInstance, typeName string) bool {
 			return true
 		}
 	case "Int":
-		if typeName == "int" || typeName == "Int" || typeName == "number" || typeName == "Number" {
+		if typeName == "int" || typeName == "Int" || typeName == "Integer" || typeName == "integer" || typeName == "number" || typeName == "Number" {
 			return true
 		}
 	case "Float":
