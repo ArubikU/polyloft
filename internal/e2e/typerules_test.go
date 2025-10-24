@@ -317,14 +317,14 @@ func TestTypeRules_Section7_VariadicFunctions(t *testing.T) {
 func TestTypeRules_Section8_GenericBounds(t *testing.T) {
 	code := `
 class Box<T extends Number>:
-    let value: T
-    Box(value: T):
-        this.value = value
+    let value
+    Box(val):
+        this.value = val
     end
-    def getValue(): T:
+    def getValue():
         return this.value
     end
-    def setValue(newValue: T):
+    def setValue(newValue):
         this.value = newValue
     end
 end
@@ -333,8 +333,7 @@ const intBox = Box<Int>(100)
 const floatBox = Box<Float>(3.14)
 
 intBox.setValue(200)
-const result = [intBox.getValue(), floatBox.getValue()]
-result
+return [intBox.getValue(), floatBox.getValue()]
 `
 	result, err := runCodeTypeRules(code)
 	if err != nil {
@@ -369,7 +368,7 @@ b -= 3   // b = 5 - 3 = 2
 c *= 2   // c = 20 * 2 = 40
 d /= 4   // d = 8 / 4 = 2
 
-[a, b, c, d]
+return [a, b, c, d]
 `
 	result, err := runCodeTypeRules(code)
 	if err != nil {

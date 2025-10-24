@@ -587,23 +587,23 @@ func (p *Parser) parseStmt() (ast.Stmt, error) {
 					return nil, err
 				}
 				
-				// Convert compound assignment to regular assignment with binary operation
-				var binaryOp lexer.Token
+				// Convert compound assignment operator to basic operator
+				var basicOp lexer.Token
 				switch op {
 				case lexer.PLUS_ASSIGN:
-					binaryOp = lexer.PLUS
+					basicOp = lexer.PLUS
 				case lexer.MINUS_ASSIGN:
-					binaryOp = lexer.MINUS
+					basicOp = lexer.MINUS
 				case lexer.STAR_ASSIGN:
-					binaryOp = lexer.STAR
+					basicOp = lexer.STAR
 				case lexer.SLASH_ASSIGN:
-					binaryOp = lexer.SLASH
+					basicOp = lexer.SLASH
 				}
 				
-				// Create binary expression: lhs op rhs
+				// Create binary expression: lhs op rhs using ast operator constant
 				binaryExpr := &ast.BinaryExpr{
 					Lhs: lhs,
-					Op:  int(binaryOp),
+					Op:  p.toOp(basicOp),  // Convert to ast operator
 					Rhs: rhs,
 				}
 				
