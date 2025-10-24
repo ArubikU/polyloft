@@ -1,5 +1,22 @@
 //Como debe funcionar los tipos y sus reglas
+Estube trabajando para crear un sistema correcto de GenericBounding pero me di cuenta que se mescla mucho con mi sistema de typos
 
+ve si puedes buscar una forma de unificarlos la idea es que sean como los tipos de java con in out extends implements
+pero tambien como los de typescrint/python
+
+necesito que leas typerules.md y te hagas un plan .
+al finalizar debes crear ejemplos y todos los tests deben pasar
+# Detalles a mantener en el rewrite del sistema de tipos
+common.BuiltinTypeString.GetTypeDefinition(env) //Se debe mantener la forma de obtener los tipos built-in
+
+	iterableInterface := common.BuiltinInterfaceIterable.GetInterfaceDefinition(env)
+
+	rangeClass := NewClassBuilder("Range").
+		AddInterface(iterableInterface).
+Al igual que la forma de recuperar interfaces built-in,
+en el sistema escrito por el usuario tambien debe obtenerse el tipo del env
+y no con los strings, debe ser todo con TypeDefinition no usando strings para los tipos
+ya que es inseguro y propenso a errores
 //1. Cada clase enum record interface y builtin tienen sus tipos
 class Person:
     let name
