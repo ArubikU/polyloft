@@ -10,7 +10,6 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/ast"
 	"github.com/ArubikU/polyloft/internal/common"
-	"github.com/ArubikU/polyloft/internal/engine/typecheck"
 	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
@@ -202,7 +201,7 @@ func InstallSysModule(env *Env, opts Options) {
 
 			if classConstructor, ok := args[1].(*common.ClassConstructor); ok {
 				if instance, isInstance := obj.(*common.ClassInstance); isInstance {
-					return typecheck.IsClassInstanceOfDefinition(instance, classConstructor.Definition), nil
+					return IsClassInstanceOfDefinition(instance, classConstructor.Definition), nil
 				}
 				return common.GetTypeName(obj) == classConstructor.Definition.Name, nil
 			}
@@ -218,7 +217,7 @@ func InstallSysModule(env *Env, opts Options) {
 			if !ok {
 				return nil, ThrowTypeError(e, "string, class, or enum", args[1])
 			}
-			return typecheck.IsInstanceOf(obj, typeName), nil
+			return IsInstanceOf(obj, typeName), nil
 		}))
 
 	_, err := sysClass.BuildStatic(env)
