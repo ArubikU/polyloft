@@ -20,8 +20,8 @@ return list.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 3 {
+	size, _ := utils.AsInt(result)
+	if size != 3 {
 		t.Fatalf("Expected size 3, got %v", result)
 	}
 }
@@ -39,8 +39,8 @@ return set.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 3 {
+	size, _ := utils.AsInt(result)
+	if size != 3 {
 		t.Fatalf("Expected size 3, got %v", result)
 	}
 }
@@ -57,8 +57,8 @@ return map.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 2 {
+	size, _ := utils.AsInt(result)
+	if size != 2 {
 		t.Fatalf("Expected size 2, got %v", result)
 	}
 }
@@ -75,8 +75,8 @@ return list.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 2 {
+	size, _ := utils.AsInt(result)
+	if size != 2 {
 		t.Fatalf("Expected size 2, got %v", result)
 	}
 }
@@ -93,8 +93,8 @@ return set.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 2 {
+	size, _ := utils.AsInt(result)
+	if size != 2 {
 		t.Fatalf("Expected size 2, got %v", result)
 	}
 }
@@ -111,8 +111,8 @@ return map.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 2 {
+	size, _ := utils.AsInt(result)
+	if size != 2 {
 		t.Fatalf("Expected size 2, got %v", result)
 	}
 }
@@ -129,8 +129,8 @@ return list.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 2 {
+	size, _ := utils.AsInt(result)
+	if size != 2 {
 		t.Fatalf("Expected size 2, got %v", result)
 	}
 }
@@ -147,8 +147,8 @@ return set.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 2 {
+	size, _ := utils.AsInt(result)
+	if size != 2 {
 		t.Fatalf("Expected size 2, got %v", result)
 	}
 }
@@ -165,8 +165,8 @@ return map.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 2 {
+	size, _ := utils.AsInt(result)
+	if size != 2 {
 		t.Fatalf("Expected size 2, got %v", result)
 	}
 }
@@ -182,8 +182,8 @@ return map.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 1 {
+	size, _ := utils.AsInt(result)
+	if size != 1 {
 		t.Fatalf("Expected size 1, got %v", result)
 	}
 }
@@ -198,7 +198,7 @@ return list.toString()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
+	str := utils.ToString(result)
 	if !ok {
 		t.Fatalf("Expected string, got %T", result)
 	}
@@ -218,7 +218,7 @@ return list.toString()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
+	str := utils.ToString(result)
 	if !ok {
 		t.Fatalf("Expected string, got %T", result)
 	}
@@ -238,7 +238,7 @@ return list.toString()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
+	str := utils.ToString(result)
 	if !ok {
 		t.Fatalf("Expected string, got %T", result)
 	}
