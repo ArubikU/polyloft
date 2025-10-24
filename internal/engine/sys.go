@@ -213,10 +213,8 @@ func InstallSysModule(env *Env, opts Options) {
 				return GetTypeName(obj) == enumConstructor.Definition.Name, nil
 			}
 
-			typeName, ok := args[1].(string)
-			if !ok {
-				return nil, ThrowTypeError(e, "string, class, or enum", args[1])
-			}
+			// Try to extract string from arg (handles both native string and ClassInstance)
+			typeName := utils.ToString(args[1])
 			return IsInstanceOf(obj, typeName), nil
 		}))
 
