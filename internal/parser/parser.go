@@ -1479,9 +1479,9 @@ func (p *Parser) parseClassInternal(accessLevel string) (ast.Stmt, error) {
 	var parentTypeParams []ast.TypeParam
 	var implements []string
 
-	// Check for inheritance: < Parent (only if we didn't parse type params)
-	// If we have type params, inheritance uses 'extends' keyword instead
-	if len(typeParams) == 0 && p.curr().Tok == lexer.LT {
+	// Check for inheritance: < Parent or extends Parent
+	// The '<' syntax can be used regardless of whether the class has type params
+	if p.curr().Tok == lexer.LT {
 		p.next() // consume '<'
 		if p.curr().Tok != lexer.IDENT {
 			return nil, p.errf("expected parent class name after '<'")
@@ -1497,7 +1497,7 @@ func (p *Parser) parseClassInternal(accessLevel string) (ast.Stmt, error) {
 			}
 		}
 	} else if p.curr().Tok == lexer.KW_EXTENDS {
-		// New style: class MyClass<T> extends BaseClass or BaseClass<T>
+		// Alternative style: class MyClass<T> extends BaseClass or BaseClass<T>
 		p.next() // consume 'extends'
 		if p.curr().Tok != lexer.IDENT {
 			return nil, p.errf("expected parent class name after 'extends'")
