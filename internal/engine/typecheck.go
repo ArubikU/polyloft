@@ -57,9 +57,10 @@ func GetTypeName(val any) string {
 							}
 						}
 					}
-					if v.ParentClass == common.BuiltinTypeMap.ClassDef {
-						common.InferMapType()
-					}
+					// TODO: Implement InferMapType for Map instances
+					// if v.ParentClass == common.BuiltinTypeMap.ClassDef {
+					//	 common.InferMapType(...)
+					// }
 				}
 
 				if len(v.GenericTypes) > 0 {
@@ -340,7 +341,7 @@ func isInstanceOfGenericType(value any, typeName string) bool {
 		}
 		return true
 	default:
-		fmt.Println("Unsupported type for generic instanceof:", common.GetTypeName(value))
+		fmt.Println("Unsupported type for generic instanceof:", GetTypeName(value))
 		return false
 	}
 }
@@ -507,7 +508,7 @@ func isSubtypeOf(value any, typeName string) bool {
 func isSupertypeOf(value any, typeName string) bool {
 	// This is the inverse of isSubtypeOf
 	// If the bound type can be assigned from the value's type
-	valueType := common.GetTypeName(value)
+	valueType := GetTypeName(value)
 
 	// Number is a supertype of Int and Float
 	if typeName == "Int" || typeName == "int" {

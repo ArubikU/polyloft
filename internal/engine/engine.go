@@ -2342,11 +2342,15 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 	var gtypes []GenericType
 	for _, tp := range expr.TypeParams {
 		if tp.IsWildcard {
-
+			// Create a GenericBound for the wildcard type parameter
+			bound := common.GenericBound{
+				Name:       ast.Type{Name: tp.Name},
+				Variance:   tp.Variance,
+				IsVariadic: tp.IsVariadic,
+			}
+			
 			gtypes = append(gtypes, GenericType{
-				Variance: tp.Variance,
-				Bounds:   tp.Bounds,
-				Name:     tp.Name,
+				Bounds: []common.GenericBound{bound},
 			})
 		} else {
 			// Regular type parameter without variance

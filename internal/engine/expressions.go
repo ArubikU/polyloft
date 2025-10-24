@@ -2,7 +2,6 @@ package engine
 
 import (
 	"github.com/ArubikU/polyloft/internal/ast"
-	"github.com/ArubikU/polyloft/internal/common"
 )
 
 // evalInstanceOfExpr handles instanceof expressions
@@ -33,7 +32,7 @@ func evalTypeExpr(env *Env, expr *ast.TypeExpr) (any, error) {
 	}
 
 	// Return the type name
-	return common.GetTypeName(obj), nil
+	return GetTypeName(obj), nil
 }
 
 // Enhanced evalExpr with support for new expression types

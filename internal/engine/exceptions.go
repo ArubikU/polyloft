@@ -646,16 +646,16 @@ func ValidateArgumentType(value any, expectedType string) error {
 			}
 		}
 		// Value doesn't match any union member
-		actualType := common.GetTypeName(value)
+		actualType := GetTypeName(value)
 		return ThrowTypeError(nil, expectedType, actualType)
 	}
 
 	if IsInstanceOf(value, expectedType) {
 		return nil
 	}
-	fmt.Println("Validation failed:", common.GetTypeName(value), "is not", expectedType)
+	fmt.Println("Validation failed:", GetTypeName(value), "is not", expectedType)
 
-	actualType := common.GetTypeName(value)
+	actualType := GetTypeName(value)
 	return ThrowTypeError(nil, expectedType, actualType)
 }
 

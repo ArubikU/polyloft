@@ -191,7 +191,7 @@ func InstallSysModule(env *Env, opts Options) {
 			return fmt.Sprintf(format, args[1:]...), nil
 		})).
 		AddStaticMethod("type", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{{Name: "value", Type: ast.TypeFromString("")}}, Func(func(_ *Env, args []any) (any, error) {
-			return common.GetTypeName(args[0]), nil
+			return GetTypeName(args[0]), nil
 		})).
 		AddStaticMethod("instanceof", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
 			{Name: "object", Type: ast.TypeFromString("")},
@@ -203,14 +203,14 @@ func InstallSysModule(env *Env, opts Options) {
 				if instance, isInstance := obj.(*common.ClassInstance); isInstance {
 					return IsClassInstanceOfDefinition(instance, classConstructor.Definition), nil
 				}
-				return common.GetTypeName(obj) == classConstructor.Definition.Name, nil
+				return GetTypeName(obj) == classConstructor.Definition.Name, nil
 			}
 
 			if enumConstructor, ok := args[1].(*common.EnumConstructor); ok {
 				if enumValue, isEnumValue := obj.(*common.EnumValueInstance); isEnumValue {
 					return enumValue.Definition != nil && enumValue.Definition.Name == enumConstructor.Definition.Name, nil
 				}
-				return common.GetTypeName(obj) == enumConstructor.Definition.Name, nil
+				return GetTypeName(obj) == enumConstructor.Definition.Name, nil
 			}
 
 			typeName, ok := args[1].(string)
