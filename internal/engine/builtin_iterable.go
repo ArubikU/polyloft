@@ -74,6 +74,10 @@ func InstallPairBuiltin(env *Env) error {
 	pairClass := NewClassBuilder("Pair").
 		AddTypeParameters(common.KBound.AsGenericType().AsArray()).
 		AddTypeParameters(common.VBound.AsGenericType().AsArray())
+	
+	// Add Unstructured interface for destructuring support
+	unstructuredInterface := common.BuiltinInterfaceUnstructured.GetInterfaceDefinition(env)
+	pairClass.AddInterface(unstructuredInterface)
 
 	// Add fields using generic type parameters
 	pairClass.AddField("key", &common.KBound.Name, []string{"public", "final"})
@@ -115,6 +119,34 @@ func InstallPairBuiltin(env *Env) error {
 		key := instance.Fields["key"]
 		value := instance.Fields["value"]
 		return fmt.Sprintf("%v=%v", key, value), nil
+	}, []string{})
+	
+	// Unstructured interface methods for destructuring
+	// __pieces() -> Int (returns 2 for key-value pair)
+	pairClass.AddBuiltinMethod("__pieces", common.BuiltinTypeInt.GetTypeDefinition(env), []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		return 2, nil
+	}, []string{})
+	
+	// __get_piece(index: Int) -> any
+	pairClass.AddBuiltinMethod("__get_piece", ast.ANY, []ast.Parameter{
+		{Name: "index", Type: common.BuiltinTypeInt.GetTypeDefinition(env)},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		
+		idx, ok := args[0].(int)
+		if !ok {
+			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
+		}
+		
+		switch idx {
+		case 0:
+			return instance.Fields["key"], nil
+		case 1:
+			return instance.Fields["value"], nil
+		default:
+			return nil, ThrowIndexError((*Env)(callEnv), idx, 2, "Pair")
+		}
 	}, []string{})
 
 	_, err := pairClass.Build(env)

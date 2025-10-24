@@ -1132,6 +1132,11 @@ func installBuiltins(env *common.Env, opts Options) {
 		fmt.Printf("Warning: Failed to install Map builtin: %v\n", err)
 	}
 
+	// Install Pair builtin (for key-value pairs)
+	if err := InstallPairBuiltin((*Env)(env)); err != nil {
+		fmt.Printf("Warning: Failed to install Pair builtin: %v\n", err)
+	}
+
 	// Install Range builtin as a class (iterable but not unstructured)
 	if err := InstallRangeBuiltin((*Env)(env)); err != nil {
 		fmt.Printf("Warning: Failed to install Range builtin: %v\n", err)

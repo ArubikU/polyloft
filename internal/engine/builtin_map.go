@@ -220,7 +220,7 @@ func InstallMapBuiltin(env *Env) error {
 	}, []string{})
 
 	// __get(key: K) -> V (Indexable interface)
-	// Also supports numeric index for iteration (returns [key, value] pair)
+	// Also supports numeric index for iteration (returns Pair<K, V>)
 	mapClass.AddBuiltinMethod("__get", &common.VBound.Name, []ast.Parameter{
 		{Name: "key", Type: &common.KBound.Name},
 	}, func(callEnv *common.Env, args []any) (any, error) {
@@ -230,12 +230,25 @@ func InstallMapBuiltin(env *Env) error {
 
 		// Check if the argument is a numeric index (for iteration)
 		if idx, ok := utils.AsInt(args[0]); ok {
-			// Return the idx-th entry as [key, value] array
+			// Return the idx-th entry as a Pair
 			currentIdx := 0
 			for _, entrySlice := range data {
 				for _, entry := range entrySlice {
 					if currentIdx == idx {
-						return []any{entry.Key, entry.Value}, nil
+						// Create a Pair instance
+						pairClass, exists := lookupClass("Pair", "")
+						if !exists {
+							// Fallback to array if Pair not available
+							return []any{entry.Key, entry.Value}, nil
+						}
+						
+						// Construct Pair
+						pairInstance, err := constructPairInstance(pairClass, entry.Key, entry.Value, (*Env)(callEnv))
+						if err != nil {
+							// Fallback to array on error
+							return []any{entry.Key, entry.Value}, nil
+						}
+						return pairInstance, nil
 					}
 					currentIdx++
 				}
@@ -243,7 +256,7 @@ func InstallMapBuiltin(env *Env) error {
 			return nil, nil // Index out of bounds
 		}
 
-		// Otherwise, treat as key lookup
+		// Otherwise, treat as key lookup - return value directly
 		hash := hashValue(callEnv, args[0])
 		if entries, exists := data[hash]; exists {
 			for _, entry := range entries {
@@ -709,3 +722,21 @@ func MapToClassMap(mapInstance *ClassInstance) (map[*ClassInstance]*ClassInstanc
 
 	return classMap, nil
 }
+
+// constructPairInstance creates a Pair instance with the given key and value
+func constructPairInstance(pairClass *ClassDefinition, key, value any, env *Env) (*ClassInstance, error) {
+	// Create instance using the proper initialization function
+	instance, err := createClassInstance(pairClass, env, []any{})
+	if err != nil {
+		return nil, err
+	}
+	
+	classInstance := instance.(*ClassInstance)
+	
+	// Initialize fields (Pair uses "key" and "value")
+	classInstance.Fields["key"] = key
+	classInstance.Fields["value"] = value
+	
+	return classInstance, nil
+}
+

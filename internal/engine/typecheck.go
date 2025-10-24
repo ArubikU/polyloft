@@ -166,6 +166,12 @@ func matchesTypeName(baseName, typeName string) bool {
 // This is the core type checking function used throughout the system
 // Supports: basic types, generic types (Array<Int>), union types (Int | String), wildcards (? extends Number)
 func IsInstanceOf(value any, typeName string) bool {
+	// Resolve type aliases
+	// Check if typeName is a type alias and resolve to base type
+	if resolvedType := resolveTypeAlias(typeName); resolvedType != typeName {
+		return IsInstanceOf(value, resolvedType)
+	}
+	
 	// Parse the type name to check for generic parameters
 	if strings.Contains(typeName, "<") && strings.Contains(typeName, ">") {
 		return isInstanceOfGenericType(value, typeName)
@@ -722,4 +728,18 @@ func IsClassInstanceOfDefinition(instance *common.ClassInstance, class *common.C
 	}
 
 	return false
+}
+
+// resolveTypeAlias resolves a type name to its base type if it's an alias
+// Returns the input typeName unchanged if it's not an alias
+func resolveTypeAlias(typeName string) string {
+	// Try to find type alias in all packages
+	// First check current/default package
+	for _, packageAliases := range typeAliasRegistry {
+		if alias, exists := packageAliases[typeName]; exists {
+			// Recursively resolve in case base type is also an alias
+			return resolveTypeAlias(alias.BaseType)
+		}
+	}
+	return typeName
 }
