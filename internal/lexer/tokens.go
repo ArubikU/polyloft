@@ -82,6 +82,10 @@ const (
 	STAR        // *
 	SLASH       // /
 	PERCENT     // %
+	PLUS_ASSIGN  // +=
+	MINUS_ASSIGN // -=
+	STAR_ASSIGN  // *=
+	SLASH_ASSIGN // /=
 	EQ          // ==
 	NEQ         // !=
 	LT          // <

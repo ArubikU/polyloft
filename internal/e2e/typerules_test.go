@@ -315,8 +315,78 @@ func TestTypeRules_Section7_VariadicFunctions(t *testing.T) {
 
 // Section 8: Generic types with bounds
 func TestTypeRules_Section8_GenericBounds(t *testing.T) {
-	// Skip: Generic class method return values need investigation
-	t.Skip("Generic class getValue() return handling needs investigation")
+	code := `
+class Box<T extends Number>:
+    let value: T
+    Box(value: T):
+        this.value = value
+    end
+    def getValue(): T:
+        return this.value
+    end
+    def setValue(newValue: T):
+        this.value = newValue
+    end
+end
+
+const intBox = Box<Int>(100)
+const floatBox = Box<Float>(3.14)
+
+intBox.setValue(200)
+const result = [intBox.getValue(), floatBox.getValue()]
+result
+`
+	result, err := runCodeTypeRules(code)
+	if err != nil {
+		t.Fatalf("Execution error: %v", err)
+	}
+	arr, ok := result.([]any)
+	if !ok || len(arr) != 2 {
+		t.Fatalf("Expected array of 2 elements, got: %v", result)
+	}
+	
+	intVal, _ := utils.AsInt(arr[0])
+	floatVal, _ := utils.AsFloat(arr[1])
+	
+	if intVal != 200 {
+		t.Errorf("Expected 200, got: %d", intVal)
+	}
+	if floatVal < 3.13 || floatVal > 3.15 {
+		t.Errorf("Expected ~3.14, got: %f", floatVal)
+	}
+}
+
+// Test compound assignment operators
+func TestTypeRules_CompoundAssignmentOperators(t *testing.T) {
+	code := `
+let a = 10
+let b = 5
+let c = 20
+let d = 8
+
+a += 5   // a = 10 + 5 = 15
+b -= 3   // b = 5 - 3 = 2
+c *= 2   // c = 20 * 2 = 40
+d /= 4   // d = 8 / 4 = 2
+
+[a, b, c, d]
+`
+	result, err := runCodeTypeRules(code)
+	if err != nil {
+		t.Fatalf("Execution error: %v", err)
+	}
+	arr, ok := result.([]any)
+	if !ok || len(arr) != 4 {
+		t.Fatalf("Expected array of 4 elements, got: %v", result)
+	}
+	
+	expected := []int{15, 2, 40, 2}
+	for i, exp := range expected {
+		val, _ := utils.AsInt(arr[i])
+		if val != exp {
+			t.Errorf("Expected arr[%d] = %d, got: %d", i, exp, val)
+		}
+	}
 }
 
 // Section 10: Type aliases with final type

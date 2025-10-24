@@ -3,6 +3,8 @@ package e2e
 import (
 	"strings"
 	"testing"
+	
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // Phase 1: Wildcard tests - unbounded, upper bound, lower bound
@@ -199,7 +201,7 @@ return list.toString()
 	}
 
 	str := utils.ToString(result)
-	if !ok {
+	if str == "" {
 		t.Fatalf("Expected string, got %T", result)
 	}
 
@@ -219,7 +221,7 @@ return list.toString()
 	}
 
 	str := utils.ToString(result)
-	if !ok {
+	if str == "" {
 		t.Fatalf("Expected string, got %T", result)
 	}
 
@@ -239,7 +241,7 @@ return list.toString()
 	}
 
 	str := utils.ToString(result)
-	if !ok {
+	if str == "" {
 		t.Fatalf("Expected string, got %T", result)
 	}
 

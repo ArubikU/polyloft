@@ -565,18 +565,52 @@ func (p *Parser) parseStmt() (ast.Stmt, error) {
 				return nil, err
 			}
 
-			// Check if next token is assignment
-			if p.curr().Tok == lexer.ASSIGN {
+			// Check if next token is assignment or compound assignment
+			switch p.curr().Tok {
+			case lexer.ASSIGN:
 				assignPos := p.curr().Start // capture position of '=' token
 				p.next()                    // consume '='
 				rhs, err := p.parseExpr(0)
 				if err != nil {
 					return nil, err
 				}
-
 				// Create assignment statement
 				return &ast.AssignStmt{Target: lhs, Value: rhs, Pos: assignPos}, nil
-			} else {
+			
+			case lexer.PLUS_ASSIGN, lexer.MINUS_ASSIGN, lexer.STAR_ASSIGN, lexer.SLASH_ASSIGN:
+				// Handle compound assignment: a += b  becomes  a = a + b
+				op := p.curr().Tok
+				assignPos := p.curr().Start
+				p.next()
+				rhs, err := p.parseExpr(0)
+				if err != nil {
+					return nil, err
+				}
+				
+				// Convert compound assignment to regular assignment with binary operation
+				var binaryOp lexer.Token
+				switch op {
+				case lexer.PLUS_ASSIGN:
+					binaryOp = lexer.PLUS
+				case lexer.MINUS_ASSIGN:
+					binaryOp = lexer.MINUS
+				case lexer.STAR_ASSIGN:
+					binaryOp = lexer.STAR
+				case lexer.SLASH_ASSIGN:
+					binaryOp = lexer.SLASH
+				}
+				
+				// Create binary expression: lhs op rhs
+				binaryExpr := &ast.BinaryExpr{
+					Lhs: lhs,
+					Op:  int(binaryOp),
+					Rhs: rhs,
+				}
+				
+				// Create assignment: lhs = (lhs op rhs)
+				return &ast.AssignStmt{Target: lhs, Value: binaryExpr, Pos: assignPos}, nil
+			
+			default:
 				// Not an assignment, treat as expression statement
 				p.pos = saved_pos // restore position
 				e, err := p.parseExpr(0)

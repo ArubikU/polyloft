@@ -226,6 +226,26 @@ func (l *Lexer) Scan(src []byte) []Item {
 				off += 2
 				col += 2
 				continue
+			case "+=":
+				add(PLUS_ASSIGN, "+=", start, ast.Position{Offset: off + 2, Line: line, Col: col + 2})
+				off += 2
+				col += 2
+				continue
+			case "-=":
+				add(MINUS_ASSIGN, "-=", start, ast.Position{Offset: off + 2, Line: line, Col: col + 2})
+				off += 2
+				col += 2
+				continue
+			case "*=":
+				add(STAR_ASSIGN, "*=", start, ast.Position{Offset: off + 2, Line: line, Col: col + 2})
+				off += 2
+				col += 2
+				continue
+			case "/=":
+				add(SLASH_ASSIGN, "/=", start, ast.Position{Offset: off + 2, Line: line, Col: col + 2})
+				off += 2
+				col += 2
+				continue
 			case "==":
 				add(EQ, "==", start, ast.Position{Offset: off + 2, Line: line, Col: col + 2})
 				off += 2
