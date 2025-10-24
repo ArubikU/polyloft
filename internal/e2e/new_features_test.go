@@ -71,6 +71,7 @@ println("Even sum: " + evenSum.toString())
 }
 
 func TestForWhere_WithDestructuring(t *testing.T) {
+	engine.ResetGlobalRegistries() // Reset state between test runs
 	src := `
 let map = { "a": 10, "b": 5, "c": 20, "d": 3 }
 let sum = 0

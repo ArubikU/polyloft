@@ -6,6 +6,7 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/common"
 	"github.com/ArubikU/polyloft/internal/engine"
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 func TestReturnTypeValidation_ConcreteType(t *testing.T) {
@@ -40,11 +41,13 @@ return [obj.getString(), obj.getInt()]
 		t.Fatalf("Failed to convert to array: %v", err)
 	}
 
-	if arr[0].(string) != "hello" {
-		t.Errorf("Expected 'hello', got %v", arr[0])
+	str0 := utils.ToString(arr[0])
+	int1, _ := utils.AsInt(arr[1])
+	if str0 != "hello" {
+		t.Errorf("Expected 'hello', got %v", str0)
 	}
-	if arr[1].(int) != 42 {
-		t.Errorf("Expected 42, got %v", arr[1])
+	if int1 != 42 {
+		t.Errorf("Expected 42, got %v", int1)
 	}
 }
 
@@ -100,11 +103,7 @@ return obj.getValue()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	value, ok := result.(int)
-	if !ok {
-		t.Fatalf("Expected int, got %T", result)
-	}
-
+	value, _ := utils.AsInt(result)
 	if value != 100 {
 		t.Errorf("Expected 100, got %v", value)
 	}
@@ -147,11 +146,13 @@ return [box1.get(), box2.get()]
 		t.Fatalf("Failed to convert to array: %v", err)
 	}
 
-	if arr[0].(string) != "hello" {
-		t.Errorf("Expected 'hello', got %v", arr[0])
+	str0 := utils.ToString(arr[0])
+	int1, _ := utils.AsInt(arr[1])
+	if str0 != "hello" {
+		t.Errorf("Expected 'hello', got %v", str0)
 	}
-	if arr[1].(int) != 42 {
-		t.Errorf("Expected 42, got %v", arr[1])
+	if int1 != 42 {
+		t.Errorf("Expected 42, got %v", int1)
 	}
 }
 
@@ -186,10 +187,12 @@ return [obj.getAny(true), obj.getAny(false)]
 		t.Fatalf("Failed to convert to array: %v", err)
 	}
 
-	if arr[0].(string) != "string" {
-		t.Errorf("Expected 'string', got %v", arr[0])
+	str0 := utils.ToString(arr[0])
+	int1, _ := utils.AsInt(arr[1])
+	if str0 != "string" {
+		t.Errorf("Expected 'string', got %v", str0)
 	}
-	if arr[1].(int) != 42 {
-		t.Errorf("Expected 42, got %v", arr[1])
+	if int1 != 42 {
+		t.Errorf("Expected 42, got %v", int1)
 	}
 }

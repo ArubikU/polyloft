@@ -5,6 +5,7 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/common"
 	"github.com/ArubikU/polyloft/internal/engine"
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 func TestGenericFunction_Identity(t *testing.T) {
@@ -37,13 +38,15 @@ return [result1, result2, result3]
 		t.Fatalf("Expected 3 results, got %d", len(arr))
 	}
 
-	if arr[0].(int) != 42 {
+	// Use utils functions to handle both native types and ClassInstance
+	intVal, ok := utils.AsInt(arr[0])
+	if !ok || intVal != 42 {
 		t.Errorf("Expected 42, got %v", arr[0])
 	}
-	if arr[1].(string) != "hello" {
+	if utils.ToString(arr[1]) != "hello" {
 		t.Errorf("Expected 'hello', got %v", arr[1])
 	}
-	if arr[2].(bool) != true {
+	if utils.AsBool(arr[2]) != true {
 		t.Errorf("Expected true, got %v", arr[2])
 	}
 }
@@ -75,10 +78,12 @@ return pair
 		t.Fatalf("Expected 2 elements, got %d", len(arr))
 	}
 
-	if arr[0].(string) != "name" {
+	// Use utils functions to handle both native types and ClassInstance
+	if utils.ToString(arr[0]) != "name" {
 		t.Errorf("Expected 'name', got %v", arr[0])
 	}
-	if arr[1].(int) != 42 {
+	intVal, ok := utils.AsInt(arr[1])
+	if !ok || intVal != 42 {
 		t.Errorf("Expected 42, got %v", arr[1])
 	}
 }
@@ -97,7 +102,8 @@ return result
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	value, ok := result.(int)
+	// Use utils.AsInt to handle both native ints and ClassInstance
+	value, ok := utils.AsInt(result)
 	if !ok {
 		t.Fatalf("Expected int, got %T", result)
 	}
@@ -134,10 +140,12 @@ return result
 		t.Fatalf("Expected 2 elements, got %d", len(arr))
 	}
 
-	if arr[0].(int) != 123 {
+	// Use utils functions to handle both native types and ClassInstance
+	intVal, ok := utils.AsInt(arr[0])
+	if !ok || intVal != 123 {
 		t.Errorf("Expected 123, got %v", arr[0])
 	}
-	if arr[1].(string) != "hello" {
+	if utils.ToString(arr[1]) != "hello" {
 		t.Errorf("Expected 'hello', got %v", arr[1])
 	}
 }
@@ -173,10 +181,13 @@ return [result1, result2]
 		t.Fatalf("Expected 2 elements, got %d", len(arr))
 	}
 
-	if arr[0].(int) != 20 {
+	// Use utils functions to handle both native types and ClassInstance
+	intVal, ok := utils.AsInt(arr[0])
+	if !ok || intVal != 20 {
 		t.Errorf("Expected 20, got %v", arr[0])
 	}
-	if arr[1].(float64) != 3.5 {
+	floatVal, ok := utils.AsFloat(arr[1])
+	if !ok || floatVal != 3.5 {
 		t.Errorf("Expected 3.5, got %v", arr[1])
 	}
 }

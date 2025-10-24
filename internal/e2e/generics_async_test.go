@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ArubikU/polyloft/internal/engine"
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 	"github.com/ArubikU/polyloft/internal/lexer"
 	"github.com/ArubikU/polyloft/internal/parser"
 )
@@ -38,9 +39,9 @@ return set.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 2 {
-		t.Fatalf("Expected size 2 (duplicates removed), got %v", result)
+	size, _ := utils.AsInt(result)
+	if size != 2 {
+		t.Fatalf("Expected size 2 (duplicates removed), got %d", size)
 	}
 }
 

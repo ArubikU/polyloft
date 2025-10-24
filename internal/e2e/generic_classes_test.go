@@ -5,6 +5,7 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/common"
 	"github.com/ArubikU/polyloft/internal/engine"
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 func TestGenericClass_Builder(t *testing.T) {
@@ -36,11 +37,8 @@ return result
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok {
-		t.Fatalf("Expected string, got %T", result)
-	}
-
+	// Use utils.ToString to handle both native strings and ClassInstance
+	str := utils.ToString(result)
 	if str != "updated" {
 		t.Errorf("Expected 'updated', got %v", str)
 	}
@@ -95,10 +93,13 @@ return [pair.getKey(), pair.getValue()]
 		t.Fatalf("Second element is nil")
 	}
 
-	if arr[0].(string) != "name" {
+	// Use utils.ToString to handle both native strings and ClassInstance
+	if utils.ToString(arr[0]) != "name" {
 		t.Errorf("Expected 'name', got %v", arr[0])
 	}
-	if arr[1].(int) != 42 {
+	// Use utils.AsInt to handle both native ints and ClassInstance
+	intVal, ok := utils.AsInt(arr[1])
+	if !ok || intVal != 42 {
 		t.Errorf("Expected 42, got %v", arr[1])
 	}
 }
@@ -131,7 +132,8 @@ return result
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	value, ok := result.(int)
+	// Use utils.AsInt to handle both native ints and ClassInstance
+	value, ok := utils.AsInt(result)
 	if !ok {
 		t.Fatalf("Expected int, got %T", result)
 	}
@@ -186,10 +188,12 @@ return [result1, result2]
 		t.Fatalf("Expected 2 elements, got %d", len(arr))
 	}
 
-	if arr[0].(string) != "hello" {
+	// Use utils functions to handle both native types and ClassInstance
+	if utils.ToString(arr[0]) != "hello" {
 		t.Errorf("Expected 'hello', got %v", arr[0])
 	}
-	if arr[1].(int) != 99 {
+	intVal, ok := utils.AsInt(arr[1])
+	if !ok || intVal != 99 {
 		t.Errorf("Expected 99, got %v", arr[1])
 	}
 }
@@ -239,13 +243,16 @@ return [triple.getFirst(), triple.getSecond(), triple.getThird()]
 		t.Fatalf("Expected 3 elements, got %d", len(arr))
 	}
 
-	if arr[0].(string) != "hello" {
+	// Use utils functions to handle both native types and ClassInstance
+	if utils.ToString(arr[0]) != "hello" {
 		t.Errorf("Expected 'hello', got %v", arr[0])
 	}
-	if arr[1].(int) != 42 {
+	intVal, ok := utils.AsInt(arr[1])
+	if !ok || intVal != 42 {
 		t.Errorf("Expected 42, got %v", arr[1])
 	}
-	if arr[2].(bool) != true {
+	boolVal := utils.AsBool(arr[2])
+	if boolVal != true {
 		t.Errorf("Expected true, got %v", arr[2])
 	}
 }

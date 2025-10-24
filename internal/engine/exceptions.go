@@ -6,7 +6,6 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/ast"
 	"github.com/ArubikU/polyloft/internal/common"
-	"github.com/ArubikU/polyloft/internal/engine/typecheck"
 )
 
 // HyException represents a Polyloft exception
@@ -642,21 +641,21 @@ func ValidateArgumentType(value any, expectedType string) error {
 		unionTypeStrs := strings.Split(expectedType, "|")
 		for _, typeStr := range unionTypeStrs {
 			typeStr = strings.TrimSpace(typeStr)
-			if typecheck.IsInstanceOf(value, typeStr) {
+			if IsInstanceOf(value, typeStr) {
 				return nil // Value matches at least one union member
 			}
 		}
 		// Value doesn't match any union member
-		actualType := common.GetTypeName(value)
+		actualType := GetTypeName(value)
 		return ThrowTypeError(nil, expectedType, actualType)
 	}
 
-	if typecheck.IsInstanceOf(value, expectedType) {
+	if IsInstanceOf(value, expectedType) {
 		return nil
 	}
-	fmt.Println("Validation failed:", common.GetTypeName(value), "is not", expectedType)
+	fmt.Println("Validation failed:", GetTypeName(value), "is not", expectedType)
 
-	actualType := common.GetTypeName(value)
+	actualType := GetTypeName(value)
 	return ThrowTypeError(nil, expectedType, actualType)
 }
 

@@ -148,6 +148,14 @@ func InstallStringBuiltin(env *Env) error {
 		return len(str) == 0, nil
 	}, []string{})
 
+	// length() -> Int (public method)
+	stringClass.AddBuiltinMethod("length", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		str := instance.Fields["_value"].(string)
+		return utf8.RuneCountInString(str), nil
+	}, []string{})
+
 	// charAt(index: Int) -> String
 	stringClass.AddBuiltinMethod("charAt", stringType, []ast.Parameter{
 		{Name: "index", Type: intType},

@@ -10,7 +10,6 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/ast"
 	"github.com/ArubikU/polyloft/internal/common"
-	"github.com/ArubikU/polyloft/internal/engine/typecheck"
 	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
@@ -189,10 +188,23 @@ func InstallSysModule(env *Env, opts Options) {
 				return "", nil
 			}
 			format := utils.ToString(args[0])
-			return fmt.Sprintf(format, args[1:]...), nil
+			// Unwrap ClassInstance wrappers for fmt.Sprintf
+			unwrappedArgs := make([]any, len(args)-1)
+			for i, arg := range args[1:] {
+				if inst, ok := arg.(*ClassInstance); ok {
+					if val, exists := inst.Fields["_value"]; exists {
+						unwrappedArgs[i] = val
+					} else {
+						unwrappedArgs[i] = utils.ToString(arg)
+					}
+				} else {
+					unwrappedArgs[i] = arg
+				}
+			}
+			return fmt.Sprintf(format, unwrappedArgs...), nil
 		})).
 		AddStaticMethod("type", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{{Name: "value", Type: ast.TypeFromString("")}}, Func(func(_ *Env, args []any) (any, error) {
-			return common.GetTypeName(args[0]), nil
+			return GetTypeName(args[0]), nil
 		})).
 		AddStaticMethod("instanceof", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
 			{Name: "object", Type: ast.TypeFromString("")},
@@ -202,23 +214,21 @@ func InstallSysModule(env *Env, opts Options) {
 
 			if classConstructor, ok := args[1].(*common.ClassConstructor); ok {
 				if instance, isInstance := obj.(*common.ClassInstance); isInstance {
-					return typecheck.IsClassInstanceOfDefinition(instance, classConstructor.Definition), nil
+					return IsClassInstanceOfDefinition(instance, classConstructor.Definition), nil
 				}
-				return common.GetTypeName(obj) == classConstructor.Definition.Name, nil
+				return GetTypeName(obj) == classConstructor.Definition.Name, nil
 			}
 
 			if enumConstructor, ok := args[1].(*common.EnumConstructor); ok {
 				if enumValue, isEnumValue := obj.(*common.EnumValueInstance); isEnumValue {
 					return enumValue.Definition != nil && enumValue.Definition.Name == enumConstructor.Definition.Name, nil
 				}
-				return common.GetTypeName(obj) == enumConstructor.Definition.Name, nil
+				return GetTypeName(obj) == enumConstructor.Definition.Name, nil
 			}
 
-			typeName, ok := args[1].(string)
-			if !ok {
-				return nil, ThrowTypeError(e, "string, class, or enum", args[1])
-			}
-			return typecheck.IsInstanceOf(obj, typeName), nil
+			// Try to extract string from arg (handles both native string and ClassInstance)
+			typeName := utils.ToString(args[1])
+			return IsInstanceOf(obj, typeName), nil
 		}))
 
 	_, err := sysClass.BuildStatic(env)

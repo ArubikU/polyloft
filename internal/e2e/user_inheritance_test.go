@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"testing"
+
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // Tests for class inheritance with generic types
@@ -43,8 +45,9 @@ return dog.getName() + ":" + dog.speak()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "Buddy:Woof!" {
+	// Use utils.ToString to handle both native strings and ClassInstance
+	str := utils.ToString(result)
+	if str != "Buddy:Woof!" {
 		t.Fatalf("Expected 'Buddy:Woof!', got %v", result)
 	}
 }
@@ -84,9 +87,9 @@ return check1 && check2 && !check3 && !check4
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	val, ok := result.(bool)
-	if !ok || !val {
-		t.Fatalf("Expected true for inheritance instanceof checks, got %v", result)
+	val := utils.AsBool(result)
+	if !val {
+		t.Fatalf("Expected true for inheritance instanceof checks, got %v", val)
 	}
 }
 
@@ -127,8 +130,9 @@ return dogContainer.get().getName()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "Buddy" {
+	// Use utils.ToString to handle both native strings and ClassInstance
+	str := utils.ToString(result)
+	if str != "Buddy" {
 		t.Fatalf("Expected 'Buddy', got %v", result)
 	}
 }
@@ -164,8 +168,9 @@ return Sys.type(dogContainer) + "," + Sys.type(animalContainer)
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "ContainerD<DogD>,ContainerD<AnimalD>" {
+	// Use utils.ToString to handle both native strings and ClassInstance
+	str := utils.ToString(result)
+	if str != "ContainerD<DogD>,ContainerD<AnimalD>" {
 		t.Fatalf("Expected 'ContainerD<DogD>,ContainerD<AnimalD>', got %v", result)
 	}
 }
@@ -204,9 +209,9 @@ return check1 && check2 && check3
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	val, ok := result.(bool)
-	if !ok || !val {
-		t.Fatalf("Expected true for all instanceof checks, got %v", result)
+	val := utils.AsBool(result)
+	if !val {
+		t.Fatalf("Expected true for all instanceof checks, got %v", val)
 	}
 }
 
@@ -247,8 +252,9 @@ return dogProducer.get().getName()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "Buddy" {
+	// Use utils.ToString to handle both native strings and ClassInstance
+	str := utils.ToString(result)
+	if str != "Buddy" {
 		t.Fatalf("Expected 'Buddy', got %v", result)
 	}
 }
@@ -289,8 +295,9 @@ return "OK"
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "OK" {
+	// Use utils.ToString to handle both native strings and ClassInstance
+	str := utils.ToString(result)
+	if str != "OK" {
 		t.Fatalf("Expected 'OK', got %v", result)
 	}
 }
@@ -328,8 +335,8 @@ return check1 && check2 && check3
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	val, ok := result.(bool)
-	if !ok || !val {
-		t.Fatalf("Expected true for multi-level inheritance checks, got %v", result)
+	val := utils.AsBool(result)
+	if !val {
+		t.Fatalf("Expected true for multi-level inheritance checks, got %v", val)
 	}
 }

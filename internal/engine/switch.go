@@ -32,7 +32,7 @@ func evalSwitchStmt(env *Env, stmt *ast.SwitchStmt) (val any, returned bool, err
 			typeName := getTypeName(switchValue)
 			
 			// Check if types match (case-insensitive comparison for built-in types)
-			if matchesTypeName(typeName, c.TypeName) {
+			if matchesTypeNameSwitch(typeName, c.TypeName) {
 				matched = true
 				
 				// If a variable name is provided, bind the value to that variable
@@ -117,23 +117,23 @@ func getTypeName(val any) string {
 	}
 }
 
-// matchesTypeName checks if a type name matches the expected type name
+// matchesTypeNameSwitch checks if a type name matches the expected type name
 // Handles case-insensitive matching for built-in types and their aliases
-func matchesTypeName(actual, expected string) bool {
+func matchesTypeNameSwitch(actual, expected string) bool {
 	// Direct match
 	if actual == expected {
 		return true
 	}
 
 	// Normalize and compare for built-in types
-	actualNorm := normalizeTypeName(actual)
-	expectedNorm := normalizeTypeName(expected)
+	actualNorm := normalizeTypeNameSwitch(actual)
+	expectedNorm := normalizeTypeNameSwitch(expected)
 	
 	return actualNorm == expectedNorm
 }
 
-// normalizeTypeName normalizes type names for comparison
-func normalizeTypeName(typeName string) string {
+// normalizeTypeNameSwitch normalizes type names for comparison
+func normalizeTypeNameSwitch(typeName string) string {
 	switch typeName {
 	case "bool", "Bool", "boolean", "Boolean":
 		return "bool"

@@ -37,7 +37,16 @@ var (
 	classRegistry     = make(map[string]map[string]*ClassDefinition) // packageName -> className -> ClassDefinition
 	interfaceRegistry = make(map[string]*InterfaceDefinition)
 	builtinClasses    = make(map[string]*ClassDefinition) // builtin classes (always available)
+	typeAliasRegistry = make(map[string]map[string]*TypeAlias) // packageName -> aliasName -> TypeAlias
 )
+
+// TypeAlias represents a type alias definition
+type TypeAlias struct {
+	Name      string
+	BaseType  string
+	IsFinal   bool // if true, this is a nominal type (distinct from base type)
+	PackageName string
+}
 
 // lookupClass looks up a class by name, checking builtins first, then the given package
 func lookupClass(className string, packageName string) (*ClassDefinition, bool) {
@@ -62,6 +71,7 @@ func ResetGlobalRegistries() {
 	classRegistry = make(map[string]map[string]*ClassDefinition)
 	interfaceRegistry = make(map[string]*InterfaceDefinition)
 	builtinClasses = make(map[string]*ClassDefinition)
+	typeAliasRegistry = make(map[string]map[string]*TypeAlias)
 	// Also reset enum registry
 	enumRegistry = make(map[string]*common.EnumDefinition)
 	// Reset exception classes
@@ -177,11 +187,23 @@ func evalClassDecl(env *Env, s *ast.ClassDecl) (any, error) {
 	// Convert AST TypeParams to common.GenericType
 	var typeParams []common.GenericType
 	for _, tp := range s.TypeParams {
+		// Create a GenericBound from the TypeParam
+		var bounds []common.GenericBound
+		
+		// Create the primary bound from the type parameter name
+		bound := common.GenericBound{
+			Name:       ast.Type{Name: tp.Name},
+			Variance:   tp.Variance,
+			IsVariadic: tp.IsVariadic,
+		}
+		
+		// Note: Extends and Implements will be resolved later after all types are loaded
+		// For now, we just store the bounds as strings in the Name field
+		// This will need proper resolution in a second pass
+		bounds = append(bounds, bound)
+		
 		typeParams = append(typeParams, common.GenericType{
-			Name:       tp.Name,
-			Bounds:     tp.Bounds,
-			IsVariadic: false,       // Classes don't support variadic type params yet
-			Variance:   tp.Variance, // Store variance ("in", "out", or "")
+			Bounds: bounds,
 		})
 	}
 
@@ -351,8 +373,9 @@ func evalClassDecl(env *Env, s *ast.ClassDecl) (any, error) {
 			// Also create a map for easy lookup
 			typeMap := make(map[string]string)
 			for i, typeParam := range classDef.TypeParams {
-				if i < len(typeArgs) {
-					typeMap[typeParam.Name] = typeArgs[i]
+				if i < len(typeArgs) && len(typeParam.Bounds) > 0 {
+					// Use the first bound's name as the type parameter name
+					typeMap[typeParam.Bounds[0].Name.Name] = typeArgs[i]
 				}
 			}
 			classInst.Fields["__generic_types__"] = typeMap
@@ -360,8 +383,8 @@ func evalClassDecl(env *Env, s *ast.ClassDecl) (any, error) {
 			// Store variance information for runtime checking
 			varianceMap := make(map[string]string)
 			for _, typeParam := range classDef.TypeParams {
-				if typeParam.Variance != "" {
-					varianceMap[typeParam.Name] = typeParam.Variance
+				if len(typeParam.Bounds) > 0 && typeParam.Bounds[0].Variance != "" {
+					varianceMap[typeParam.Bounds[0].Name.Name] = typeParam.Bounds[0].Variance
 				}
 			}
 			if len(varianceMap) > 0 {
@@ -711,19 +734,19 @@ func bindMethods(instance *ClassInstance, classDef *ClassDefinition, env *Env) e
 }
 
 // validateReturnType validates that a return value matches the expected type
-func validateReturnType(instance *ClassInstance, expectedType *ast.Type, value any, env *Env) error {
+func validateReturnType(instance *ClassInstance, expectedTypeName string, value any, env *Env) error {
 
 	// Check if it's a generic type parameter (single uppercase letter or T-prefixed)
-	if isGenericTypeParameter(expectedType) {
+	if isGenericTypeParameter(expectedTypeName) {
 		// Generic type parameters are not validated at runtime
 		return nil
 	}
 
 	// Strip variance annotations before validating concrete types
-	expectedType = stripVarianceAnnotation(expectedType)
+	expectedTypeName = stripVarianceAnnotation(expectedTypeName)
 
 	// It's a concrete type, validate it
-	return validateConcreteType(expectedType, value, env)
+	return validateConcreteType(expectedTypeName, value, env)
 }
 
 // stripVarianceAnnotation removes "out " or "in " prefix from a type name

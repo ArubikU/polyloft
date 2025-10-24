@@ -8,6 +8,9 @@ import (
 	"github.com/ArubikU/polyloft/internal/common"
 )
 
+// GetTypeName returns the type name for any value
+// This is the implementation for Sys.type() function
+// Returns lowercase names for primitives, and formatted names for classes/enums
 func GetTypeName(val any) string {
 	switch v := val.(type) {
 	case *common.ClassConstructor:
@@ -57,9 +60,10 @@ func GetTypeName(val any) string {
 							}
 						}
 					}
-					if v.ParentClass == common.BuiltinTypeMap.ClassDef {
-						common.InferMapType()
-					}
+					// TODO: Implement InferMapType for Map instances
+					// if v.ParentClass == common.BuiltinTypeMap.ClassDef {
+					//	 common.InferMapType(...)
+					// }
 				}
 
 				if len(v.GenericTypes) > 0 {
@@ -123,6 +127,9 @@ func GetTypeName(val any) string {
 }
 
 // matchesTypeName checks if a type name matches the expected name, considering aliases
+// matchesTypeName checks if a base type name matches a given type name
+// Handles aliases like: Integer=Int, Boolean=Bool, etc.
+// Both parameters are normalized to lowercase for comparison
 func matchesTypeName(baseName, typeName string) bool {
 	// Normalize comparison
 	typeName = strings.ToLower(strings.TrimSpace(typeName))
@@ -132,7 +139,8 @@ func matchesTypeName(baseName, typeName string) bool {
 		return true
 	}
 
-	// Check common aliases
+	// Check common type aliases
+	// This allows Integer to match Int, Boolean to match Bool, etc.
 	aliases := map[string][]string{
 		"int":      {"integer", "int32", "int64"},
 		"float":    {"double", "float32", "float64"},
@@ -154,7 +162,16 @@ func matchesTypeName(baseName, typeName string) bool {
 	return false
 }
 
+// IsInstanceOf checks if a value is an instance of the given type name
+// This is the core type checking function used throughout the system
+// Supports: basic types, generic types (Array<Int>), union types (Int | String), wildcards (? extends Number)
 func IsInstanceOf(value any, typeName string) bool {
+	// Resolve type aliases
+	// Check if typeName is a type alias and resolve to base type
+	if resolvedType := resolveTypeAlias(typeName); resolvedType != typeName {
+		return IsInstanceOf(value, resolvedType)
+	}
+	
 	// Parse the type name to check for generic parameters
 	if strings.Contains(typeName, "<") && strings.Contains(typeName, ">") {
 		return isInstanceOfGenericType(value, typeName)
@@ -255,6 +272,22 @@ func isInstanceOfGenericType(value any, typeName string) bool {
 		}
 
 		// Get the stored type arguments from the instance
+		// First check GenericTypes (proper generic type info)
+		if len(v.GenericTypes) > 0 {
+			// Extract type names from GenericTypes
+			typeArgs := make([]string, 0, len(v.GenericTypes))
+			for _, gt := range v.GenericTypes {
+				if len(gt.Bounds) > 0 {
+					typeArgs = append(typeArgs, gt.Bounds[0].Name.Name)
+				}
+			}
+			if len(typeArgs) > 0 && normalizeTypeName(typeArgs[0]) != "any" {
+				// Check if the stored type arguments are compatible with the requested type
+				return areTypeArgsCompatible(typeArgs, typeParams)
+			}
+		}
+		
+		// Fallback: check __type_args__ field (for backward compatibility)
 		if typeArgs, ok := v.Fields["__type_args__"].([]string); ok {
 			// If stored type is Any, fall through to check elements directly
 			if len(typeArgs) > 0 && normalizeTypeName(typeArgs[0]) != "any" {
@@ -340,7 +373,7 @@ func isInstanceOfGenericType(value any, typeName string) bool {
 		}
 		return true
 	default:
-		fmt.Println("Unsupported type for generic instanceof:", common.GetTypeName(value))
+		fmt.Println("Unsupported type for generic instanceof:", GetTypeName(value))
 		return false
 	}
 }
@@ -507,7 +540,7 @@ func isSubtypeOf(value any, typeName string) bool {
 func isSupertypeOf(value any, typeName string) bool {
 	// This is the inverse of isSubtypeOf
 	// If the bound type can be assigned from the value's type
-	valueType := common.GetTypeName(value)
+	valueType := GetTypeName(value)
 
 	// Number is a supertype of Int and Float
 	if typeName == "Int" || typeName == "int" {
@@ -630,7 +663,7 @@ func isClassInstanceOf(instance *common.ClassInstance, typeName string) bool {
 			return true
 		}
 	case "Int":
-		if typeName == "int" || typeName == "Int" || typeName == "number" || typeName == "Number" {
+		if typeName == "int" || typeName == "Int" || typeName == "Integer" || typeName == "integer" || typeName == "number" || typeName == "Number" {
 			return true
 		}
 	case "Float":
@@ -711,4 +744,18 @@ func IsClassInstanceOfDefinition(instance *common.ClassInstance, class *common.C
 	}
 
 	return false
+}
+
+// resolveTypeAlias resolves a type name to its base type if it's an alias
+// Returns the input typeName unchanged if it's not an alias
+func resolveTypeAlias(typeName string) string {
+	// Try to find type alias in all packages
+	// First check current/default package
+	for _, packageAliases := range typeAliasRegistry {
+		if alias, exists := packageAliases[typeName]; exists {
+			// Recursively resolve in case base type is also an alias
+			return resolveTypeAlias(alias.BaseType)
+		}
+	}
+	return typeName
 }

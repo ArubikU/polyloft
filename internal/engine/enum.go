@@ -5,6 +5,7 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/ast"
 	"github.com/ArubikU/polyloft/internal/common"
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // Global registry for enums
@@ -266,10 +267,8 @@ func bindEnumStaticMethods(enumObject map[string]any, def *common.EnumDefinition
 			if len(args) != 1 {
 				return nil, ThrowArityError(e, 1, len(args))
 			}
-			name, ok := args[0].(string)
-			if !ok {
-				return nil, ThrowTypeError(e, "string", args[0])
-			}
+			// Use utils.ToString to handle both string and ClassInstance
+			name := utils.ToString(args[0])
 			if value, exists := def.Values[name]; exists {
 				return value, nil
 			}

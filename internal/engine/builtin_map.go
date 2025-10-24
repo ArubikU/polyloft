@@ -153,6 +153,7 @@ func InstallMapBuiltin(env *Env) error {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_data"] = make(map[uint64][]*mapEntry)
+		instance.Fields["_entries"] = make([]*mapEntry, 0)
 		return nil, nil
 	})
 
@@ -220,6 +221,7 @@ func InstallMapBuiltin(env *Env) error {
 	}, []string{})
 
 	// __get(key: K) -> V (Indexable interface)
+	// Also supports numeric index for iteration (returns Pair<K, V>)
 	mapClass.AddBuiltinMethod("__get", &common.VBound.Name, []ast.Parameter{
 		{Name: "key", Type: &common.KBound.Name},
 	}, func(callEnv *common.Env, args []any) (any, error) {
@@ -227,6 +229,31 @@ func InstallMapBuiltin(env *Env) error {
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
+		// Check if the argument is a numeric index (for iteration)
+		if idx, ok := utils.AsInt(args[0]); ok {
+			// Use stable _entries slice for iteration
+			entries, hasEntries := instance.Fields["_entries"].([]*mapEntry)
+			if hasEntries && idx >= 0 && idx < len(entries) {
+				entry := entries[idx]
+				// Create a Pair instance
+				pairClass, exists := lookupClass("Pair", "")
+				if !exists {
+					// Fallback to array if Pair not available
+					return []any{entry.Key, entry.Value}, nil
+				}
+				
+				// Construct Pair
+				pairInstance, err := constructPairInstance(pairClass, entry.Key, entry.Value, (*Env)(callEnv))
+				if err != nil {
+					// Fallback to array on error
+					return []any{entry.Key, entry.Value}, nil
+				}
+				return pairInstance, nil
+			}
+			return nil, nil // Index out of bounds
+		}
+
+		// Otherwise, treat as key lookup - return value directly
 		hash := hashValue(callEnv, args[0])
 		if entries, exists := data[hash]; exists {
 			for _, entry := range entries {
@@ -246,19 +273,40 @@ func InstallMapBuiltin(env *Env) error {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
+		entries, hasEntries := instance.Fields["_entries"].([]*mapEntry)
 
 		hash := hashValue(callEnv, args[0])
-		if entries, exists := data[hash]; exists {
-			for i, entry := range entries {
+		if bucketEntries, exists := data[hash]; exists {
+			// Check if key already exists
+			for i, entry := range bucketEntries {
 				if equals(entry.Key, args[0]) {
-					entries[i].Value = args[1]
+					// Update existing entry value
+					bucketEntries[i].Value = args[1]
+					// Also update in _entries if it exists
+					if hasEntries {
+						for j, e := range entries {
+							if equals(e.Key, args[0]) {
+								entries[j].Value = args[1]
+								break
+							}
+						}
+					}
 					return nil, nil
 				}
 			}
 			// Key not found in this bucket, add it
-			data[hash] = append(entries, &mapEntry{Key: args[0], Value: args[1]})
+			newEntry := &mapEntry{Key: args[0], Value: args[1]}
+			data[hash] = append(bucketEntries, newEntry)
+			if hasEntries {
+				instance.Fields["_entries"] = append(entries, newEntry)
+			}
 		} else {
-			data[hash] = []*mapEntry{{Key: args[0], Value: args[1]}}
+			// New bucket
+			newEntry := &mapEntry{Key: args[0], Value: args[1]}
+			data[hash] = []*mapEntry{newEntry}
+			if hasEntries {
+				instance.Fields["_entries"] = append(entries, newEntry)
+			}
 		}
 		return nil, nil
 	}, []string{})
@@ -280,6 +328,26 @@ func InstallMapBuiltin(env *Env) error {
 			}
 		}
 		return false, nil
+	}, []string{})
+
+	// __length() -> Int (Iterable interface)
+	// Returns the number of key-value pairs in the map
+	mapClass.AddBuiltinMethod("__length", &ast.Type{Name: "int", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		
+		// Use _entries if available for accurate count
+		if entries, ok := instance.Fields["_entries"].([]*mapEntry); ok {
+			return len(entries), nil
+		}
+		
+		// Fallback to counting from hash map
+		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
+		size := 0
+		for _, entries := range data {
+			size += len(entries)
+		}
+		return size, nil
 	}, []string{})
 
 	// remove(key: any) -> Void
@@ -592,13 +660,20 @@ func CreateMapInstance(env *Env, data map[string]any) (*ClassInstance, error) {
 
 	classInstance := instance.(*ClassInstance)
 
-	// Convert to hash-based storage
+	// Convert to hash-based storage for fast lookups
 	hashData := make(map[uint64][]*mapEntry)
+	// Also maintain insertion order for stable iteration
+	entries := make([]*mapEntry, 0, len(data))
+	
 	for k, v := range data {
+		entry := &mapEntry{Key: k, Value: v}
 		hash := hashValue(env, k)
-		hashData[hash] = append(hashData[hash], &mapEntry{Key: k, Value: v})
+		hashData[hash] = append(hashData[hash], entry)
+		entries = append(entries, entry)
 	}
+	
 	classInstance.Fields["_data"] = hashData
+	classInstance.Fields["_entries"] = entries
 
 	return classInstance, nil
 }
@@ -678,3 +753,21 @@ func MapToClassMap(mapInstance *ClassInstance) (map[*ClassInstance]*ClassInstanc
 
 	return classMap, nil
 }
+
+// constructPairInstance creates a Pair instance with the given key and value
+func constructPairInstance(pairClass *ClassDefinition, key, value any, env *Env) (*ClassInstance, error) {
+	// Create instance using the proper initialization function
+	instance, err := createClassInstance(pairClass, env, []any{})
+	if err != nil {
+		return nil, err
+	}
+	
+	classInstance := instance.(*ClassInstance)
+	
+	// Initialize fields (Pair uses "key" and "value")
+	classInstance.Fields["key"] = key
+	classInstance.Fields["value"] = value
+	
+	return classInstance, nil
+}
+

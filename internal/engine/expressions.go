@@ -2,8 +2,6 @@ package engine
 
 import (
 	"github.com/ArubikU/polyloft/internal/ast"
-	"github.com/ArubikU/polyloft/internal/common"
-	"github.com/ArubikU/polyloft/internal/engine/typecheck"
 )
 
 // evalInstanceOfExpr handles instanceof expressions
@@ -15,7 +13,7 @@ func evalInstanceOfExpr(env *Env, expr *ast.InstanceOfExpr) (any, error) {
 	}
 
 	// Check if obj is instance of TypeName
-	result := typecheck.IsInstanceOf(obj, expr.TypeName)
+	result := IsInstanceOf(obj, expr.TypeName)
 
 	// If variable assignment is specified, assign the object if instanceof is true
 	if expr.Variable != "" && result {
@@ -34,7 +32,7 @@ func evalTypeExpr(env *Env, expr *ast.TypeExpr) (any, error) {
 	}
 
 	// Return the type name
-	return common.GetTypeName(obj), nil
+	return GetTypeName(obj), nil
 }
 
 // Enhanced evalExpr with support for new expression types

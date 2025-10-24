@@ -565,18 +565,52 @@ func (p *Parser) parseStmt() (ast.Stmt, error) {
 				return nil, err
 			}
 
-			// Check if next token is assignment
-			if p.curr().Tok == lexer.ASSIGN {
+			// Check if next token is assignment or compound assignment
+			switch p.curr().Tok {
+			case lexer.ASSIGN:
 				assignPos := p.curr().Start // capture position of '=' token
 				p.next()                    // consume '='
 				rhs, err := p.parseExpr(0)
 				if err != nil {
 					return nil, err
 				}
-
 				// Create assignment statement
 				return &ast.AssignStmt{Target: lhs, Value: rhs, Pos: assignPos}, nil
-			} else {
+			
+			case lexer.PLUS_ASSIGN, lexer.MINUS_ASSIGN, lexer.STAR_ASSIGN, lexer.SLASH_ASSIGN:
+				// Handle compound assignment: a += b  becomes  a = a + b
+				op := p.curr().Tok
+				assignPos := p.curr().Start
+				p.next()
+				rhs, err := p.parseExpr(0)
+				if err != nil {
+					return nil, err
+				}
+				
+				// Convert compound assignment operator to basic operator
+				var basicOp lexer.Token
+				switch op {
+				case lexer.PLUS_ASSIGN:
+					basicOp = lexer.PLUS
+				case lexer.MINUS_ASSIGN:
+					basicOp = lexer.MINUS
+				case lexer.STAR_ASSIGN:
+					basicOp = lexer.STAR
+				case lexer.SLASH_ASSIGN:
+					basicOp = lexer.SLASH
+				}
+				
+				// Create binary expression: lhs op rhs using ast operator constant
+				binaryExpr := &ast.BinaryExpr{
+					Lhs: lhs,
+					Op:  p.toOp(basicOp),  // Convert to ast operator
+					Rhs: rhs,
+				}
+				
+				// Create assignment: lhs = (lhs op rhs)
+				return &ast.AssignStmt{Target: lhs, Value: binaryExpr, Pos: assignPos}, nil
+			
+			default:
 				// Not an assignment, treat as expression statement
 				p.pos = saved_pos // restore position
 				e, err := p.parseExpr(0)
@@ -633,17 +667,68 @@ func (p *Parser) parseVarLike() (ast.Stmt, error) {
 		kind = "const"
 	case lexer.KW_FINAL:
 		kind = "final"
+		p.next()
+		
+		// Check if this is a type alias: final type Age = Int
+		if p.curr().Tok == lexer.IDENT && p.curr().Lit == "type" {
+			p.next() // consume 'type'
+			
+			if p.curr().Tok != lexer.IDENT {
+				return nil, p.errf("expected type alias name after 'final type'")
+			}
+			aliasName := p.curr().Lit
+			p.next()
+			
+			if !p.accept(lexer.ASSIGN) {
+				return nil, p.errf("expected '=' after type alias name")
+			}
+			
+			if p.curr().Tok != lexer.IDENT {
+				return nil, p.errf("expected base type name after '='")
+			}
+			baseType := p.curr().Lit
+			p.next()
+			
+			return &ast.TypeAliasStmt{
+				Name:      aliasName,
+				BaseType:  baseType,
+				IsFinal:   true,
+				Modifiers: mods,
+			}, nil
+		}
+		// Otherwise, it's a regular final variable declaration
+		// Continue with normal processing below
 	default:
 		return nil, p.errf("expected declaration keyword after modifiers")
 	}
-	p.next()
+	
+	// For non-type-alias declarations, we need to handle the token that was already consumed
+	// If we consumed 'final' and it's not a type alias, we're already past the keyword
+	// But for other keywords, we still need to consume them
+	if kind != "final" {
+		p.next()
+	}
 
 	id := p.curr()
 	if id.Tok != lexer.IDENT {
 		return nil, p.errf("expected identifier after %s", kind)
 	}
-	name := id.Lit
+	
+	// Parse first identifier
+	names := []string{id.Lit}
 	p.next()
+	
+	// Check for comma-separated additional identifiers (destructuring)
+	for p.accept(lexer.COMMA) {
+		if p.curr().Tok != lexer.IDENT {
+			return nil, p.errf("expected identifier after ','")
+		}
+		names = append(names, p.curr().Lit)
+		p.next()
+	}
+	
+	// For backward compatibility, use first name as Name field
+	name := names[0]
 
 	typ := ""
 	inferred := false
@@ -659,16 +744,22 @@ func (p *Parser) parseVarLike() (ast.Stmt, error) {
 			inferred = true
 		} else if kind == "var" || kind == "let" {
 			// allow typed without initializer -> default nil
-			return &ast.LetStmt{Name: name, Value: &ast.NilLit{}, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
+			if len(names) > 1 {
+				return nil, p.errf("destructuring requires an initializer")
+			}
+			return &ast.LetStmt{Name: name, Names: names, Value: &ast.NilLit{}, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
 		} else {
 			return nil, p.errf("expected '=' after typed %s %s", kind, name)
 		}
 	} else if p.accept(lexer.COLONASSIGN) {
 		inferred = true
 	} else if !p.accept(lexer.ASSIGN) {
-		// allow declaration without initializer only for var/let
+		// allow declaration without initializer only for var/let (and only single variable)
 		if kind == "var" || kind == "let" {
-			return &ast.LetStmt{Name: name, Value: &ast.NilLit{}, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
+			if len(names) > 1 {
+				return nil, p.errf("destructuring requires an initializer")
+			}
+			return &ast.LetStmt{Name: name, Names: names, Value: &ast.NilLit{}, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
 		}
 		return nil, p.errf("expected '=' or ':=' after %s %s", kind, name)
 	}
@@ -677,7 +768,7 @@ func (p *Parser) parseVarLike() (ast.Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ast.LetStmt{Name: name, Value: expr, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
+	return &ast.LetStmt{Name: name, Names: names, Value: expr, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
 }
 
 // parseBlock parses a sequence of statements until a terminator token.
@@ -1479,9 +1570,9 @@ func (p *Parser) parseClassInternal(accessLevel string) (ast.Stmt, error) {
 	var parentTypeParams []ast.TypeParam
 	var implements []string
 
-	// Check for inheritance: < Parent (only if we didn't parse type params)
-	// If we have type params, inheritance uses 'extends' keyword instead
-	if len(typeParams) == 0 && p.curr().Tok == lexer.LT {
+	// Check for inheritance: < Parent or extends Parent
+	// The '<' syntax can be used regardless of whether the class has type params
+	if p.curr().Tok == lexer.LT {
 		p.next() // consume '<'
 		if p.curr().Tok != lexer.IDENT {
 			return nil, p.errf("expected parent class name after '<'")
@@ -1497,7 +1588,7 @@ func (p *Parser) parseClassInternal(accessLevel string) (ast.Stmt, error) {
 			}
 		}
 	} else if p.curr().Tok == lexer.KW_EXTENDS {
-		// New style: class MyClass<T> extends BaseClass or BaseClass<T>
+		// Alternative style: class MyClass<T> extends BaseClass or BaseClass<T>
 		p.next() // consume 'extends'
 		if p.curr().Tok != lexer.IDENT {
 			return nil, p.errf("expected parent class name after 'extends'")

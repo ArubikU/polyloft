@@ -444,13 +444,23 @@ func (*FieldExpr) expr() {}
 
 // Statements
 type LetStmt struct {
-	Name      string
+	Name      string   // Single variable name (for backward compatibility)
+	Names     []string // Multiple variable names for destructuring (e.g., let a, b = [1,2])
 	Value     Expr
 	Type      *Type    // Type annotation using unified type system
 	Modifiers []string // optional modifiers: public/private/protected/static
 	Kind      string   // "let", "var", "const", "final"
 	Inferred  bool     // true if declared with ':=' (type inference)
 }
+
+// TypeAliasStmt represents type alias declaration: final type Age = Int
+type TypeAliasStmt struct {
+	Name       string   // Alias name (e.g., "Age")
+	BaseType   string   // Base type name (e.g., "Int")
+	IsFinal    bool     // true if declared with 'final type' (nominal type)
+	Modifiers  []string // optional modifiers: public/private/protected
+}
+
 type AssignStmt struct {
 	Target Expr     // left side of assignment (could be identifier or field access)
 	Value  Expr     // right side of assignment
@@ -519,6 +529,8 @@ type DeferStmt struct {
 
 func (*LetStmt) node()      {}
 func (*LetStmt) stmt()      {}
+func (*TypeAliasStmt) node() {}
+func (*TypeAliasStmt) stmt() {}
 func (*AssignStmt) node()   {}
 func (*AssignStmt) stmt()   {}
 func (*ReturnStmt) node()   {}
