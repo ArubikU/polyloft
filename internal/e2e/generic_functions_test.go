@@ -181,10 +181,13 @@ return [result1, result2]
 		t.Fatalf("Expected 2 elements, got %d", len(arr))
 	}
 
-	if arr[0].(int) != 20 {
+	// Use utils functions to handle both native types and ClassInstance
+	intVal, ok := utils.AsInt(arr[0])
+	if !ok || intVal != 20 {
 		t.Errorf("Expected 20, got %v", arr[0])
 	}
-	if arr[1].(float64) != 3.5 {
+	floatVal, ok := utils.AsFloat(arr[1])
+	if !ok || floatVal != 3.5 {
 		t.Errorf("Expected 3.5, got %v", arr[1])
 	}
 }
