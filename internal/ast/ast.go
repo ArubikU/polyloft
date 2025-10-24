@@ -17,19 +17,32 @@ type MapEntry struct {
 // Type represents a type in the Polyloft type system
 // This is used for both built-in types and user-defined types (classes, interfaces, enums, records)
 // It also supports generic/parameterized types like Array<Int>, Map<String, Int>
-// And union types like string | int | null
+// Union types like string | int | null, and intersection types like Named & Serializable
 type Type struct {
-	Name        string   // Canonical name of the type (e.g., "bool", "int", "String", "Array")
-	Aliases     []string // Alternative names for the type (e.g., ["boolean"] for bool)
-	TypeParams  []*Type  // Type parameters for generic types (e.g., [Int] for Array<Int>, [String, Int] for Map<String, Int>)
-	UnionTypes  []*Type  // Union type members (e.g., [string, int] for string | int)
-	GoParallel  bool     // Whether this type supports parallel operations (optional, defaults to false)
-	IsBuiltin   bool     // Whether this is a built-in type
-	IsClass     bool     // Whether this is a class type
-	IsInterface bool     // Whether this is an interface type
-	IsEnum      bool     // Whether this is an enum type
-	IsRecord    bool     // Whether this is a record type
-	IsUnion     bool     // Whether this is a union type
+	Name             string   // Canonical name of the type (e.g., "bool", "int", "String", "Array", "T")
+	Aliases          []string // Alternative names for the type (e.g., ["boolean"] for bool)
+	TypeParams       []*Type  // Type parameters for generic types (e.g., [Int] for Array<Int>, [String, Int] for Map<String, Int>)
+	UnionTypes       []*Type  // Union type members (e.g., [string, int] for string | int)
+	IntersectionTypes []*Type  // Intersection type members (e.g., [Named, Serializable] for Named & Serializable)
+	
+	// Type parameter bounds (for generic type parameters like T extends Number)
+	Extends    *Type   // Upper bound for type parameter (e.g., Number in T extends Number)
+	Implements []*Type // Interface bounds for type parameter (e.g., Named in T implements Named)
+	
+	// Variance annotations for type parameters (Kotlin/Java style)
+	Variance   string // "in" (contravariance), "out" (covariance), or "" (invariant)
+	IsVariadic bool   // Whether this is a variadic type parameter (T...)
+	
+	// Type flags
+	GoParallel  bool // Whether this type supports parallel operations (optional, defaults to false)
+	IsBuiltin   bool // Whether this is a built-in type
+	IsClass     bool // Whether this is a class type
+	IsInterface bool // Whether this is an interface type
+	IsEnum      bool // Whether this is an enum type
+	IsRecord    bool // Whether this is a record type
+	IsUnion     bool // Whether this is a union type
+	IsIntersection bool // Whether this is an intersection type
+	IsWildcard  bool // Whether this is a wildcard type (?)
 }
 
 // Predefined built-in types

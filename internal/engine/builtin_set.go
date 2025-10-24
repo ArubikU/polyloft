@@ -27,7 +27,7 @@ func InstallSetBuiltin(env *Env) error {
 	voidType := &ast.Type{Name: "void", IsBuiltin: true}
 
 	setClass := NewClassBuilder("Set").
-		AddTypeParameters(common.TBound.AsGenericType().AsArray()).
+		AddTypeParameters([]common.GenericType{*common.TBound.AsGenericType()}).
 		AddInterface(iterableInterface).
 		AddInterface(collectionInterface).
 		AddField("_items", mapType, []string{"private"}).                                  // Using map for O(1) lookups

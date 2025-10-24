@@ -177,11 +177,32 @@ func evalClassDecl(env *Env, s *ast.ClassDecl) (any, error) {
 	// Convert AST TypeParams to common.GenericType
 	var typeParams []common.GenericType
 	for _, tp := range s.TypeParams {
-		typeParams = append(typeParams, common.GenericType{
+		// Create an ast.Type for the type parameter with bounds
+		paramType := &ast.Type{
 			Name:       tp.Name,
-			Bounds:     tp.Bounds,
-			IsVariadic: false,       // Classes don't support variadic type params yet
-			Variance:   tp.Variance, // Store variance ("in", "out", or "")
+			Variance:   tp.Variance,
+			IsVariadic: tp.IsVariadic,
+		}
+		
+		// Handle bounds (extends and implements)
+		// For now, store bound names as strings - they'll be resolved at runtime
+		// TODO: Resolve bounds to actual types during type checking
+		if len(tp.Bounds) > 0 {
+			// First bound is typically the extends clause
+			// Additional bounds are interfaces (implements)
+			// In Java/Kotlin: T extends Number & Comparable becomes:
+			// - Extends: Number
+			// - Implements: [Comparable]
+			paramType.Extends = &ast.Type{Name: tp.Bounds[0]}
+			if len(tp.Bounds) > 1 {
+				for _, boundName := range tp.Bounds[1:] {
+					paramType.Implements = append(paramType.Implements, &ast.Type{Name: boundName})
+				}
+			}
+		}
+		
+		typeParams = append(typeParams, common.GenericType{
+			Type: paramType,
 		})
 	}
 
@@ -352,7 +373,7 @@ func evalClassDecl(env *Env, s *ast.ClassDecl) (any, error) {
 			typeMap := make(map[string]string)
 			for i, typeParam := range classDef.TypeParams {
 				if i < len(typeArgs) {
-					typeMap[typeParam.Name] = typeArgs[i]
+					typeMap[typeParam.GetName()] = typeArgs[i]
 				}
 			}
 			classInst.Fields["__generic_types__"] = typeMap
@@ -360,8 +381,9 @@ func evalClassDecl(env *Env, s *ast.ClassDecl) (any, error) {
 			// Store variance information for runtime checking
 			varianceMap := make(map[string]string)
 			for _, typeParam := range classDef.TypeParams {
-				if typeParam.Variance != "" {
-					varianceMap[typeParam.Name] = typeParam.Variance
+				variance := typeParam.GetVariance()
+				if variance != "" {
+					varianceMap[typeParam.GetName()] = variance
 				}
 			}
 			if len(varianceMap) > 0 {
@@ -712,18 +734,25 @@ func bindMethods(instance *ClassInstance, classDef *ClassDefinition, env *Env) e
 
 // validateReturnType validates that a return value matches the expected type
 func validateReturnType(instance *ClassInstance, expectedType *ast.Type, value any, env *Env) error {
+	if expectedType == nil {
+		return nil
+	}
 
 	// Check if it's a generic type parameter (single uppercase letter or T-prefixed)
-	if isGenericTypeParameter(expectedType) {
+	if isGenericTypeParameter(expectedType.Name) {
 		// Generic type parameters are not validated at runtime
 		return nil
 	}
 
-	// Strip variance annotations before validating concrete types
-	expectedType = stripVarianceAnnotation(expectedType)
+	// Handle variance - for now we'll use the type name
+	typeName := expectedType.Name
+	if expectedType.Variance != "" {
+		// Variance affects assignability but not runtime validation
+		// For now, just use the base type name
+	}
 
 	// It's a concrete type, validate it
-	return validateConcreteType(expectedType, value, env)
+	return validateConcreteType(typeName, value, env)
 }
 
 // stripVarianceAnnotation removes "out " or "in " prefix from a type name
@@ -798,7 +827,7 @@ func CallInstanceMethod(instance *ClassInstance, methodInfo MethodInfo, env *Env
 
 	returnTypeName := ast.GetTypeNameString(methodInfo.ReturnType)
 	if returnTypeName != "" && returnTypeName != "Any" && returnTypeName != "Void" {
-		if err := validateReturnType(instance, returnTypeName, result, methodEnv); err != nil {
+		if err := validateReturnType(instance, methodInfo.ReturnType, result, methodEnv); err != nil {
 			return nil, err
 		}
 	}

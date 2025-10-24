@@ -11,7 +11,7 @@ import (
 // InstallChannelBuiltin creates the builtin Channel class
 func InstallChannelBuiltin(env *Env) error {
 	channelClass := NewClassBuilder("Channel").
-		AddTypeParameters(common.TBound.AsGenericType().AsArray()).
+		AddTypeParameters([]common.GenericType{*common.TBound.AsGenericType()}).
 		AddField("_channel", ast.ANY, []string{"private"})
 
 	// send(value: T) -> Void

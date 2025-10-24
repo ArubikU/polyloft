@@ -62,45 +62,47 @@ type PrebuildedDefinition struct {
 	PackageName string
 }
 
+// GenericBound is deprecated - use ast.Type directly instead
+// This is kept for backward compatibility during migration
+// GenericBound represents a type parameter bound (like T extends Number)
 type GenericBound struct {
-	Name       ast.Type
-	Variance   string // "in" (contravariance), "out" (covariance), or "" (invariant)
-	IsVariadic bool
-	Extends    *ClassDefinition
-	Implements *InterfaceDefinition
+	Type *ast.Type // The type with all bound information
 }
 
 var (
+	// Predefined common type parameters
 	KBound = GenericBound{
-		Name: ast.Type{Name: "K"},
+		Type: &ast.Type{Name: "K"},
 	}
 	VBound = GenericBound{
-		Name: ast.Type{Name: "V"},
+		Type: &ast.Type{Name: "V"},
 	}
 	TBound = GenericBound{
-		Name: ast.Type{Name: "T"},
+		Type: &ast.Type{Name: "T"},
 	}
 )
 
 // GenericType represents a generic type parameter (like T, E, K, V)
+// Now simplified to just wrap an ast.Type
 type GenericType struct {
-	Bounds []GenericBound
+	Type *ast.Type // The type parameter with all its constraints
 }
 
 func (gt *GenericType) Matchs(t *ast.Type) bool {
-	for _, bound := range gt.Bounds {
-		if &bound.Name == t {
+	if gt.Type == nil || t == nil {
+		return false
+	}
+	// Check if the type matches the type parameter name
+	if gt.Type.Name == t.Name {
+		return true
+	}
+	// Check if t satisfies the bounds
+	if gt.Type.Extends != nil && gt.Type.Extends.Name == t.Name {
+		return true
+	}
+	for _, impl := range gt.Type.Implements {
+		if impl.Name == t.Name {
 			return true
-		}
-		if bound.Extends != nil {
-			if tDef := bound.Extends.Type; tDef != nil && tDef == t {
-				return true
-			}
-		}
-		if bound.Implements != nil {
-			if tDef := bound.Implements.Type; tDef != nil && tDef == t {
-				return true
-			}
 		}
 	}
 	return false
@@ -108,15 +110,22 @@ func (gt *GenericType) Matchs(t *ast.Type) bool {
 
 func (g *GenericBound) AsGenericType() *GenericType {
 	return &GenericType{
-		Bounds: []GenericBound{*g},
+		Type: g.Type,
 	}
 }
-func (gt *GenericType) AsArray() []GenericType {
-	var array []GenericType
-	for _, bound := range gt.Bounds {
-		array = append(array, *bound.AsGenericType())
+
+func (gt *GenericType) GetName() string {
+	if gt.Type != nil {
+		return gt.Type.Name
 	}
-	return array
+	return ""
+}
+
+func (gt *GenericType) GetVariance() string {
+	if gt.Type != nil {
+		return gt.Type.Variance
+	}
+	return ""
 }
 
 // ClassInstance represents an instance of a class
@@ -985,9 +994,9 @@ func InferCollectionType(items []*ClassInstance) *GenericType {
 		return nil
 	}
 
-	var bounds []GenericBound
 	hasInt := false
 	hasFloat := false
+	var customTypes []*ast.Type
 
 	for _, v := range items {
 		if v == nil || v.ParentClass == nil {
@@ -1000,36 +1009,33 @@ func InferCollectionType(items []*ClassInstance) *GenericType {
 		case BuiltinTypeFloat.ClassDef:
 			hasFloat = true
 		default:
-			// Agregar directamente el tipo personalizado
-			bounds = append(bounds, GenericBound{
-				Name: *v.ParentClass.Type,
-			})
+			// Add custom type
+			customTypes = append(customTypes, v.ParentClass.Type)
 		}
 	}
 
-	// Manejo de numéricos al final
+	// Handle numeric types
+	var resultType *ast.Type
 	if hasInt && hasFloat {
-		bounds = append(bounds, GenericBound{
-			Name: *BuiltinTypeNumber.TypeDef,
-		})
+		resultType = BuiltinTypeNumber.TypeDef
 	} else if hasInt {
-		bounds = append(bounds, GenericBound{
-			Name: *BuiltinTypeInt.TypeDef,
-		})
+		resultType = BuiltinTypeInt.TypeDef
 	} else if hasFloat {
-		bounds = append(bounds, GenericBound{
-			Name: *BuiltinTypeFloat.TypeDef,
-		})
+		resultType = BuiltinTypeFloat.TypeDef
+	} else if len(customTypes) == 1 {
+		resultType = customTypes[0]
+	} else if len(customTypes) > 1 {
+		// Multiple different types - create union type
+		resultType = &ast.Type{
+			Name:       "Any", // Union types will be shown as union in type names
+			UnionTypes: customTypes,
+			IsUnion:    true,
+		}
+	} else {
+		resultType = ast.ANY
 	}
 
-	// Si no hay bounds, el tipo es genérico Any
-	if len(bounds) == 0 {
-		bounds = append(bounds, GenericBound{
-			Name: *ast.ANY,
-		})
-	}
-
-	return &GenericType{Bounds: bounds}
+	return &GenericType{Type: resultType}
 }
 
 func InferMapType(items map[*ClassInstance]*ClassInstance) *GenericType {
@@ -1037,7 +1043,6 @@ func InferMapType(items map[*ClassInstance]*ClassInstance) *GenericType {
 		return nil
 	}
 
-	var bounds []GenericBound
 	hasInt := false
 	hasFloat := false
 	hasMixedKeys := false
@@ -1050,14 +1055,14 @@ func InferMapType(items map[*ClassInstance]*ClassInstance) *GenericType {
 			continue
 		}
 
-		// Detectar tipo de clave
+		// Detect key type
 		if keyParent == nil {
 			keyParent = k.ParentClass
 		} else if keyParent != k.ParentClass {
 			hasMixedKeys = true
 		}
 
-		// Analizar tipo de valor
+		// Analyze value type
 		switch v.ParentClass {
 		case BuiltinTypeInt.ClassDef:
 			hasInt = true
@@ -1068,43 +1073,47 @@ func InferMapType(items map[*ClassInstance]*ClassInstance) *GenericType {
 		}
 	}
 
-	// Inferir tipo de clave
-	var keyType ast.Type
-	if hasMixedKeys {
-		keyType = *ast.ANY
-	} else if keyParent != nil {
-		keyType = *keyParent.Type
+	// Infer key type
+	var keyType *ast.Type
+	if hasMixedKeys || keyParent == nil {
+		keyType = ast.ANY
 	} else {
-		keyType = *ast.ANY
+		keyType = keyParent.Type
 	}
 
-	// Manejar tipos numéricos
+	// Handle numeric value types
+	var valueType *ast.Type
 	if hasInt && hasFloat {
-		valueParents = append(valueParents, BuiltinTypeNumber.ClassDef)
+		valueType = BuiltinTypeNumber.TypeDef
 	} else if hasInt {
-		valueParents = append(valueParents, BuiltinTypeInt.ClassDef)
+		valueType = BuiltinTypeInt.TypeDef
 	} else if hasFloat {
-		valueParents = append(valueParents, BuiltinTypeFloat.ClassDef)
+		valueType = BuiltinTypeFloat.TypeDef
+	} else if len(valueParents) == 1 {
+		valueType = valueParents[0].Type
+	} else if len(valueParents) > 1 {
+		// Multiple value types - create union
+		var valueTypes []*ast.Type
+		for _, vp := range valueParents {
+			valueTypes = append(valueTypes, vp.Type)
+		}
+		valueType = &ast.Type{
+			Name:       "Any",
+			UnionTypes: valueTypes,
+			IsUnion:    true,
+		}
+	} else {
+		valueType = ast.ANY
 	}
 
-	// Si no hay valores inferidos, usar Any
-	if len(valueParents) == 0 {
-		bounds = append(bounds, GenericBound{
-			Name: *ast.ANY,
-		})
+	// For maps, we typically represent as Map<K, V>
+	// Return a type with two type parameters
+	mapType := &ast.Type{
+		Name: "Map",
+		TypeParams: []*ast.Type{keyType, valueType},
 	}
 
-	// Crear bounds: primero clave, luego valor
-	bounds = append(bounds, GenericBound{
-		Name: keyType,
-	})
-	for _, vp := range valueParents {
-		bounds = append(bounds, GenericBound{
-			Name: *vp.Type,
-		})
-	}
-
-	return &GenericType{Bounds: bounds}
+	return &GenericType{Type: mapType}
 }
 
 // GetType returns the ast.Type for a value

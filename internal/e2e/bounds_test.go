@@ -94,8 +94,8 @@ return list.toString()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := utils.ToString()
-	if !ok {
+	str := utils.ToString(result)
+	if str == "" {
 		t.Fatalf("Expected string, got %T", result)
 	}
 

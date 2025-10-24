@@ -16,7 +16,7 @@ func InstallTupleClass(env *Env) error {
 
 	// Step 1: Create basic class structure (name, type params, interfaces, fields)
 	tupleBuilder := NewClassBuilder("Tuple")
-	tupleBuilder.AddTypeParameters(common.TBound.AsGenericType().AsArray())
+	tupleBuilder.AddTypeParameters([]common.GenericType{*common.TBound.AsGenericType()})
 	tupleBuilder.AddInterface(unstructuredInterface)
 
 	// Add field for storing tuple elements (native Go slice)

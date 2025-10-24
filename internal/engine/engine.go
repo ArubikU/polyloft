@@ -2342,11 +2342,23 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 	var gtypes []GenericType
 	for _, tp := range expr.TypeParams {
 		if tp.IsWildcard {
-
+			// Create a type with wildcard/variance information
+			paramType := &ast.Type{
+				Name:       tp.Name,
+				Variance:   tp.Variance,
+				IsWildcard: tp.IsWildcard,
+			}
+			// Handle bounds
+			if len(tp.Bounds) > 0 {
+				paramType.Extends = &ast.Type{Name: tp.Bounds[0]}
+				if len(tp.Bounds) > 1 {
+					for _, boundName := range tp.Bounds[1:] {
+						paramType.Implements = append(paramType.Implements, &ast.Type{Name: boundName})
+					}
+				}
+			}
 			gtypes = append(gtypes, GenericType{
-				Variance: tp.Variance,
-				Bounds:   tp.Bounds,
-				Name:     tp.Name,
+				Type: paramType,
 			})
 		} else {
 			// Regular type parameter without variance

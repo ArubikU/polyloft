@@ -42,7 +42,7 @@ func InstallAsyncAwait(env *common.Env) {
 	// Pre-register the class definitions so they're available in constructors
 	// Build Promise class first, then store definition
 	promiseClass := NewClassBuilder("Promise").
-		AddTypeParameters(common.TBound.AsGenericType().AsArray()).
+		AddTypeParameters([]common.GenericType{*common.TBound.AsGenericType()}).
 		AddField("_promise", promiseTypeRef, []string{"private"})
 
 	promiseDef, _ := buildPromiseClass(promiseClass, envTyped)
@@ -50,7 +50,7 @@ func InstallAsyncAwait(env *common.Env) {
 
 	// Build CompletableFuture class, then store definition
 	futureClass := NewClassBuilder("CompletableFuture").
-		AddTypeParameters(common.TBound.AsGenericType().AsArray()).
+		AddTypeParameters([]common.GenericType{*common.TBound.AsGenericType()}).
 		AddField("_future", futureTypeRef, []string{"private"})
 
 	futureDef, _ := buildCompletableFutureClass(futureClass, envTyped)

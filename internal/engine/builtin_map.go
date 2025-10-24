@@ -97,8 +97,8 @@ func InstallMapBuiltin(env *Env) error {
 	indexableInterface := common.BuiltinIndexableInterface.GetInterfaceDefinition(env)
 
 	mapClass := NewClassBuilder("Map").
-		AddTypeParameters(common.KBound.AsGenericType().AsArray()).
-		AddTypeParameters(common.VBound.AsGenericType().AsArray()).
+		AddTypeParameters([]common.GenericType{*common.KBound.AsGenericType()}).
+		AddTypeParameters([]common.GenericType{*common.VBound.AsGenericType()}).
 		AddInterface(iterableInterface).
 		AddInterface(indexableInterface).
 		AddField("_data", &ast.Type{Name: "map", IsBuiltin: true}, []string{"private"})
@@ -106,8 +106,8 @@ func InstallMapBuiltin(env *Env) error {
 	// Instance methods
 
 	// get(key: K) -> V
-	mapClass.AddBuiltinMethod("get", &common.VBound.Name, []ast.Parameter{
-		{Name: "key", Type: &common.KBound.Name},
+	mapClass.AddBuiltinMethod("get", common.VBound.Type, []ast.Parameter{
+		{Name: "key", Type: common.KBound.Type},
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
@@ -126,8 +126,8 @@ func InstallMapBuiltin(env *Env) error {
 
 	// set(key: K, value: V) -> Void
 	mapClass.AddBuiltinMethod("set", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{
-		{Name: "key", Type: &common.KBound.Name},
-		{Name: "value", Type: &common.VBound.Name},
+		{Name: "key", Type: common.KBound.Type},
+		{Name: "value", Type: common.VBound.Type},
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
@@ -183,7 +183,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// has(key: K) -> Bool
 	mapClass.AddBuiltinMethod("has", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
-		{Name: "key", Type: &common.KBound.Name},
+		{Name: "key", Type: common.KBound.Type},
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
@@ -202,7 +202,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// hasKey(key: K) -> Bool (alias for has)
 	mapClass.AddBuiltinMethod("hasKey", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
-		{Name: "key", Type: &common.KBound.Name},
+		{Name: "key", Type: common.KBound.Type},
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
@@ -220,8 +220,8 @@ func InstallMapBuiltin(env *Env) error {
 	}, []string{})
 
 	// __get(key: K) -> V (Indexable interface)
-	mapClass.AddBuiltinMethod("__get", &common.VBound.Name, []ast.Parameter{
-		{Name: "key", Type: &common.KBound.Name},
+	mapClass.AddBuiltinMethod("__get", common.VBound.Type, []ast.Parameter{
+		{Name: "key", Type: common.KBound.Type},
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
@@ -240,8 +240,8 @@ func InstallMapBuiltin(env *Env) error {
 
 	// __set(key: K, value: V) -> Void (Indexable interface)
 	mapClass.AddBuiltinMethod("__set", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{
-		{Name: "key", Type: &common.KBound.Name},
-		{Name: "value", Type: &common.VBound.Name},
+		{Name: "key", Type: common.KBound.Type},
+		{Name: "value", Type: common.VBound.Type},
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
@@ -265,7 +265,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// __contains(key: K) -> Bool (Indexable interface)
 	mapClass.AddBuiltinMethod("__contains", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
-		{Name: "key", Type: &common.KBound.Name},
+		{Name: "key", Type: common.KBound.Type},
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)

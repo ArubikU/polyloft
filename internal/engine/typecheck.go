@@ -49,7 +49,7 @@ func GetTypeName(val any) string {
 								arrayStr, ok := CallInstanceMethod(v, *method, nil, []any{})
 								if ok != nil {
 									inferredType := common.InferCollectionType(arrayStr.([]*common.ClassInstance))
-									if inferredType != nil && len(inferredType.Bounds) > 0 {
+									if inferredType != nil && inferredType.Type != nil {
 										typeArgsGeneric = append(typeArgsGeneric, *inferredType)
 									}
 								}
@@ -58,34 +58,53 @@ func GetTypeName(val any) string {
 						}
 					}
 					if v.ParentClass == common.BuiltinTypeMap.ClassDef {
-						common.InferMapType()
+						// Get map data and infer types
+						mapData := common.MapToObject(v)
+						if mapData != nil {
+							// Convert to ClassInstance map for inference
+							classMap := make(map[*common.ClassInstance]*common.ClassInstance)
+							for k, val := range mapData {
+								if kInst, ok := k.(*common.ClassInstance); ok {
+									if vInst, ok := val.(*common.ClassInstance); ok {
+										classMap[kInst] = vInst
+									}
+								}
+							}
+							inferredMapType := common.InferMapType(classMap)
+							if inferredMapType != nil && inferredMapType.Type != nil {
+								typeArgsGeneric = append(typeArgsGeneric, *inferredMapType)
+							}
+						}
 					}
 				}
 
 				if len(v.GenericTypes) > 0 {
 					for _, gt := range v.GenericTypes {
 						gTypeArg := ""
-						for _, bound := range gt.Bounds {
-							// Use the first bound's name for type argument
+						if gt.Type != nil {
+							// Build type argument string from the type
 							typeArg := ""
-							if bound.Variance != "" {
-								typeArg += bound.Variance + " "
+							if gt.Type.Variance != "" {
+								typeArg += gt.Type.Variance + " "
 							}
-							typeArg += bound.Name.Name
-							if bound.Extends != nil {
-								typeArg += " extends " + bound.Extends.Name
+							typeArg += gt.Type.Name
+							if gt.Type.Extends != nil {
+								typeArg += " extends " + gt.Type.Extends.Name
 							}
-							if bound.Implements != nil {
-								typeArg += " implements " + bound.Implements.Name
+							if len(gt.Type.Implements) > 0 {
+								for i, impl := range gt.Type.Implements {
+									if i == 0 {
+										typeArg += " implements "
+									} else {
+										typeArg += " & "
+									}
+									typeArg += impl.Name
+								}
 							}
-							if bound.IsVariadic {
+							if gt.Type.IsVariadic {
 								typeArg += "..."
 							}
-							if gTypeArg == "" {
-								gTypeArg = typeArg
-							} else {
-								gTypeArg += " | " + typeArg
-							}
+							gTypeArg = typeArg
 						}
 						typeArgs = append(typeArgs, gTypeArg)
 					}
@@ -340,7 +359,7 @@ func isInstanceOfGenericType(value any, typeName string) bool {
 		}
 		return true
 	default:
-		fmt.Println("Unsupported type for generic instanceof:", common.GetTypeName(value))
+		fmt.Println("Unsupported type for generic instanceof:", GetTypeName(value))
 		return false
 	}
 }
@@ -507,7 +526,7 @@ func isSubtypeOf(value any, typeName string) bool {
 func isSupertypeOf(value any, typeName string) bool {
 	// This is the inverse of isSubtypeOf
 	// If the bound type can be assigned from the value's type
-	valueType := common.GetTypeName(value)
+	valueType := GetTypeName(value)
 
 	// Number is a supertype of Int and Float
 	if typeName == "Int" || typeName == "int" {

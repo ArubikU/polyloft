@@ -25,7 +25,7 @@ import (
 // Still iterable, but to be an array use Array(1...3) or when it's a variable like const a = 1...3, use a.toArray()
 func InstallIterableInterface(env *Env) error {
 	iterableInterfaceBuilder := NewInterfaceBuilder("Iterable")
-	iterableInterfaceBuilder.AddTypeParameters(common.TBound.AsGenericType().AsArray())
+	iterableInterfaceBuilder.AddTypeParameters([]common.GenericType{*common.TBound.AsGenericType()})
 	iterableInterfaceBuilder.AddMethod("__length", ast.ANY, []ast.Parameter{})
 	iterableInterfaceBuilder.AddMethod("__get", ast.ANY, []ast.Parameter{{Name: "index", Type: ast.ANY}})
 	_, err := iterableInterfaceBuilder.Build(env)
@@ -42,7 +42,7 @@ func InstallUnstructuredInterface(env *Env) error {
 }
 func InstallSliceableInterface(env *Env) error {
 	sliceableInterfaceBuilder := NewInterfaceBuilder("Sliceable")
-	sliceableInterfaceBuilder.AddTypeParameters(common.TBound.AsGenericType().AsArray())
+	sliceableInterfaceBuilder.AddTypeParameters([]common.GenericType{*common.TBound.AsGenericType()})
 	sliceableInterfaceBuilder.AddMethod("__slice", ast.ANY, []ast.Parameter{
 		{Name: "start", Type: common.BuiltinTypeInt.GetTypeDefinition(env)},
 		{Name: "end", Type: common.BuiltinTypeInt.GetTypeDefinition(env)},
@@ -52,17 +52,17 @@ func InstallSliceableInterface(env *Env) error {
 }
 func InstallIndexableInterface(env *Env) error {
 	indexableInterfaceBuilder := NewInterfaceBuilder("Indexable")
-	indexableInterfaceBuilder.AddTypeParameters(common.KBound.AsGenericType().AsArray())
-	indexableInterfaceBuilder.AddTypeParameters(common.VBound.AsGenericType().AsArray())
-	indexableInterfaceBuilder.AddMethod("__get", &common.VBound.Name, []ast.Parameter{
-		{Name: "key", Type: &common.KBound.Name},
+	indexableInterfaceBuilder.AddTypeParameters([]common.GenericType{*common.KBound.AsGenericType()})
+	indexableInterfaceBuilder.AddTypeParameters([]common.GenericType{*common.VBound.AsGenericType()})
+	indexableInterfaceBuilder.AddMethod("__get", common.VBound.Type, []ast.Parameter{
+		{Name: "key", Type: common.KBound.Type},
 	})
 	indexableInterfaceBuilder.AddMethod("__set", nil, []ast.Parameter{
-		{Name: "key", Type: &common.KBound.Name},
-		{Name: "value", Type: &common.VBound.Name},
+		{Name: "key", Type: common.KBound.Type},
+		{Name: "value", Type: common.VBound.Type},
 	})
 	indexableInterfaceBuilder.AddMethod("__contains", ast.ANY, []ast.Parameter{
-		{Name: "key", Type: &common.KBound.Name},
+		{Name: "key", Type: common.KBound.Type},
 	})
 	_, err := indexableInterfaceBuilder.Build(env)
 	return err
@@ -72,16 +72,16 @@ func InstallIndexableInterface(env *Env) error {
 func InstallPairBuiltin(env *Env) error {
 	// Create basic class structure first
 	pairClass := NewClassBuilder("Pair").
-		AddTypeParameters(common.KBound.AsGenericType().AsArray()).
-		AddTypeParameters(common.VBound.AsGenericType().AsArray())
+		AddTypeParameters([]common.GenericType{*common.KBound.AsGenericType()}).
+		AddTypeParameters([]common.GenericType{*common.VBound.AsGenericType()})
 
 	// Add fields using generic type parameters
-	pairClass.AddField("key", &common.KBound.Name, []string{"public", "final"})
-	pairClass.AddField("value", &common.VBound.Name, []string{"public"})
+	pairClass.AddField("key", common.KBound.Type, []string{"public", "final"})
+	pairClass.AddField("value", common.VBound.Type, []string{"public"})
 
 	// Now get type references for method signatures
-	keyType := &common.KBound.Name
-	valueType := &common.VBound.Name
+	keyType := common.KBound.Type
+	valueType := common.VBound.Type
 	stringType := common.BuiltinTypeString.GetTypeDefinition(env)
 
 	// getKey() -> K
@@ -123,7 +123,7 @@ func InstallPairBuiltin(env *Env) error {
 
 func InstallCollectionInterface(env *Env) error {
 	collectionInterfaceBuilder := NewInterfaceBuilder("Collection")
-	collectionInterfaceBuilder.AddTypeParameters(common.TBound.AsGenericType().AsArray())
+	collectionInterfaceBuilder.AddTypeParameters([]common.GenericType{*common.TBound.AsGenericType()})
 	collectionInterfaceBuilder.AddMethod("size", common.BuiltinTypeInt.GetTypeDefinition(env), []ast.Parameter{})
 	collectionInterfaceBuilder.AddMethod("isEmpty", common.BuiltinTypeBool.GetTypeDefinition(env), []ast.Parameter{})
 	collectionInterfaceBuilder.AddMethod("add", nil, []ast.Parameter{{Name: "element", Type: &ast.Type{Name: "T"}}})

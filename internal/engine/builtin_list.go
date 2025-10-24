@@ -20,7 +20,7 @@ func InstallListBuiltin(env *Env) error {
 
 	// Step 1: Create basic class structure first with interfaces and fields
 	listClass := NewClassBuilder("List").
-		AddTypeParameters(common.TBound.AsGenericType().AsArray())
+		AddTypeParameters([]common.GenericType{*common.TBound.AsGenericType()})
 
 	// Get interface references
 	iterableInterface := common.BuiltinInterfaceIterable.GetInterfaceDefinition(env)
