@@ -288,6 +288,59 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 		// Determine if we're using destructuring (multiple iteration variables)
 		useDestructuring := len(s.Names) > 1
 
+		// Handle plain Go maps (map[string]any)
+		if mapVal, ok := it.(map[string]any); ok {
+			// Iterate over map entries
+			for key, value := range mapVal {
+				if useDestructuring {
+					// Set key and value to the two variables
+					if len(s.Names) >= 2 {
+						env.Set(s.Names[0], key)
+						env.Set(s.Names[1], value)
+					}
+					// Set any additional variables to nil
+					for i := 2; i < len(s.Names); i++ {
+						env.Set(s.Names[i], nil)
+					}
+				} else {
+					// Single variable: set it to the key
+					varName := s.Name
+					if len(s.Names) > 0 {
+						varName = s.Names[0]
+					}
+					env.Set(varName, key)
+				}
+
+				// Evaluate where clause if present
+				if s.Where != nil {
+					whereResult, err := evalExpr(env, s.Where)
+					if err != nil {
+						return nil, false, err
+					}
+					// Skip this iteration if where clause is false
+					if !utils.AsBool(whereResult) {
+						continue
+					}
+				}
+
+				// Execute loop body
+				brk, cont, ret, val, err := runBlock(env, s.Body)
+				if err != nil {
+					return nil, false, err
+				}
+				if ret {
+					return val, true, nil
+				}
+				if brk {
+					break
+				}
+				if cont {
+					continue
+				}
+			}
+			return nil, false, nil
+		}
+
 		// Check if the object implements Iterable interface
 		if instance, ok := it.(*ClassInstance); ok {
 			// Check if class implements Iterable
@@ -409,12 +462,24 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 							}
 						}
 					} else {
-						// Element is not a ClassInstance, set first var to element, rest to nil
-						for i, name := range s.Names {
-							if i == 0 {
-								env.Set(name, el)
-							} else {
-								env.Set(name, nil)
+						// Element is not a ClassInstance - check if it's an array for destructuring
+						if elArray, ok := el.([]any); ok {
+							// Destructure the array into variables
+							for i, name := range s.Names {
+								if i < len(elArray) {
+									env.Set(name, elArray[i])
+								} else {
+									env.Set(name, nil)
+								}
+							}
+						} else {
+							// Not an array, set first var to element, rest to nil
+							for i, name := range s.Names {
+								if i == 0 {
+									env.Set(name, el)
+								} else {
+									env.Set(name, nil)
+								}
 							}
 						}
 					}

@@ -220,6 +220,7 @@ func InstallMapBuiltin(env *Env) error {
 	}, []string{})
 
 	// __get(key: K) -> V (Indexable interface)
+	// Also supports numeric index for iteration (returns [key, value] pair)
 	mapClass.AddBuiltinMethod("__get", &common.VBound.Name, []ast.Parameter{
 		{Name: "key", Type: &common.KBound.Name},
 	}, func(callEnv *common.Env, args []any) (any, error) {
@@ -227,6 +228,22 @@ func InstallMapBuiltin(env *Env) error {
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
+		// Check if the argument is a numeric index (for iteration)
+		if idx, ok := utils.AsInt(args[0]); ok {
+			// Return the idx-th entry as [key, value] array
+			currentIdx := 0
+			for _, entrySlice := range data {
+				for _, entry := range entrySlice {
+					if currentIdx == idx {
+						return []any{entry.Key, entry.Value}, nil
+					}
+					currentIdx++
+				}
+			}
+			return nil, nil // Index out of bounds
+		}
+
+		// Otherwise, treat as key lookup
 		hash := hashValue(callEnv, args[0])
 		if entries, exists := data[hash]; exists {
 			for _, entry := range entries {
@@ -280,6 +297,20 @@ func InstallMapBuiltin(env *Env) error {
 			}
 		}
 		return false, nil
+	}, []string{})
+
+	// __length() -> Int (Iterable interface)
+	// Returns the number of key-value pairs in the map
+	mapClass.AddBuiltinMethod("__length", &ast.Type{Name: "int", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
+
+		size := 0
+		for _, entries := range data {
+			size += len(entries)
+		}
+		return size, nil
 	}, []string{})
 
 	// remove(key: any) -> Void
