@@ -633,10 +633,47 @@ func (p *Parser) parseVarLike() (ast.Stmt, error) {
 		kind = "const"
 	case lexer.KW_FINAL:
 		kind = "final"
+		p.next()
+		
+		// Check if this is a type alias: final type Age = Int
+		if p.curr().Tok == lexer.IDENT && p.curr().Lit == "type" {
+			p.next() // consume 'type'
+			
+			if p.curr().Tok != lexer.IDENT {
+				return nil, p.errf("expected type alias name after 'final type'")
+			}
+			aliasName := p.curr().Lit
+			p.next()
+			
+			if !p.accept(lexer.ASSIGN) {
+				return nil, p.errf("expected '=' after type alias name")
+			}
+			
+			if p.curr().Tok != lexer.IDENT {
+				return nil, p.errf("expected base type name after '='")
+			}
+			baseType := p.curr().Lit
+			p.next()
+			
+			return &ast.TypeAliasStmt{
+				Name:      aliasName,
+				BaseType:  baseType,
+				IsFinal:   true,
+				Modifiers: mods,
+			}, nil
+		}
+		// Otherwise, it's a regular final variable declaration
+		// Continue with normal processing below
 	default:
 		return nil, p.errf("expected declaration keyword after modifiers")
 	}
-	p.next()
+	
+	// For non-type-alias declarations, we need to handle the token that was already consumed
+	// If we consumed 'final' and it's not a type alias, we're already past the keyword
+	// But for other keywords, we still need to consume them
+	if kind != "final" {
+		p.next()
+	}
 
 	id := p.curr()
 	if id.Tok != lexer.IDENT {

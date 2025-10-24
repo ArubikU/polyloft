@@ -37,7 +37,16 @@ var (
 	classRegistry     = make(map[string]map[string]*ClassDefinition) // packageName -> className -> ClassDefinition
 	interfaceRegistry = make(map[string]*InterfaceDefinition)
 	builtinClasses    = make(map[string]*ClassDefinition) // builtin classes (always available)
+	typeAliasRegistry = make(map[string]map[string]*TypeAlias) // packageName -> aliasName -> TypeAlias
 )
+
+// TypeAlias represents a type alias definition
+type TypeAlias struct {
+	Name      string
+	BaseType  string
+	IsFinal   bool // if true, this is a nominal type (distinct from base type)
+	PackageName string
+}
 
 // lookupClass looks up a class by name, checking builtins first, then the given package
 func lookupClass(className string, packageName string) (*ClassDefinition, bool) {
@@ -62,6 +71,7 @@ func ResetGlobalRegistries() {
 	classRegistry = make(map[string]map[string]*ClassDefinition)
 	interfaceRegistry = make(map[string]*InterfaceDefinition)
 	builtinClasses = make(map[string]*ClassDefinition)
+	typeAliasRegistry = make(map[string]map[string]*TypeAlias)
 	// Also reset enum registry
 	enumRegistry = make(map[string]*common.EnumDefinition)
 	// Reset exception classes

@@ -452,6 +452,15 @@ type LetStmt struct {
 	Kind      string   // "let", "var", "const", "final"
 	Inferred  bool     // true if declared with ':=' (type inference)
 }
+
+// TypeAliasStmt represents type alias declaration: final type Age = Int
+type TypeAliasStmt struct {
+	Name       string   // Alias name (e.g., "Age")
+	BaseType   string   // Base type name (e.g., "Int")
+	IsFinal    bool     // true if declared with 'final type' (nominal type)
+	Modifiers  []string // optional modifiers: public/private/protected
+}
+
 type AssignStmt struct {
 	Target Expr     // left side of assignment (could be identifier or field access)
 	Value  Expr     // right side of assignment
@@ -520,6 +529,8 @@ type DeferStmt struct {
 
 func (*LetStmt) node()      {}
 func (*LetStmt) stmt()      {}
+func (*TypeAliasStmt) node() {}
+func (*TypeAliasStmt) stmt() {}
 func (*AssignStmt) node()   {}
 func (*AssignStmt) stmt()   {}
 func (*ReturnStmt) node()   {}

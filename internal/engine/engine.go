@@ -883,6 +883,28 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 
 		env.Set(s.Name, funcDef)
 		return funcDef, false, nil
+	case *ast.TypeAliasStmt:
+		// Register type alias
+		packageName := env.GetPackageName()
+		if typeAliasRegistry[packageName] == nil {
+			typeAliasRegistry[packageName] = make(map[string]*TypeAlias)
+		}
+		
+		// Check if alias already exists
+		if _, exists := typeAliasRegistry[packageName][s.Name]; exists {
+			return nil, false, ThrowRuntimeError(env, fmt.Sprintf("type alias '%s' already defined in package '%s'", s.Name, packageName))
+		}
+		
+		// Create and register the alias
+		alias := &TypeAlias{
+			Name:        s.Name,
+			BaseType:    s.BaseType,
+			IsFinal:     s.IsFinal,
+			PackageName: packageName,
+		}
+		typeAliasRegistry[packageName][s.Name] = alias
+		
+		return nil, false, nil
 	case *ast.InterfaceDecl:
 		_, err := evalInterfaceDecl(env, s)
 		return nil, false, err
