@@ -119,6 +119,28 @@ func InstallDequeBuiltin(env *Env) error {
 		return nil, nil
 	}, []string{})
 
+	// pushFront(item: T) -> Void - alias for addFirst
+	dequeClass.AddBuiltinMethod("pushFront", ast.NIL, []ast.Parameter{
+		{Name: "item", Type: nil},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		*itemsPtr = append([]any{args[0]}, *itemsPtr...)
+		return nil, nil
+	}, []string{})
+
+	// pushBack(item: T) -> Void - alias for addLast
+	dequeClass.AddBuiltinMethod("pushBack", ast.NIL, []ast.Parameter{
+		{Name: "item", Type: nil},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		*itemsPtr = append(*itemsPtr, args[0])
+		return nil, nil
+	}, []string{})
+
 	// add(item: T) -> Void - alias for addLast
 	dequeClass.AddBuiltinMethod("add", ast.NIL, []ast.Parameter{
 		{Name: "item", Type: nil},
@@ -172,6 +194,32 @@ func InstallDequeBuiltin(env *Env) error {
 		return result, nil
 	}, []string{})
 
+	// popFront() -> T - alias for removeFirst
+	dequeClass.AddBuiltinMethod("popFront", tType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		if len(*itemsPtr) == 0 {
+			return nil, ThrowRuntimeError((*Env)(callEnv), "Deque is empty")
+		}
+		result := (*itemsPtr)[0]
+		*itemsPtr = (*itemsPtr)[1:]
+		return result, nil
+	}, []string{})
+
+	// popBack() -> T - alias for removeLast
+	dequeClass.AddBuiltinMethod("popBack", tType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		if len(*itemsPtr) == 0 {
+			return nil, ThrowRuntimeError((*Env)(callEnv), "Deque is empty")
+		}
+		result := (*itemsPtr)[len(*itemsPtr)-1]
+		*itemsPtr = (*itemsPtr)[:len(*itemsPtr)-1]
+		return result, nil
+	}, []string{})
+
 	// peekFirst() -> T - get front without removing
 	dequeClass.AddBuiltinMethod("peekFirst", tType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
@@ -185,6 +233,28 @@ func InstallDequeBuiltin(env *Env) error {
 
 	// peekLast() -> T - get back without removing
 	dequeClass.AddBuiltinMethod("peekLast", tType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		if len(*itemsPtr) == 0 {
+			return nil, nil
+		}
+		return (*itemsPtr)[len(*itemsPtr)-1], nil
+	}, []string{})
+
+	// peekFront() -> T - alias for peekFirst
+	dequeClass.AddBuiltinMethod("peekFront", tType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		if len(*itemsPtr) == 0 {
+			return nil, nil
+		}
+		return (*itemsPtr)[0], nil
+	}, []string{})
+
+	// peekBack() -> T - alias for peekLast
+	dequeClass.AddBuiltinMethod("peekBack", tType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
