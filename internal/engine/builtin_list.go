@@ -259,6 +259,31 @@ func InstallListBuiltin(env *Env) error {
 		return (*itemsPtr)[idx], nil
 	}, []string{})
 
+	// forEach(callback: Function) -> Void
+	listClass.AddBuiltinMethod("forEach", ast.TypeFromString("Void"), []ast.Parameter{
+		{Name: "callback", Type: ast.TypeFromString("Function")},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		
+		// Extract the callback function
+		callback, ok := common.ExtractFunc(args[0])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(callEnv), "function", args[0])
+		}
+		
+		// Call the callback for each item
+		for _, item := range *itemsPtr {
+			_, err := callback(callEnv, []any{item})
+			if err != nil {
+				return nil, err
+			}
+		}
+		
+		return nil, nil
+	}, []string{})
+
 	// toString() -> String
 	listClass.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")

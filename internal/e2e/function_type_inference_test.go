@@ -3,6 +3,8 @@ package e2e
 import (
 	"strings"
 	"testing"
+	
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 func TestFunctionType_WithExplicitTypes(t *testing.T) {
@@ -294,20 +296,8 @@ return Sys.type(printer)
 
 // Helper function to convert value to int
 func asInt(v any) (int, bool) {
-	switch val := v.(type) {
-	case int:
-		return val, true
-	case int32:
-		return int(val), true
-	case int64:
-		return int(val), true
-	case float32:
-		return int(val), true
-	case float64:
-		return int(val), true
-	default:
-		return 0, false
-	}
+	// Use utils.AsInt which handles ClassInstances
+	return utils.AsInt(v)
 }
 
 // runCode is defined in generics_async_test.go
