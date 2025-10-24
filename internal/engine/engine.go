@@ -2519,8 +2519,7 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 		return nil, ThrowNameError(env, expr.Name)
 	}
 
-	// Prepare arguments: type parameters come first, then constructor args
-	var allArgs []any
+	// Prepare type parameters (not passed as constructor arguments, only stored in GenericTypes)
 	var gtypes []GenericType
 	for _, tp := range expr.TypeParams {
 		if tp.IsWildcard {
@@ -2543,9 +2542,9 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 			})
 		} else {
 			// Regular type parameter without variance
-			allArgs = append(allArgs, tp.Name)
+			// Don't add to allArgs - type parameters are NOT constructor arguments
 			
-			// Also create a GenericType for regular type parameters
+			// Create a GenericType for regular type parameters
 			bound := common.GenericBound{
 				Name:       ast.Type{Name: tp.Name},
 				Variance:   tp.Variance,  // This will be "" for non-wildcard types
@@ -2557,7 +2556,8 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 		}
 	}
 
-	// Evaluate and add constructor arguments
+	// Evaluate and add constructor arguments (only actual arguments, not type parameters)
+	var allArgs []any
 	for _, arg := range expr.Args {
 		val, err := evalExpr(env, arg)
 		if err != nil {
