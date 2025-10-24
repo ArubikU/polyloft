@@ -272,6 +272,22 @@ func isInstanceOfGenericType(value any, typeName string) bool {
 		}
 
 		// Get the stored type arguments from the instance
+		// First check GenericTypes (proper generic type info)
+		if len(v.GenericTypes) > 0 {
+			// Extract type names from GenericTypes
+			typeArgs := make([]string, 0, len(v.GenericTypes))
+			for _, gt := range v.GenericTypes {
+				if len(gt.Bounds) > 0 {
+					typeArgs = append(typeArgs, gt.Bounds[0].Name.Name)
+				}
+			}
+			if len(typeArgs) > 0 && normalizeTypeName(typeArgs[0]) != "any" {
+				// Check if the stored type arguments are compatible with the requested type
+				return areTypeArgsCompatible(typeArgs, typeParams)
+			}
+		}
+		
+		// Fallback: check __type_args__ field (for backward compatibility)
 		if typeArgs, ok := v.Fields["__type_args__"].([]string); ok {
 			// If stored type is Any, fall through to check elements directly
 			if len(typeArgs) > 0 && normalizeTypeName(typeArgs[0]) != "any" {
