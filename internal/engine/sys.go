@@ -188,7 +188,20 @@ func InstallSysModule(env *Env, opts Options) {
 				return "", nil
 			}
 			format := utils.ToString(args[0])
-			return fmt.Sprintf(format, args[1:]...), nil
+			// Unwrap ClassInstance wrappers for fmt.Sprintf
+			unwrappedArgs := make([]any, len(args)-1)
+			for i, arg := range args[1:] {
+				if inst, ok := arg.(*ClassInstance); ok {
+					if val, exists := inst.Fields["_value"]; exists {
+						unwrappedArgs[i] = val
+					} else {
+						unwrappedArgs[i] = utils.ToString(arg)
+					}
+				} else {
+					unwrappedArgs[i] = arg
+				}
+			}
+			return fmt.Sprintf(format, unwrappedArgs...), nil
 		})).
 		AddStaticMethod("type", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{{Name: "value", Type: ast.TypeFromString("")}}, Func(func(_ *Env, args []any) (any, error) {
 			return GetTypeName(args[0]), nil
