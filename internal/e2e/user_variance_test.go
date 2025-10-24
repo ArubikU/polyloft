@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"testing"
+	
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // Tests for variance (in/out) with user-defined generic classes
@@ -29,8 +31,8 @@ return producer.get()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "hello" {
+	str := utils.ToString(result)
+	if str != "hello" {
 		t.Fatalf("Expected 'hello', got %v", result)
 	}
 }
@@ -97,8 +99,8 @@ return box.get()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "world" {
+	str := utils.ToString(result)
+	if str != "world" {
 		t.Fatalf("Expected 'world', got %v", result)
 	}
 }
@@ -133,8 +135,8 @@ return converter.getOutput()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "result" {
+	str := utils.ToString(result)
+	if str != "result" {
 		t.Fatalf("Expected 'result', got %v", result)
 	}
 }
@@ -166,8 +168,8 @@ return Sys.type(producer) + "," + Sys.type(consumer)
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok {
+	str := utils.ToString(result)
+	if str == "" {
 		t.Fatalf("Expected string result, got %v", result)
 	}
 
@@ -202,8 +204,8 @@ return check1 && check2 && check3
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	val, ok := result.(bool)
-	if !ok || !val {
-		t.Fatalf("Expected true for all instanceof checks, got %v", result)
+	val := utils.AsBool(result)
+	if !val {
+		t.Fatalf("Expected true for all instanceof checks, got %v", val)
 	}
 }

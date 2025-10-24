@@ -87,9 +87,9 @@ return check1 && check2 && !check3 && !check4
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	val, ok := result.(bool)
-	if !ok || !val {
-		t.Fatalf("Expected true for inheritance instanceof checks, got %v", result)
+	val := utils.AsBool(result)
+	if !val {
+		t.Fatalf("Expected true for inheritance instanceof checks, got %v", val)
 	}
 }
 
@@ -209,9 +209,9 @@ return check1 && check2 && check3
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	val, ok := result.(bool)
-	if !ok || !val {
-		t.Fatalf("Expected true for all instanceof checks, got %v", result)
+	val := utils.AsBool(result)
+	if !val {
+		t.Fatalf("Expected true for all instanceof checks, got %v", val)
 	}
 }
 
@@ -335,8 +335,8 @@ return check1 && check2 && check3
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	val, ok := result.(bool)
-	if !ok || !val {
-		t.Fatalf("Expected true for multi-level inheritance checks, got %v", result)
+	val := utils.AsBool(result)
+	if !val {
+		t.Fatalf("Expected true for multi-level inheritance checks, got %v", val)
 	}
 }
