@@ -8,6 +8,9 @@ import (
 	"github.com/ArubikU/polyloft/internal/common"
 )
 
+// GetTypeName returns the type name for any value
+// This is the implementation for Sys.type() function
+// Returns lowercase names for primitives, and formatted names for classes/enums
 func GetTypeName(val any) string {
 	switch v := val.(type) {
 	case *common.ClassConstructor:
@@ -124,6 +127,9 @@ func GetTypeName(val any) string {
 }
 
 // matchesTypeName checks if a type name matches the expected name, considering aliases
+// matchesTypeName checks if a base type name matches a given type name
+// Handles aliases like: Integer=Int, Boolean=Bool, etc.
+// Both parameters are normalized to lowercase for comparison
 func matchesTypeName(baseName, typeName string) bool {
 	// Normalize comparison
 	typeName = strings.ToLower(strings.TrimSpace(typeName))
@@ -133,7 +139,8 @@ func matchesTypeName(baseName, typeName string) bool {
 		return true
 	}
 
-	// Check common aliases
+	// Check common type aliases
+	// This allows Integer to match Int, Boolean to match Bool, etc.
 	aliases := map[string][]string{
 		"int":      {"integer", "int32", "int64"},
 		"float":    {"double", "float32", "float64"},
@@ -155,6 +162,9 @@ func matchesTypeName(baseName, typeName string) bool {
 	return false
 }
 
+// IsInstanceOf checks if a value is an instance of the given type name
+// This is the core type checking function used throughout the system
+// Supports: basic types, generic types (Array<Int>), union types (Int | String), wildcards (? extends Number)
 func IsInstanceOf(value any, typeName string) bool {
 	// Parse the type name to check for generic parameters
 	if strings.Contains(typeName, "<") && strings.Contains(typeName, ">") {
