@@ -1,0 +1,144 @@
+// Example demonstrating the unified type system in Polyloft
+// This showcases features from typerules.md
+
+// 1. Basic class with type checking
+class Person:
+    let name
+    let age
+    
+    Person(name, age):
+        this.name = name
+        this.age = age
+    end
+    
+    def greet():
+        return "Hello, I'm " + this.name
+    end
+end
+
+// 2. Inheritance with type checking
+class Employee extends Person:
+    let employeeId
+    
+    Employee(name, age, id):
+        super(name, age)
+        this.employeeId = id
+    end
+    
+    def work():
+        return this.name + " is working..."
+    end
+end
+
+// 3. Interface implementation
+interface Named:
+    def getName()
+end
+
+class User implements Named:
+    let name
+    
+    User(name):
+        this.name = name
+    end
+    
+    def getName():
+        return this.name
+    end
+end
+
+// 4. Generic class (basic)
+class Box<T>:
+    let value
+    
+    Box(v):
+        this.value = v
+    end
+    
+    def set(newValue):
+        this.value = newValue
+    end
+    
+    def get():
+        return this.value
+    end
+end
+
+// 5. Generic class with variance annotations
+class ReadOnlyBox<out T>:
+    let value
+    
+    ReadOnlyBox(v):
+        this.value = v
+    end
+    
+    def get():
+        return this.value
+    end
+end
+
+class WriteOnlyBox<in T>:
+    let value
+    
+    WriteOnlyBox(v):
+        this.value = v
+    end
+    
+    def set(newValue):
+        this.value = newValue
+    end
+end
+
+// Demo function
+def demo():
+    println("=== Polyloft Unified Type System Demo ===\n")
+    
+    // Basic type checking
+    let p = Person("Alice", 30)
+    println("1. Basic Types:")
+    println("   Type: " + Sys.type(p))
+    println("   instanceof Person: " + (p instanceof Person).toString())
+    println()
+    
+    // Inheritance
+    let e = Employee("Bob", 25, "E123")
+    println("2. Inheritance:")
+    println("   Type: " + Sys.type(e))
+    println("   instanceof Employee: " + (e instanceof Employee).toString())
+    println("   instanceof Person: " + (e instanceof Person).toString())
+    println()
+    
+    // Interface
+    let u = User("Charlie")
+    println("3. Interface:")
+    println("   Type: " + Sys.type(u))
+    println("   instanceof User: " + (u instanceof User).toString())
+    println("   instanceof Named: " + (u instanceof Named).toString())
+    println()
+    
+    // Generics
+    let intBox = Box<Int>(42)
+    println("4. Generics:")
+    println("   Type: " + Sys.type(intBox))
+    println("   Value: " + intBox.value.toString())
+    println()
+    
+    // Type inference
+    println("5. Type Inference:")
+    let num = 42
+    let text = "hello"
+    println("   num type: " + Sys.type(num))
+    println("   text type: " + Sys.type(text))
+    println()
+    
+    // Nil handling
+    println("6. Nil Handling:")
+    let nothing = nil
+    println("   nil type: " + Sys.type(nothing))
+    println()
+    
+    println("=== Demo Complete ===")
+end
+
+// Run demo
+demo()
