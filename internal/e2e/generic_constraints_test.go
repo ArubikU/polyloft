@@ -3,6 +3,8 @@ package e2e
 import (
 	"strings"
 	"testing"
+
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // Tests for generic type constraints (T extends Animal, etc.)
@@ -43,8 +45,9 @@ return container.getItem().speak()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "Woof!" {
+	// Use utils.ToString to handle both native strings and ClassInstance
+	str := utils.ToString(result)
+	if str != "Woof!" {
 		t.Fatalf("Expected 'Woof!', got %v", result)
 	}
 }
@@ -118,8 +121,9 @@ return container.getKey()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "key" {
+	// Use utils.ToString to handle both native strings and ClassInstance
+	str := utils.ToString(result)
+	if str != "key" {
 		t.Fatalf("Expected 'key', got %v", result)
 	}
 }
@@ -205,8 +209,9 @@ return sc.getSpecialItem()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "test" {
+	// Use utils.ToString to handle both native strings and ClassInstance
+	str := utils.ToString(result)
+	if str != "test" {
 		t.Fatalf("Expected 'test', got %v", result)
 	}
 }
