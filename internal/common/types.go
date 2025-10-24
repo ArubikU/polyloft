@@ -7,6 +7,54 @@ import (
 	"github.com/ArubikU/polyloft/internal/ast"
 )
 
+// SelectConstructorOverload selects the appropriate constructor based on argument count.
+// Returns the matching constructor or nil if no match found.
+func SelectConstructorOverload(constructors []ConstructorInfo, argCount int) *ConstructorInfo {
+	// Try exact match first
+	for i := range constructors {
+		ctor := &constructors[i]
+		if len(ctor.Params) == argCount {
+			return ctor
+		}
+	}
+
+	// Try variadic match
+	for i := range constructors {
+		ctor := &constructors[i]
+		if len(ctor.Params) > 0 {
+			lastParam := ctor.Params[len(ctor.Params)-1]
+			if lastParam.IsVariadic && argCount >= len(ctor.Params)-1 {
+				return ctor
+			}
+		}
+	}
+
+	return nil
+}
+
+func SelectMethodOverload(methods []MethodInfo, argCount int) *MethodInfo {
+	// Try exact match first
+	for i := range methods {
+		method := &methods[i]
+		if len(method.Params) == argCount {
+			return method
+		}
+	}
+
+	// Try variadic match
+	for i := range methods {
+		method := &methods[i]
+		if len(method.Params) > 0 {
+			lastParam := method.Params[len(method.Params)-1]
+			if lastParam.IsVariadic && argCount >= len(method.Params)-1 {
+				return method
+			}
+		}
+	}
+
+	return nil
+}
+
 // PrebuildedDefinition represents a forward reference to a class or interface
 // Used for permits declarations where the target may not be defined yet
 type PrebuildedDefinition struct {
@@ -14,20 +62,70 @@ type PrebuildedDefinition struct {
 	PackageName string
 }
 
-// ClassInstance represents an instance of a class
-type ClassInstance struct {
-	ClassName   string
-	Fields      map[string]any
-	Methods     map[string]Func
-	ParentClass *ClassDefinition
+type GenericBound struct {
+	Name       ast.Type
+	Variance   string // "in" (contravariance), "out" (covariance), or "" (invariant)
+	IsVariadic bool
+	Extends    *ClassDefinition
+	Implements *InterfaceDefinition
 }
+
+var (
+	KBound = GenericBound{
+		Name: ast.Type{Name: "K"},
+	}
+	VBound = GenericBound{
+		Name: ast.Type{Name: "V"},
+	}
+	TBound = GenericBound{
+		Name: ast.Type{Name: "T"},
+	}
+)
 
 // GenericType represents a generic type parameter (like T, E, K, V)
 type GenericType struct {
-	Name       string
-	Bounds     []string // upper bounds (extends)
-	IsVariadic bool
-	Variance   string // "in" (contravariance), "out" (covariance), or "" (invariant)
+	Bounds []GenericBound
+}
+
+func (gt *GenericType) Matchs(t *ast.Type) bool {
+	for _, bound := range gt.Bounds {
+		if &bound.Name == t {
+			return true
+		}
+		if bound.Extends != nil {
+			if tDef := bound.Extends.Type; tDef != nil && tDef == t {
+				return true
+			}
+		}
+		if bound.Implements != nil {
+			if tDef := bound.Implements.Type; tDef != nil && tDef == t {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (g *GenericBound) AsGenericType() *GenericType {
+	return &GenericType{
+		Bounds: []GenericBound{*g},
+	}
+}
+func (gt *GenericType) AsArray() []GenericType {
+	var array []GenericType
+	for _, bound := range gt.Bounds {
+		array = append(array, *bound.AsGenericType())
+	}
+	return array
+}
+
+// ClassInstance represents an instance of a class
+type ClassInstance struct {
+	ClassName    string
+	Fields       map[string]any
+	Methods      map[string]Func
+	ParentClass  *ClassDefinition
+	GenericTypes []GenericType
 }
 
 // ClassDefinition represents a class definition
@@ -51,6 +149,58 @@ type ClassDefinition struct {
 	// Generic type support
 	TypeParams []GenericType // Generic type parameters (e.g., [T, E extends Comparable])
 	IsGeneric  bool          // Whether this class is generic
+}
+
+func (classDef *ClassDefinition) IsSubclassOf(other *ClassDefinition) bool {
+	if classDef == other {
+		return true
+	}
+	if classDef.Parent == nil {
+		return false
+	}
+	return classDef.Parent.IsSubclassOf(other)
+}
+func (classDef *ClassDefinition) ImplementsInterface(iface *InterfaceDefinition) bool {
+	for _, implemented := range classDef.Implements {
+		if implemented == iface {
+			return true
+		}
+	}
+	if classDef.Parent != nil {
+		return classDef.Parent.ImplementsInterface(iface)
+	}
+	return false
+}
+
+func (classDef *ClassDefinition) GetMethods(name string) []MethodInfo {
+	if methods, ok := classDef.Methods[name]; ok {
+		return methods
+	}
+	if classDef.Parent != nil {
+		return classDef.Parent.GetMethods(name)
+	}
+	var methods []MethodInfo
+	for _, implemented := range classDef.Implements {
+		if interfaceMethods, ok := implemented.Methods[name]; ok {
+			for _, methodSig := range interfaceMethods {
+				returnedMethod := MethodInfo{
+					Name:       methodSig.Name,
+					Params:     methodSig.Params,
+					ReturnType: methodSig.ReturnType,
+					Body:       methodSig.DefaultBody,
+					Modifiers:  []string{"public"},
+					IsAbstract: !methodSig.HasDefault,
+					IsStatic:   false,
+					IsPrivate:  false,
+				}
+				methods = append(methods, returnedMethod)
+			}
+		}
+	}
+	if len(methods) > 0 {
+		return methods
+	}
+	return nil
 }
 
 // FieldInfo contains field metadata
@@ -229,6 +379,13 @@ type Builtin struct {
 	IsRecord    bool
 	IsPrimitive bool
 	IsFunction  bool
+	// Cached definitions to avoid repeated env lookups
+	ClassDef     *ClassDefinition
+	TypeDef      *ast.Type
+	InterfaceDef *InterfaceDefinition
+	EnumDef      *EnumDefinition
+	RecordDef    *RecordDefinition
+	FunctionDef  *FunctionDefinition
 }
 
 var (
@@ -247,50 +404,78 @@ var (
 	BuiltinTypePair              = Builtin{Name: "__PairClass__", IsPrimitive: false}
 	BuiltinTypeTuple             = Builtin{Name: "__TupleClass__", IsPrimitive: false}
 	BuiltinInterfaceIterable     = Builtin{Name: "__IterableInterface__", IsInterface: true}
+	BuiltinInterfaceCollection   = Builtin{Name: "__CollectionInterface__", IsInterface: true}
+	BuiltinSliceableInterface    = Builtin{Name: "__SliceableInterface__", IsInterface: true}
+	BuiltinIndexableInterface    = Builtin{Name: "__IndexableInterface__", IsInterface: true}
 	BuiltinInterfaceUnstructured = Builtin{Name: "__UnstructuredInterface__", IsInterface: true}
 )
 
 func (bt *Builtin) GetClassDefinition(env *Env) *ClassDefinition {
+	if bt.ClassDef != nil {
+		return bt.ClassDef
+	}
 	val, ok := env.Get(bt.Name)
 	if !ok {
 		return nil
 	}
-	return val.(*ClassDefinition)
+	bt.ClassDef = val.(*ClassDefinition)
+	return bt.ClassDef
 }
 func (bt *Builtin) GetTypeDefinition(env *Env) *ast.Type {
+	if bt.TypeDef != nil {
+		return bt.TypeDef
+	}
 	val, ok := env.Get(bt.Name)
 	if !ok {
 		return nil
 	}
-	return val.(*ClassDefinition).Type
+	classDef := val.(*ClassDefinition)
+	bt.TypeDef = classDef.Type
+	return bt.TypeDef
 }
 func (bt *Builtin) GetInterfaceDefinition(env *Env) *InterfaceDefinition {
+	if bt.InterfaceDef != nil {
+		return bt.InterfaceDef
+	}
 	val, ok := env.Get(bt.Name)
 	if !ok {
 		return nil
 	}
-	return val.(*InterfaceDefinition)
+	bt.InterfaceDef = val.(*InterfaceDefinition)
+	return bt.InterfaceDef
 }
 func (bt *Builtin) GetEnumDefinition(env *Env) *EnumDefinition {
+	if bt.EnumDef != nil {
+		return bt.EnumDef
+	}
 	val, ok := env.Get(bt.Name)
 	if !ok {
 		return nil
 	}
-	return val.(*EnumDefinition)
+	bt.EnumDef = val.(*EnumDefinition)
+	return bt.EnumDef
 }
 func (bt *Builtin) GetRecordDefinition(env *Env) *RecordDefinition {
+	if bt.RecordDef != nil {
+		return bt.RecordDef
+	}
 	val, ok := env.Get(bt.Name)
 	if !ok {
 		return nil
 	}
-	return val.(*RecordDefinition)
+	bt.RecordDef = val.(*RecordDefinition)
+	return bt.RecordDef
 }
 func (bt *Builtin) GetFunctionDefinition(env *Env) *FunctionDefinition {
+	if bt.FunctionDef != nil {
+		return bt.FunctionDef
+	}
 	val, ok := env.Get(bt.Name)
 	if !ok {
 		return nil
 	}
-	return val.(*FunctionDefinition)
+	bt.FunctionDef = val.(*FunctionDefinition)
+	return bt.FunctionDef
 }
 
 // PositionInfo holds position information for stack traces
@@ -683,8 +868,8 @@ func InferExprType(expr ast.Expr, env *Env) *ast.Type {
 	}
 }
 
-// formatFunctionType formats a function type as Function<Param1,Param2,...,ReturnType>
-func formatFunctionType(params []ast.Parameter, returnType *ast.Type) string {
+// FormatFunctionType formats a function type as Function<Param1,Param2,...,ReturnType>
+func FormatFunctionType(params []ast.Parameter, returnType *ast.Type) string {
 	var parts []string
 
 	// Add parameter types
@@ -763,99 +948,11 @@ func getTypeString(t *ast.Type) string {
 	return strings.Title(t.Name)
 }
 
-// GetTypeName returns the type name of a value
-func GetTypeName(val any) string {
-	switch v := val.(type) {
-	case *ClassConstructor:
-		// Format as "Class {Name}@{Package}"
-		pkg := v.Definition.PackageName
-		if pkg == "" {
-			pkg = "default"
-		}
-		return fmt.Sprintf("Class %s@%s", v.Definition.Name, pkg)
-	case *EnumConstructor:
-		// Format as "Enum {Name}@{Package}"
-		pkg := v.Definition.PackageName
-		if pkg == "" {
-			pkg = "default"
-		}
-		return fmt.Sprintf("Enum %s@%s", v.Definition.Name, pkg)
-	case *ClassInstance:
-		// Return lowercase for primitive wrapper classes to match type system
-		switch v.ClassName {
-		case "String":
-			return "string"
-		case "Int":
-			return "int"
-		case "Float":
-			return "float"
-		case "Bool":
-			return "bool"
-		case "Array", "List", "Set", "Deque":
-			// For collections, infer element type if no type args stored
-
-			if typeArgs, ok := v.Fields["__type_args__"].([]string); ok && len(typeArgs) > 0 {
-				return fmt.Sprintf("%s<%s>", v.ClassName, strings.Join(typeArgs, ", "))
-			}
-			// Infer from elements - handle both array and map storage
-			if items, ok := v.Fields["_items"].([]any); ok {
-				return inferCollectionType(v.ClassName, items)
-			}
-			if itemsPtr, ok := v.Fields["_items"].(*[]any); ok {
-				return inferCollectionType(v.ClassName, *itemsPtr)
-			}
-			if itemsMap, ok := v.Fields["_items"].(map[uint64]any); ok {
-				// For Sets, extract values from the map
-				values := make([]any, 0, len(itemsMap))
-				for _, val := range itemsMap {
-					values = append(values, val)
-				}
-				return inferCollectionType(v.ClassName, values)
-			}
-			return v.ClassName
-		case "Map":
-			// For maps, infer key/value types if no type args stored
-			if typeArgs, ok := v.Fields["__type_args__"].([]string); ok && len(typeArgs) == 2 {
-				return fmt.Sprintf("Map<%s, %s>", strings.Title(typeArgs[0]), strings.Title(typeArgs[1]))
-			}
-
-			return inferMapType(MapToObject(v))
-		default:
-			// Check if this is a generic class instance
-			if typeArgs, ok := v.Fields["__type_args__"].([]string); ok && len(typeArgs) > 0 {
-				return fmt.Sprintf("%s<%s>", v.ClassName, strings.Join(typeArgs, ", "))
-			}
-			return v.ClassName
-		}
-
-	case *EnumValueInstance:
-		if v.Definition != nil {
-			return v.Definition.Name
-		}
-		return "enum"
-	case *RecordInstance:
-		if v.Definition != nil {
-			return v.Definition.Name
-		}
-		return "record"
-	case int, int32, int64, float32, float64, string, bool, []any, map[string]any:
-		// Native Go types should be wrapped in Generic builtin
-		return "Generic"
-	case nil:
-		return ast.NIL.Name
-	case Func:
-		return "function"
-	case *FunctionDefinition:
-		return formatFunctionType(v.Params, v.ReturnType)
-	case *LambdaDefinition:
-		return formatFunctionType(v.Params, v.ReturnType)
-	default:
-		fmt.Println("Unknown type for GetTypeName:", v)
-		return v.(fmt.Stringer).String()
-	}
+// mapEntry stores a key-value pair in the internal map storage
+type mapEntry struct {
+	Key   any
+	Value any
 }
-
-// mapEntry stores a key-value pair in the internal map storage (from engine package)
 
 func MapToObject(mapInstance *ClassInstance) map[any]any {
 	dataField, ok := mapInstance.Fields["_data"]
@@ -863,12 +960,14 @@ func MapToObject(mapInstance *ClassInstance) map[any]any {
 		return nil
 	}
 
-	// Handle the internal hash-based storage format
-	if internalMap, ok := dataField.(map[uint64]*ast.MapEntry); ok {
+	// Handle the internal hash-based storage format with collision handling
+	if internalMap, ok := dataField.(map[uint64][]*mapEntry); ok {
 		result := make(map[any]any, len(internalMap))
-		for _, entry := range internalMap {
-			if entry != nil {
-				result[entry.Key] = entry.Value
+		for _, entries := range internalMap {
+			for _, entry := range entries {
+				if entry != nil {
+					result[entry.Key] = entry.Value
+				}
 			}
 		}
 		return result
@@ -881,114 +980,131 @@ func MapToObject(mapInstance *ClassInstance) map[any]any {
 	return nil
 }
 
-func inferCollectionType(className string, items []any) string {
+func InferCollectionType(items []*ClassInstance) *GenericType {
 	if len(items) == 0 {
-		return className
+		return nil
 	}
-	firstType := ""
-	allSame := true
+
+	var bounds []GenericBound
 	hasInt := false
 	hasFloat := false
-	for i, item := range items {
-		itemType := GetTypeName(item)
-		if i == 0 {
-			firstType = itemType
-		} else if itemType != firstType {
-			allSame = false
+
+	for _, v := range items {
+		if v == nil || v.ParentClass == nil {
+			continue
 		}
-		if itemType == "int" {
+
+		switch v.ParentClass {
+		case BuiltinTypeInt.ClassDef:
 			hasInt = true
-		} else if itemType == "float" {
+		case BuiltinTypeFloat.ClassDef:
 			hasFloat = true
+		default:
+			// Agregar directamente el tipo personalizado
+			bounds = append(bounds, GenericBound{
+				Name: *v.ParentClass.Type,
+			})
 		}
 	}
 
-	// Si todos los elementos son del mismo tipo
-	if allSame && firstType != "" {
-		// Capitalizar primera letra para mostrar
-		displayType := strings.Title(firstType)
-		return fmt.Sprintf("%s<%s>", className, displayType)
-	}
-
-	// Si hay mezcla de int y float, es Array<Number>
+	// Manejo de numéricos al final
 	if hasInt && hasFloat {
-		return fmt.Sprintf("%s<Number>", className)
+		bounds = append(bounds, GenericBound{
+			Name: *BuiltinTypeNumber.TypeDef,
+		})
+	} else if hasInt {
+		bounds = append(bounds, GenericBound{
+			Name: *BuiltinTypeInt.TypeDef,
+		})
+	} else if hasFloat {
+		bounds = append(bounds, GenericBound{
+			Name: *BuiltinTypeFloat.TypeDef,
+		})
 	}
 
-	// De lo contrario, es un array mixto
-	return fmt.Sprintf("%s<Any>", className)
+	// Si no hay bounds, el tipo es genérico Any
+	if len(bounds) == 0 {
+		bounds = append(bounds, GenericBound{
+			Name: *ast.ANY,
+		})
+	}
 
+	return &GenericType{Bounds: bounds}
 }
 
-func inferMapType(m map[any]any) string {
-	if len(m) == 0 {
-		return "Map"
+func InferMapType(items map[*ClassInstance]*ClassInstance) *GenericType {
+	if len(items) == 0 {
+		return nil
 	}
 
-	// Determinar tipo de clave (asumimos que todas son string, pero se valida)
-	var keyType string = "String"
-	hasMixedKeys := false
-	for k := range m {
-		kType := GetTypeName(k)
-		if keyType == "String" {
-			keyType = strings.Title(kType)
-		} else if keyType != strings.Title(kType) {
-			hasMixedKeys = true
-			break
-		}
-	}
-	if hasMixedKeys {
-		keyType = "Any"
-	}
-
-	// Inferir tipo de valores
-	valueTypes := make(map[string]bool)
+	var bounds []GenericBound
 	hasInt := false
 	hasFloat := false
+	hasMixedKeys := false
 
-	for _, v := range m {
-		vType := GetTypeName(v)
+	var keyParent *ClassDefinition
+	var valueParents []*ClassDefinition
 
-		// Normalizar nombres base
-		switch vType {
-		case "int":
+	for k, v := range items {
+		if k == nil || v == nil || k.ParentClass == nil || v.ParentClass == nil {
+			continue
+		}
+
+		// Detectar tipo de clave
+		if keyParent == nil {
+			keyParent = k.ParentClass
+		} else if keyParent != k.ParentClass {
+			hasMixedKeys = true
+		}
+
+		// Analizar tipo de valor
+		switch v.ParentClass {
+		case BuiltinTypeInt.ClassDef:
 			hasInt = true
-		case "float":
+		case BuiltinTypeFloat.ClassDef:
 			hasFloat = true
+		default:
+			valueParents = append(valueParents, v.ParentClass)
 		}
-
-		valueTypes[strings.Title(vType)] = true
 	}
 
-	// Si hay mezcla de int y float → simplificar a Number
+	// Inferir tipo de clave
+	var keyType ast.Type
+	if hasMixedKeys {
+		keyType = *ast.ANY
+	} else if keyParent != nil {
+		keyType = *keyParent.Type
+	} else {
+		keyType = *ast.ANY
+	}
+
+	// Manejar tipos numéricos
 	if hasInt && hasFloat {
-		if len(valueTypes) == 2 || len(valueTypes) == 1 {
-			return fmt.Sprintf("Map<%s, Number>", keyType)
-		}
-		delete(valueTypes, "Int")
-		delete(valueTypes, "Float")
-		valueTypes["Number"] = true
+		valueParents = append(valueParents, BuiltinTypeNumber.ClassDef)
+	} else if hasInt {
+		valueParents = append(valueParents, BuiltinTypeInt.ClassDef)
+	} else if hasFloat {
+		valueParents = append(valueParents, BuiltinTypeFloat.ClassDef)
 	}
 
-	// Si todos los valores son del mismo tipo
-	if len(valueTypes) == 1 {
-		for t := range valueTypes {
-			return fmt.Sprintf("Map<%s, %s>", keyType, t)
-		}
+	// Si no hay valores inferidos, usar Any
+	if len(valueParents) == 0 {
+		bounds = append(bounds, GenericBound{
+			Name: *ast.ANY,
+		})
 	}
 
-	// Si hay varios tipos → unión (ej: Map<String, Float | String>)
-	union := ""
-	i := 0
-	for t := range valueTypes {
-		if i > 0 {
-			union += " | "
-		}
-		union += t
-		i++
+	// Crear bounds: primero clave, luego valor
+	bounds = append(bounds, GenericBound{
+		Name: keyType,
+	})
+	for _, vp := range valueParents {
+		bounds = append(bounds, GenericBound{
+			Name: *vp.Type,
+		})
 	}
 
-	return fmt.Sprintf("Map<%s, %s>", keyType, union)
+	return &GenericType{Bounds: bounds}
 }
 
 // GetType returns the ast.Type for a value
@@ -1021,11 +1137,11 @@ func GetType(val any) *ast.Type {
 		return nil
 	case int, int32, int64, float32, float64, string, bool, []any, map[string]any:
 		// Native Go types should be wrapped in Generic builtin
-		return &ast.Type{Name: "Generic", IsBuiltin: true}
+		return BuiltinTypeGeneric.TypeDef
 	case nil:
 		return ast.NIL
 	case Func:
-		return &ast.Type{Name: "function", IsBuiltin: true}
+		return BuiltinTypeGeneric.TypeDef
 	default:
 		return nil
 	}

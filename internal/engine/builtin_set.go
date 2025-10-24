@@ -6,21 +6,31 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/ast"
 	"github.com/ArubikU/polyloft/internal/common"
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // InstallSetBuiltin installs the Set<T> builtin class
 func InstallSetBuiltin(env *Env) error {
+	// Helper function to create array from keys
+	createArrayFromKeys := func(keysPtr *[]any, callEnv *common.Env) (any, error) {
+		result := make([]any, len(*keysPtr))
+		copy(result, *keysPtr)
+		return CreateArrayInstance((*Env)(callEnv), result)
+	}
+
 	// Get interface and type references
 	iterableInterface := common.BuiltinInterfaceIterable.GetInterfaceDefinition(env)
+	collectionInterface := common.BuiltinInterfaceCollection.GetInterfaceDefinition(env)
 	intType := common.BuiltinTypeInt.GetTypeDefinition(env)
 	boolType := common.BuiltinTypeBool.GetTypeDefinition(env)
 	mapType := &ast.Type{Name: "map", IsBuiltin: true}
 	voidType := &ast.Type{Name: "void", IsBuiltin: true}
 
 	setClass := NewClassBuilder("Set").
-		AddTypeParameter("T", []string{}, false).
+		AddTypeParameters(common.TBound.AsGenericType().AsArray()).
 		AddInterface(iterableInterface).
-		AddField("_items", mapType, []string{"private"}). // Using map for O(1) lookups
+		AddInterface(collectionInterface).
+		AddField("_items", mapType, []string{"private"}).                                  // Using map for O(1) lookups
 		AddField("_keys", &ast.Type{Name: "array", IsBuiltin: true}, []string{"private"}). // Track insertion order
 		AddField("_currentIndex", intType, []string{"private"})
 
@@ -42,10 +52,9 @@ func InstallSetBuiltin(env *Env) error {
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
-		
 		items := make(map[string]bool)
 		keys := make([]any, 0)
-		
+
 		for _, item := range args {
 			key := fmt.Sprintf("%v", item)
 			if !items[key] {
@@ -53,7 +62,7 @@ func InstallSetBuiltin(env *Env) error {
 				keys = append(keys, item)
 			}
 		}
-		
+
 		instance.Fields["_items"] = &items
 		instance.Fields["_keys"] = &keys
 		instance.Fields["_currentIndex"] = 0
@@ -65,7 +74,15 @@ func InstallSetBuiltin(env *Env) error {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*map[string]bool)
-		return len(*itemsPtr), nil
+		return CreateIntInstance(callEnv, len(*itemsPtr))
+	}, []string{})
+
+	// isEmpty() -> Bool
+	setClass.AddBuiltinMethod("isEmpty", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*map[string]bool)
+		return CreateBoolInstance(callEnv, len(*itemsPtr) == 0)
 	}, []string{})
 
 	// add(item: T) -> Bool - returns true if item was added (wasn't already present)
@@ -76,15 +93,15 @@ func InstallSetBuiltin(env *Env) error {
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*map[string]bool)
 		keysPtr := instance.Fields["_keys"].(*[]any)
-		
+
 		key := fmt.Sprintf("%v", args[0])
 		if (*itemsPtr)[key] {
-			return false, nil // Already exists
+			return CreateBoolInstance(callEnv, false)
 		}
-		
+
 		(*itemsPtr)[key] = true
 		*keysPtr = append(*keysPtr, args[0])
-		return true, nil
+		return CreateBoolInstance(callEnv, true)
 	}, []string{})
 
 	// contains(item: T) -> Bool
@@ -94,9 +111,9 @@ func InstallSetBuiltin(env *Env) error {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*map[string]bool)
-		
+
 		key := fmt.Sprintf("%v", args[0])
-		return (*itemsPtr)[key], nil
+		return CreateBoolInstance(callEnv, (*itemsPtr)[key])
 	}, []string{})
 
 	// remove(item: T) -> Bool - returns true if item was removed
@@ -107,14 +124,14 @@ func InstallSetBuiltin(env *Env) error {
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*map[string]bool)
 		keysPtr := instance.Fields["_keys"].(*[]any)
-		
+
 		key := fmt.Sprintf("%v", args[0])
 		if !(*itemsPtr)[key] {
-			return false, nil // Doesn't exist
+			return CreateBoolInstance(callEnv, false)
 		}
-		
+
 		delete(*itemsPtr, key)
-		
+
 		// Remove from keys array
 		for i, k := range *keysPtr {
 			if fmt.Sprintf("%v", k) == key {
@@ -122,8 +139,8 @@ func InstallSetBuiltin(env *Env) error {
 				break
 			}
 		}
-		
-		return true, nil
+
+		return CreateBoolInstance(callEnv, true)
 	}, []string{})
 
 	// clear() -> Void
@@ -143,56 +160,31 @@ func InstallSetBuiltin(env *Env) error {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		keysPtr := instance.Fields["_keys"].(*[]any)
-		
-		result := make([]any, len(*keysPtr))
-		copy(result, *keysPtr)
-		return CreateArrayInstance((*Env)(callEnv), result)
+		return createArrayFromKeys(keysPtr, callEnv)
 	}, []string{})
 
-	// Iterable interface methods
-	// hasNext() -> Bool
-	setClass.AddBuiltinMethod("hasNext", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+	// asArray() -> Array - alias for toArray
+	setClass.AddBuiltinMethod("asArray", &ast.Type{Name: "Array", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
-		currentIndex := instance.Fields["_currentIndex"].(int)
 		keysPtr := instance.Fields["_keys"].(*[]any)
-		return currentIndex < len(*keysPtr), nil
+		return createArrayFromKeys(keysPtr, callEnv)
 	}, []string{})
-
-	// next() -> T
-	setClass.AddBuiltinMethod("next", &ast.Type{Name: "T"}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
-		instance := thisVal.(*ClassInstance)
-		currentIndex := instance.Fields["_currentIndex"].(int)
-		keysPtr := instance.Fields["_keys"].(*[]any)
-		if currentIndex >= len(*keysPtr) {
-			return nil, ThrowRuntimeError((*Env)(callEnv), "Iterator exhausted")
-		}
-		result := (*keysPtr)[currentIndex]
-		instance.Fields["_currentIndex"] = currentIndex + 1
-		return result, nil
-	}, []string{})
-
 	// toString() -> String
 	stringType := &ast.Type{Name: "string", IsBuiltin: true}
 	setClass.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		keysPtr := instance.Fields["_keys"].(*[]any)
-		
+
 		strs := make([]string, len(*keysPtr))
 		for i, item := range *keysPtr {
-			strs[i] = fmt.Sprintf("%v", item)
+			strs[i] = utils.ToString(item)
 		}
-		return fmt.Sprintf("{%s}", strings.Join(strs, ", ")), nil
+		return CreateStringInstance(callEnv, fmt.Sprintf("Set(%s)", strings.Join(strs, ", ")))
 	}, []string{})
 
 	// Build and register
-	setDef, err := setClass.Build(env)
-	if err != nil {
-		return err
-	}
-
-	env.Set("__SetClass__", setDef)
-	return nil
+	_, err := setClass.Build(env)
+	return err
 }

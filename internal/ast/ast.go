@@ -412,7 +412,6 @@ type TypeParam struct {
 	IsVariadic   bool     // true if this is a variadic type parameter (T...)
 	Name         string   // Type name for concrete types (e.g., "Int", "String")
 	WildcardKind string   // "unbounded", "extends", or "super" for wildcards
-	Bound        string   // The bound type name for bounded wildcards (e.g., "Number" in "? extends Number") - deprecated, use Bounds
 	Bounds       []string // Multiple bounds for wildcards (e.g., ["Number", "Comparable"] in "? extends Number & Comparable")
 	Variance     string   // "in" (contravariance), "out" (covariance), or "" (invariant)
 }

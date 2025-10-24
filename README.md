@@ -184,7 +184,7 @@ Quickstart for development:
 
 - Build the CLI: `go build -o bin/polyloft ./cmd/polyloft`
 - Run the REPL: `go run ./cmd/polyloft repl`
-- Run a file: `go run ./cmd/polyloft run src/test.pf`
+- Run a file: `go run ./cmd/polyloft run ./test.pf`
 - Run current project: `go run ./cmd/polyloft run` (requires polyloft.toml)
 - Install dependencies: `go run ./cmd/polyloft install` (requires polyloft.toml)
 - Build executable: `go run ./cmd/polyloft build -o myapp` (requires polyloft.toml)

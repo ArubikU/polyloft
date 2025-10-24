@@ -11,22 +11,31 @@ import (
 
 // InstallListBuiltin installs the List<T> builtin class
 func InstallListBuiltin(env *Env) error {
+	// Helper function to create array from items
+	createArrayFromItems := func(itemsPtr *[]any, callEnv *common.Env) (any, error) {
+		result := make([]any, len(*itemsPtr))
+		copy(result, *itemsPtr)
+		return CreateArrayInstance(callEnv, result)
+	}
+
 	// Step 1: Create basic class structure first with interfaces and fields
 	listClass := NewClassBuilder("List").
-		AddTypeParameter("T", []string{}, false)
+		AddTypeParameters(common.TBound.AsGenericType().AsArray())
 
 	// Get interface references
 	iterableInterface := common.BuiltinInterfaceIterable.GetInterfaceDefinition(env)
+	collectionInterface := common.BuiltinInterfaceCollection.GetInterfaceDefinition(env)
 	unstructuredInterface := common.BuiltinInterfaceUnstructured.GetInterfaceDefinition(env)
-	
+
 	// Add interfaces
 	listClass.AddInterface(iterableInterface)
+	listClass.AddInterface(collectionInterface)
 	listClass.AddInterface(unstructuredInterface)
 
 	// Get type references for fields
 	intType := common.BuiltinTypeInt.GetTypeDefinition(env)
 	arrayType := common.BuiltinTypeArray.GetTypeDefinition(env)
-	
+
 	// Add fields
 	listClass.AddField("_items", arrayType, []string{"private"})
 	listClass.AddField("_currentIndex", intType, []string{"private"})
@@ -52,7 +61,6 @@ func InstallListBuiltin(env *Env) error {
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
-		
 		if arr, ok := args[0].([]any); ok {
 			items := make([]any, len(arr))
 			copy(items, arr)
@@ -71,7 +79,6 @@ func InstallListBuiltin(env *Env) error {
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
-		
 		items := make([]any, len(args))
 		copy(items, args)
 		instance.Fields["_items"] = &items
@@ -85,6 +92,29 @@ func InstallListBuiltin(env *Env) error {
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		return len(*itemsPtr), nil
+	}, []string{})
+
+	// isEmpty() -> Bool
+	listClass.AddBuiltinMethod("isEmpty", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		return len(*itemsPtr) == 0, nil
+	}, []string{})
+
+	// contains(item: T) -> Bool
+	listClass.AddBuiltinMethod("contains", boolType, []ast.Parameter{
+		{Name: "item", Type: tType},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		for _, item := range *itemsPtr {
+			if equal(item, args[0]) {
+				return true, nil
+			}
+		}
+		return false, nil
 	}, []string{})
 
 	// add(item: T) -> Void
@@ -168,9 +198,15 @@ func InstallListBuiltin(env *Env) error {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
-		result := make([]any, len(*itemsPtr))
-		copy(result, *itemsPtr)
-		return CreateArrayInstance((*Env)(callEnv), result)
+		return createArrayFromItems(itemsPtr, callEnv)
+	}, []string{})
+
+	// asArray() -> Array - alias for toArray
+	listClass.AddBuiltinMethod("asArray", arrayType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		return createArrayFromItems(itemsPtr, callEnv)
 	}, []string{})
 
 	// Iterable interface methods
@@ -199,7 +235,7 @@ func InstallListBuiltin(env *Env) error {
 
 	// Unstructured interface methods
 	// pieces() -> Int - returns number of elements
-	listClass.AddBuiltinMethod("pieces", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+	listClass.AddBuiltinMethod("__pieces", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
@@ -207,7 +243,7 @@ func InstallListBuiltin(env *Env) error {
 	}, []string{})
 
 	// getPiece(index: Int) -> Any
-	listClass.AddBuiltinMethod("getPiece", ast.ANY, []ast.Parameter{
+	listClass.AddBuiltinMethod("__get_piece", ast.ANY, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		idx, ok := utils.AsInt(args[0])
@@ -228,20 +264,15 @@ func InstallListBuiltin(env *Env) error {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
-		
+
 		strs := make([]string, len(*itemsPtr))
 		for i, item := range *itemsPtr {
 			strs[i] = fmt.Sprintf("%v", item)
 		}
-		return fmt.Sprintf("[%s]", strings.Join(strs, ", ")), nil
+		return CreateStringInstance(callEnv, fmt.Sprintf("List(%s)", strings.Join(strs, ", ")))
 	}, []string{})
 
 	// Build and register
-	listDef, err := listClass.Build(env)
-	if err != nil {
-		return err
-	}
-
-	env.Set("__ListClass__", listDef)
-	return nil
+	_, err := listClass.Build(env)
+	return err
 }

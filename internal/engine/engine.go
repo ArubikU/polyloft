@@ -5,15 +5,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"reflect"
 
 	"github.com/ArubikU/polyloft/internal/ast"
-	"github.com/ArubikU/polyloft/internal/ast/types"
 	"github.com/ArubikU/polyloft/internal/common"
-	"github.com/ArubikU/polyloft/internal/engine/typecheck"
 	"github.com/ArubikU/polyloft/internal/engine/utils"
 	"github.com/ArubikU/polyloft/internal/lexer"
 	"github.com/ArubikU/polyloft/internal/parser"
@@ -231,8 +228,6 @@ func EvalWithContextAndSource(prog *ast.Program, opts Options, fileName, package
 
 // evalStmtWithSource evaluates a statement with source context for better error messages
 func evalStmtWithSource(env *common.Env, st ast.Stmt, sourceLines []string) (val any, returned bool, err error) {
-	// For now, just delegate to evalStmt.
-	// In the future, we could extract line numbers from AST nodes if they are added
 	return evalStmt(env, st)
 }
 
@@ -247,7 +242,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 			if err != nil {
 				return nil, false, err
 			}
-			if utils.Truthy(v) {
+			if utils.AsBool(v) {
 				for _, sub := range c.Body {
 					v, ret, err := evalStmt(env, sub)
 					if err != nil {
@@ -315,36 +310,35 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 			if !implementsIterable {
 				return nil, false, fmt.Errorf("object of type %s does not implement Iterable interface", instance.ClassName)
 			}
-
-			// Iterate using Iterable interface (hasNext/next methods)
-			for {
-				// Call hasNext() method
-				hasNextMethod, ok := instance.Methods["hasNext"]
-				if !ok {
-					return nil, false, fmt.Errorf("Iterable object missing hasNext() method")
-				}
-				hasNextFunc, ok := common.ExtractFunc(hasNextMethod)
-				if !ok {
-					return nil, false, fmt.Errorf("hasNext is not a function")
-				}
-				hasNextResult, err := hasNextFunc(env, []any{})
-				if err != nil {
-					return nil, false, err
-				}
-				if !utils.Truthy(hasNextResult) {
-					break // No more elements
-				}
-
-				// Call next() method to get the element
-				nextMethod, ok := instance.Methods["next"]
-				if !ok {
-					return nil, false, fmt.Errorf("Iterable object missing next() method")
-				}
-				nextFunc, ok := common.ExtractFunc(nextMethod)
-				if !ok {
-					return nil, false, fmt.Errorf("next is not a function")
-				}
-				el, err := nextFunc(env, []any{})
+			// New methods of iterable are __length and __get(index)
+			__lengthMethod, ok := instance.Methods["__length"]
+			if !ok {
+				return nil, false, fmt.Errorf("Iterable object missing __length() method")
+			}
+			__lengthFunc, ok := common.ExtractFunc(__lengthMethod)
+			if !ok {
+				return nil, false, fmt.Errorf("__length is not a function")
+			}
+			__lengthResult, err := __lengthFunc(env, []any{})
+			if err != nil {
+				return nil, false, err
+			}
+			length, ok := utils.AsInt(__lengthResult)
+			if !ok {
+				return nil, false, fmt.Errorf("__length() must return an integer")
+			}
+			__getMethod, ok := instance.Methods["__get"]
+			if !ok {
+				return nil, false, fmt.Errorf("Iterable object missing __get() method")
+			}
+			__getFunc, ok := common.ExtractFunc(__getMethod)
+			if !ok {
+				return nil, false, fmt.Errorf("__get is not a function")
+			}
+			// Iterate from 0 to length-1
+			for idx := 0; idx < length; idx++ {
+				// Call __get(index) method
+				el, err := __getFunc(env, []any{idx})
 				if err != nil {
 					return nil, false, err
 				}
@@ -366,7 +360,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 
 						if implementsUnstructured {
 							// Element implements Unstructured, use pieces() and getPiece()
-							piecesMethod, ok := elInstance.Methods["pieces"]
+							piecesMethod, ok := elInstance.Methods["__pieces"]
 							if !ok {
 								return nil, false, fmt.Errorf("Unstructured object missing pieces() method")
 							}
@@ -389,7 +383,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 							}
 
 							// Get each piece using getPiece(index)
-							getPieceMethod, ok := elInstance.Methods["getPiece"]
+							getPieceMethod, ok := elInstance.Methods["__get_piece"]
 							if !ok {
 								return nil, false, fmt.Errorf("Unstructured object missing getPiece() method")
 							}
@@ -440,7 +434,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 						return nil, false, err
 					}
 					// Skip this iteration if where clause is false
-					if !utils.Truthy(whereResult) {
+					if !utils.AsBool(whereResult) {
 						continue
 					}
 				}
@@ -501,6 +495,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 		}
 
 		// Handle different types of assignment targets
+
 		switch target := s.Target.(type) {
 		case *ast.Ident:
 			for cur := env; cur != nil; cur = cur.Parent {
@@ -546,9 +541,25 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 			if instance, ok := obj.(*ClassInstance); ok {
 				// Special handling for Map instances - set data in _data map
 				if instance.ClassName == "Map" {
-					if hashData, ok := instance.Fields["_data"].(map[uint64]*mapEntry); ok {
-						hash := hashValue(target.Name)
-						hashData[hash] = &mapEntry{Key: target.Name, Value: value}
+					if hashData, ok := instance.Fields["_data"].(map[uint64][]*mapEntry); ok {
+						hash := hashValue(env, target.Name)
+						// Check if hash already exists
+						if entries, exists := hashData[hash]; exists {
+							// Look for existing key
+							found := false
+							for i, entry := range entries {
+								if equals(entry.Key, target.Name) {
+									hashData[hash][i] = &mapEntry{Key: target.Name, Value: value}
+									found = true
+									break
+								}
+							}
+							if !found {
+								hashData[hash] = append(entries, &mapEntry{Key: target.Name, Value: value})
+							}
+						} else {
+							hashData[hash] = []*mapEntry{{Key: target.Name, Value: value}}
+						}
 						return value, false, nil
 					}
 				}
@@ -616,57 +627,30 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 				return nil, false, err
 			}
 
-			switch b := base.(type) {
-			case *ClassInstance:
-				// Special handling for Map instances with index assignment
-				if typecheck.IsClassInstanceOfDefinition(b, common.BuiltinTypeMap.GetClassDefinition(env)) {
-					if hashData, ok := b.Fields["_data"].(map[uint64]*mapEntry); ok {
-						hash := hashValue(index)
-						hashData[hash] = &mapEntry{Key: index, Value: value}
-						return value, false, nil
-					}
-				} else if typecheck.IsClassInstanceOfDefinition(b, common.BuiltinTypeArray.GetClassDefinition(env)) {
-					// Handle Array index assignment
-					i, ok := utils.AsInt(index)
-					if !ok {
-						return nil, false, ThrowTypeError(env, "numeric index for Array", index)
-					}
-					items, ok := b.Fields["_items"].([]any)
-					if !ok {
-						return nil, false, ThrowRuntimeError(env, "invalid Array internal state")
-					}
-					if i < 0 || i >= len(items) {
-						return nil, false, ThrowIndexError(env, i, len(items), "array")
-					}
-					items[i] = value
-					return value, false, nil
-				} else if typecheck.IsClassInstanceOfDefinition(b, common.BuiltinTypeString.GetClassDefinition(env)) {
-					// Handle String index assignment (strings are immutable, so we create a new string)
-					i, ok := utils.AsInt(index)
-					if !ok {
-						return nil, false, ThrowTypeError(env, "numeric index for String", index)
-					}
-					strVal, ok := b.Fields["_value"].(string)
-					if !ok {
-						return nil, false, ThrowRuntimeError(env, "invalid String internal state")
-					}
-					if i < 0 || i >= len(strVal) {
-						return nil, false, ThrowIndexError(env, i, len(strVal), "string")
-					}
-					charVal, ok := value.(string)
-					if !ok || len(charVal) != 1 {
-						return nil, false, ThrowTypeError(env, "single character string for String assignment", value)
-					}
-					// Create new string with the character replaced
-					newStr := strVal[:i] + charVal + strVal[i+1:]
-					b.Fields["_value"] = newStr
-					return value, false, nil
-				}
-
-				return nil, false, ThrowTypeError(env, "indexable type", b.ClassName)
-			default:
-				return nil, false, ThrowRuntimeError(env, fmt.Sprintf("invalid assignment target: %T", target))
+			instance, ok := base.(*ClassInstance)
+			if !ok {
+				return nil, false, ThrowTypeError(env, "indexable type", base)
 			}
+			indexableDef := common.BuiltinIndexableInterface.GetInterfaceDefinition(env)
+			if indexableDef == nil {
+				return nil, false, fmt.Errorf("Indexable interface not found")
+			}
+			if instance.ParentClass.ImplementsInterface(indexableDef) {
+				setOverloads, valid := instance.ParentClass.Methods["__set"]
+				if !valid {
+					return nil, false, fmt.Errorf("Indexable object missing __set() method")
+				}
+				method := common.SelectMethodOverload(setOverloads, 2)
+				if method == nil {
+					return nil, false, ThrowRuntimeError(env, fmt.Sprintf("no overload found for %s.__set with %d arguments", instance.ClassName, 2))
+				}
+				_, err = CallInstanceMethod(instance, *method, env, []any{index, value})
+				if err != nil {
+					return nil, false, err
+				}
+				return value, false, nil
+			}
+
 		default:
 			return nil, false, ThrowRuntimeError(env, fmt.Sprintf("invalid assignment target: %T", target))
 		}
@@ -797,6 +781,40 @@ func installBuiltins(env *common.Env, opts Options) {
 		return nil, nil
 	}))
 
+	env.Set("int", common.Func(func(e *common.Env, args []any) (any, error) {
+		if len(args) != 1 {
+			return nil, ThrowArityError((*Env)(e), 1, len(args))
+		}
+		i, ok := utils.AsInt(args[0])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(e), "int-convertible value", args[0])
+		}
+		return CreateIntInstance(e, i)
+	}))
+	env.Set("float", common.Func(func(e *common.Env, args []any) (any, error) {
+		if len(args) != 1 {
+			return nil, ThrowArityError((*Env)(e), 1, len(args))
+		}
+		f, ok := utils.AsFloat(args[0])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(e), "float-convertible value", args[0])
+		}
+		return CreateFloatInstance(e, f)
+	}))
+	env.Set("str", common.Func(func(e *common.Env, args []any) (any, error) {
+		if len(args) != 1 {
+			return nil, ThrowArityError((*Env)(e), 1, len(args))
+		}
+		return CreateStringInstance(e, utils.ToString(args[0]))
+	}))
+	env.Set("bool", common.Func(func(e *common.Env, args []any) (any, error) {
+		if len(args) != 1 {
+			return nil, ThrowArityError((*Env)(e), 1, len(args))
+		}
+		b := utils.AsBool(args[0])
+		return CreateBoolInstance(e, b)
+	}))
+
 	// len() - get length of string, array (ClassInstance), or map (ClassInstance)
 	env.Set("len", common.Func(func(e *common.Env, args []any) (any, error) {
 		if len(args) != 1 {
@@ -812,8 +830,12 @@ func installBuiltins(env *common.Env, opts Options) {
 					return float64(len(items)), nil
 				}
 			} else if v.ClassName == "Map" {
-				if data, ok := v.Fields["_data"].(map[uint64]*mapEntry); ok {
-					return float64(len(data)), nil
+				if data, ok := v.Fields["_data"].(map[uint64][]*mapEntry); ok {
+					size := 0
+					for _, entries := range data {
+						size += len(entries)
+					}
+					return float64(size), nil
 				}
 			}
 			return nil, ThrowTypeError(e, "string, array, or map", args[0])
@@ -875,12 +897,18 @@ func installBuiltins(env *common.Env, opts Options) {
 	InstallNetModule(env, opts)
 	InstallHttpModule(env, opts)
 
-	// Install primitive types with casting support
-	InstallPrimitiveTypes((*Env)(env))
-
 	// Install Iterable interface (base for all collections)
 	if err := InstallIterableInterface((*Env)(env)); err != nil {
 		fmt.Printf("Warning: Failed to install Iterable interface: %v\n", err)
+	}
+	if err := InstallCollectionInterface((*Env)(env)); err != nil {
+		fmt.Printf("Warning: Failed to install Collection interface: %v\n", err)
+	}
+	if err := InstallSliceableInterface((*Env)(env)); err != nil {
+		fmt.Printf("Warning: Failed to install Sliceable interface: %v\n", err)
+	}
+	if err := InstallIndexableInterface((*Env)(env)); err != nil {
+		fmt.Printf("Warning: Failed to install Indexable interface: %v\n", err)
 	}
 	// Install Unstructured interface (for destructuring support)
 	if err := InstallUnstructuredInterface((*Env)(env)); err != nil {
@@ -958,58 +986,6 @@ func installBuiltins(env *common.Env, opts Options) {
 	// Install Async/Await with Promise and CompletableFuture
 	InstallAsyncAwait(env)
 
-	// Register built-in types
-	builtinTypes := types.NewBuiltinTypes()
-
-	// Create type objects that contain static methods
-	stringType := map[string]any{}
-	if typeDef, ok := builtinTypes.GetType("string"); ok {
-		for name, method := range typeDef.StaticMethods {
-			stringType[name] = method
-		}
-	}
-	env.Set("string", stringType)
-
-	intType := map[string]any{}
-	if typeDef, ok := builtinTypes.GetType("int"); ok {
-		for name, method := range typeDef.StaticMethods {
-			intType[name] = method
-		}
-	}
-	env.Set("int", intType)
-
-	floatType := map[string]any{}
-	if typeDef, ok := builtinTypes.GetType("float"); ok {
-		for name, method := range typeDef.StaticMethods {
-			floatType[name] = method
-		}
-	}
-	env.Set("float", floatType)
-
-	boolType := map[string]any{}
-	if typeDef, ok := builtinTypes.GetType("bool"); ok {
-		for name, method := range typeDef.StaticMethods {
-			boolType[name] = method
-		}
-	}
-	env.Set("bool", boolType)
-
-	arrayType := map[string]any{}
-	if typeDef, ok := builtinTypes.GetType("array"); ok {
-		for name, method := range typeDef.StaticMethods {
-			arrayType[name] = method
-		}
-	}
-	env.Set("array", arrayType)
-
-	objectType := map[string]any{}
-	if typeDef, ok := builtinTypes.GetType("object"); ok {
-		for name, method := range typeDef.StaticMethods {
-			objectType[name] = method
-		}
-	}
-	env.Set("object", objectType)
-
 	// Initialize base Annotation class
 	InitializeAnnotationBase(env)
 
@@ -1032,11 +1008,6 @@ func handleImport(env *common.Env, im *ast.ImportStmt) error {
 		symbols := ctor()
 		return bindImports(env, im, symbols)
 	}
-
-	//homeDir, err := os.UserHomeDir()
-	//if err == nil {
-	//	i.LibDir = filepath.Join(homeDir, ".polyloft", "libs")
-	//}
 
 	homeDir, _ := os.UserHomeDir()
 	candidates := []string{}
@@ -1401,15 +1372,23 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 		}
 		return v, nil
 	case *ast.NumberLit:
+		switch v := x.Value.(type) {
+		case int:
+			return CreateIntInstance(env, v)
+		case float64:
+			return CreateFloatInstance(env, v)
+		case float32:
+			return CreateFloatInstance(env, float64(v))
+		}
 		return x.Value, nil
 	case *ast.StringLit:
 		// Check if string contains interpolation
 		if strings.Contains(x.Value, "#{") {
 			return processStringInterpolation(env, x.Value)
 		}
-		return x.Value, nil
+		return CreateStringInstance(env, x.Value)
 	case *ast.BoolLit:
-		return x.Value, nil
+		return CreateBoolInstance(env, x.Value)
 	case *ast.NilLit:
 		return nil, nil
 	case *ast.ArrayLit:
@@ -1466,33 +1445,27 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				return nil, ThrowTypeError(env, "integer", "range indices")
 			}
 
-			switch b := base.(type) {
-			case *ClassInstance:
-				// Handle Array instance slicing
-				if b.ClassName == "Array" {
-					if items, ok := b.Fields["_items"].([]any); ok {
-						if start < 0 || start >= len(items) || end < 0 || end >= len(items) || start > end {
-							return nil, ThrowIndexError(env, start, len(items), "Array")
-						}
-						// Return slice from start to end (inclusive)
-						result := make([]any, 0, end-start+1)
-						for i := start; i <= end; i++ {
-							result = append(result, items[i])
-						}
-						return CreateArrayInstance(env, result)
-					}
+			instance, ok := base.(*ClassInstance)
+			if !ok {
+				return nil, ThrowTypeError(env, "sliceable type", base)
+			}
+
+			sliceableInterface := common.BuiltinSliceableInterface.GetInterfaceDefinition(env)
+			if instance.ParentClass.ImplementsInterface(sliceableInterface) {
+				methodOverloads, exists := instance.ParentClass.Methods["__slice"]
+				if !exists {
+					return nil, ThrowAttributeError(env, "__slice", fmt.Sprintf("class '%s'", instance.ClassName))
 				}
-				return nil, ThrowTypeError(env, "array or string", base)
-			case string:
-				// String slicing: "hello"[1...3] returns "ell"
-				runes := []rune(b)
-				if start < 0 || start >= len(runes) || end < 0 || end >= len(runes) || start > end {
-					return nil, ThrowIndexError(env, start, len(runes), "string")
+				// Select the correct overload based on argument count (start, end)
+				method := common.SelectMethodOverload(methodOverloads, 2)
+				if method == nil {
+					return nil, ThrowRuntimeError(env, fmt.Sprintf("no overload found for %s.__slice with %d arguments", instance.ClassName, 2))
 				}
-				// Return slice from start to end (inclusive)
-				return string(runes[start : end+1]), nil
-			default:
-				return nil, ThrowTypeError(env, "array or string", base)
+				result, err := CallInstanceMethod(instance, *method, env, []any{start, end})
+				if err != nil {
+					return nil, err
+				}
+				return result, nil
 			}
 		}
 
@@ -1501,50 +1474,49 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			return nil, err
 		}
 
-		switch b := base.(type) {
-		case *ClassInstance:
-			// Special handling for Map instances with index read
-			if b.ClassName == "Map" {
-				if hashData, ok := b.Fields["_data"].(map[uint64]*mapEntry); ok {
-					hash := hashValue(idx)
-					if entry, exists := hashData[hash]; exists {
-						return entry.Value, nil
-					}
-					return nil, nil
-				}
-			}
-			// Special handling for Array instances with index read
-			if b.ClassName == "Array" {
-				if items, ok := b.Fields["_items"].([]any); ok {
-					i, ok := utils.AsInt(idx)
-					if !ok || i < 0 || i >= len(items) {
-						return nil, ThrowIndexError(env, i, len(items), "Array")
-					}
-					return items[i], nil
-				}
-			}
-			return nil, ThrowTypeError(env, "indexable type", base)
-		case string:
-			// String indexing: "hola"[0] returns "h"
-			i, ok := utils.AsInt(idx)
-			if !ok {
-				return nil, ThrowTypeError(env, "numeric", idx)
-			}
-			runes := []rune(b)
-			if i < 0 || i >= len(runes) {
-				return nil, ThrowIndexError(env, i, len(runes), "string")
-			}
-			return string(runes[i]), nil
-		default:
+		instance, ok := base.(*ClassInstance)
+		if !ok {
 			return nil, ThrowTypeError(env, "indexable type", base)
 		}
+		// Check if instance implements Indexable interface
+		indexableInterface := common.BuiltinIndexableInterface.GetInterfaceDefinition(env)
+		if instance.ParentClass.ImplementsInterface(indexableInterface) {
+			containsOverloads, exists := instance.ParentClass.Methods["__contains"]
+			if !exists {
+				return nil, ThrowAttributeError(env, "__contains", fmt.Sprintf("class '%s'", instance.ClassName))
+			}
+			// Select the correct overload based on argument count (index)
+			method := common.SelectMethodOverload(containsOverloads, 1)
+			if method == nil {
+				return nil, ThrowRuntimeError(env, fmt.Sprintf("no overload found for %s.__contains with %d arguments", instance.ClassName, 1))
+			}
+			result, err := CallInstanceMethod(instance, *method, env, []any{idx})
+			if err != nil {
+				return nil, err
+			}
+			if !utils.AsBool(result) {
+				return nil, ThrowRuntimeError(env, fmt.Sprintf("Key not found: %v", idx))
+			}
+			// now call __get to retrieve the value
+			getOverloads, exists := instance.ParentClass.Methods["__get"]
+			if !exists {
+				return nil, ThrowAttributeError(env, "__get", fmt.Sprintf("class '%s'", instance.ClassName))
+			}
+			// Select the correct overload based on argument count (index)
+			method = common.SelectMethodOverload(getOverloads, 1)
+			if method == nil {
+				return nil, ThrowRuntimeError(env, fmt.Sprintf("no overload found for %s.__get with %d arguments", instance.ClassName, 1))
+			}
+			result, err = CallInstanceMethod(instance, *method, env, []any{idx})
+			if err != nil {
+				return nil, err
+			}
+			return result, nil
+		}
+		return nil, ThrowTypeError(env, "indexable type", base)
 	case *ast.FieldExpr:
 		// Check if this is a static method call on a built-in type
 		if ident, ok := x.X.(*ast.Ident); ok {
-			// Check if it's a built-in type static method call
-			if method, exists := types.GetStaticMethod(ident.Name, x.Name); exists {
-				return method, nil
-			}
 			// Check if it's a class static method or field access
 			if classDef, exists := lookupClass(ident.Name, env.GetPackageName()); exists {
 				// Check for static fields first
@@ -1556,7 +1528,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 					// Return a function wrapper that selects the right overload
 					return common.Func(func(callEnv *common.Env, args []any) (any, error) {
 						// Select appropriate method based on argument count
-						method := utils.SelectMethodOverload(methodOverloads, len(args))
+						method := common.SelectMethodOverload(methodOverloads, len(args))
 						if method == nil {
 							return nil, ThrowRuntimeError((*Env)(callEnv), fmt.Sprintf("no overload found for %s.%s with %d arguments", classDef.Name, x.Name, len(args)))
 						}
@@ -1630,7 +1602,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				// Return a function wrapper that selects the right overload
 				return common.Func(func(callEnv *common.Env, args []any) (any, error) {
 					// Select appropriate method based on argument count
-					method := utils.SelectMethodOverload(methodOverloads, len(args))
+					method := common.SelectMethodOverload(methodOverloads, len(args))
 					if method == nil {
 						return nil, ThrowRuntimeError((*Env)(callEnv), fmt.Sprintf("no overload found for %s.%s with %d arguments", b.Name, x.Name, len(args)))
 					}
@@ -1678,11 +1650,15 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 		case *ClassInstance:
 			// Special handling for Map instances to support field access syntax
 			if b.ClassName == "Map" {
-				if hashData, ok := b.Fields["_data"].(map[uint64]*mapEntry); ok {
-					// Look for the key by hashing the field name
-					hash := hashValue(x.Name)
-					if entry, exists := hashData[hash]; exists {
-						return entry.Value, nil
+				if hashData, ok := b.Fields["_data"].(map[uint64][]*mapEntry); ok {
+					// Look for the key by hashing the field name and checking entries
+					hash := hashValue(env, x.Name)
+					if entries, exists := hashData[hash]; exists {
+						for _, entry := range entries {
+							if equals(entry.Key, x.Name) {
+								return entry.Value, nil
+							}
+						}
 					}
 				}
 			}
@@ -1774,7 +1750,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 		}
 		switch x.Op {
 		case ast.OpNot:
-			return !utils.Truthy(v), nil
+			return !utils.AsBool(v), nil
 		case ast.OpNeg:
 			f, ok := utils.AsFloat(v)
 			if !ok {
@@ -1810,7 +1786,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			if !oka || !okb {
 				return nil, typeError("number", a, b)
 			}
-			return fa + fb, nil
+			return CreateFloatInstance(env, fa+fb)
 		case ast.OpMinus:
 			// Check for operator overloading first
 			if result, handled, err := tryOperatorOverload(env, "-", "subtract", a, b); handled {
@@ -1821,44 +1797,51 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			if !oka || !okb {
 				return nil, typeError("number", a, b)
 			}
-			return fa - fb, nil
+			return CreateFloatInstance(env, fa-fb)
 		case ast.OpMul:
 			// Check for operator overloading first
 			if result, handled, err := tryOperatorOverload(env, "*", "multiply", a, b); handled {
 				return result, err
 			}
-			// String multiplication: "str" * n or n * "str"
-			if sa, ok := a.(string); ok {
-				if count, ok := utils.AsInt(b); ok {
-					if count < 0 {
-						count = 0
-					}
-					result := ""
-					for i := 0; i < count; i++ {
-						result += sa
-					}
-					return result, nil
-				}
+
+			//a and b must be *ClassInstance
+			aClass, ok := a.(*ClassInstance)
+			bClass, ok2 := b.(*ClassInstance)
+			if !ok || !ok2 {
+				return nil, typeError("ClassInstance", a, b)
 			}
-			if sb, ok := b.(string); ok {
-				if count, ok := utils.AsInt(a); ok {
-					if count < 0 {
-						count = 0
-					}
-					result := ""
-					for i := 0; i < count; i++ {
-						result += sb
-					}
-					return result, nil
+			if aClass.ParentClass == common.BuiltinTypeString.GetClassDefinition(env) && bClass.ParentClass == common.BuiltinTypeInt.GetClassDefinition(env) {
+				count, ok := utils.AsInt(b)
+				if !ok {
+					return nil, typeError("int", b)
 				}
+				originalStr := utils.ToString(a)
+				return CreateStringInstance(env, strings.Repeat(originalStr, count))
 			}
-			// Numeric multiplication
-			fa, oka := utils.AsFloat(a)
-			fb, okb := utils.AsFloat(b)
+			if bClass.ParentClass == common.BuiltinTypeString.GetClassDefinition(env) && aClass.ParentClass == common.BuiltinTypeInt.GetClassDefinition(env) {
+				count, ok := utils.AsInt(a)
+				if !ok {
+					return nil, typeError("int", a)
+				}
+				originalStr := utils.ToString(b)
+				return CreateStringInstance(env, strings.Repeat(originalStr, count))
+			}
+			//check if any of the 2 are float
+			if bClass.ParentClass == common.BuiltinTypeFloat.GetClassDefinition(env) || aClass.ParentClass == common.BuiltinTypeFloat.GetClassDefinition(env) {
+				fa, oka := utils.AsFloat(a)
+				fb, okb := utils.AsFloat(b)
+				if !oka || !okb {
+					return nil, typeError("number", a, b)
+				}
+				return CreateFloatInstance(env, fa*fb)
+			}
+			ia, oka := utils.AsInt(a)
+			ib, okb := utils.AsInt(b)
 			if !oka || !okb {
-				return nil, typeError("number", a, b)
+				return nil, typeError("int", a, b)
 			}
-			return fa * fb, nil
+			return CreateIntInstance(env, ia*ib)
+
 		case ast.OpDiv:
 			// Check for operator overloading first
 			if result, handled, err := tryOperatorOverload(env, "/", "divide", a, b); handled {
@@ -1869,64 +1852,65 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			if !oka || !okb {
 				return nil, typeError("number", a, b)
 			}
-			return fa / fb, nil
+			return CreateFloatInstance(env, fa/fb)
 		case ast.OpMod:
 			ia, oka := utils.AsInt(a)
 			ib, okb := utils.AsInt(b)
 			if !oka || !okb {
 				return nil, typeError("int", a, b)
 			}
-			return float64(ia % ib), nil
+			return CreateIntInstance(env, ia%ib)
 		case ast.OpEq:
 			// Check for operator overloading first
 			if result, handled, err := tryOperatorOverload(env, "==", "equals", a, b); handled {
 				return result, err
 			}
-			return equal(a, b), nil
+
+			return CreateBoolInstance(env, equal(a, b))
 		case ast.OpNeq:
 			// Check for operator overloading first
 			if result, handled, err := tryOperatorOverload(env, "!=", "notequals", a, b); handled {
 				return result, err
 			}
-			return !equal(a, b), nil
+			return CreateBoolInstance(env, !equal(a, b))
 		case ast.OpLt:
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
 				return nil, typeError("number", a, b)
 			}
-			return fa < fb, nil
+			return CreateBoolInstance(env, fa < fb)
 		case ast.OpLte:
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
 				return nil, typeError("number", a, b)
 			}
-			return fa <= fb, nil
+			return CreateBoolInstance(env, fa <= fb)
 		case ast.OpGt:
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
 				return nil, typeError("number", a, b)
 			}
-			return fa > fb, nil
+			return CreateBoolInstance(env, fa > fb)
 		case ast.OpGte:
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
 				return nil, typeError("number", a, b)
 			}
-			return fa >= fb, nil
+			return CreateBoolInstance(env, fa >= fb)
 		case ast.OpAnd:
-			if !utils.Truthy(a) {
-				return false, nil
+			if !utils.AsBool(a) {
+				return CreateBoolInstance(env, false)
 			}
-			return utils.Truthy(b), nil
+			return CreateBoolInstance(env, utils.AsBool(b))
 		case ast.OpOr:
-			if utils.Truthy(a) {
-				return true, nil
+			if utils.AsBool(a) {
+				return CreateBoolInstance(env, true)
 			}
-			return utils.Truthy(b), nil
+			return CreateBoolInstance(env, utils.AsBool(b))
 		default:
 			return nil, ThrowNotImplementedError(env, fmt.Sprintf("binary operator %d", x.Op))
 		}
@@ -2012,7 +1996,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if utils.Truthy(condition) {
+		if utils.AsBool(condition) {
 			return evalExpr(env, x.TrueBranch)
 		} else {
 			return evalExpr(env, x.FalseBranch)
@@ -2098,24 +2082,6 @@ func tryOperatorOverload(env *Env, op string, methodName string, left, right any
 	return nil, false, nil
 }
 
-// getDefaultMethod returns default methods for primitive types
-func getAvailableArrayMethods() []string {
-	// Array methods are now in ClassInstance, not types package
-	methods := []string{"length", "push", "pop", "shift", "unshift", "get", "set",
-		"indexOf", "contains", "slice", "join", "reverse", "sort", "filter",
-		"map", "forEach", "reduce", "find", "findIndex", "every", "some",
-		"concat", "clear", "toString", "serialize"}
-	return methods
-}
-
-func getAvailableMapMethods() []string {
-	// Map methods are now in ClassInstance, not types package
-	methods := []string{"get", "set", "put", "has", "hasKey", "remove", "delete",
-		"keys", "values", "entries", "size", "length", "isEmpty", "clear",
-		"toString", "serialize"}
-	return methods
-}
-
 func ThrowAttributeErrorWithHint(env *Env, attrName string, typeName string, availableMethods []string) error {
 	message := fmt.Sprintf("'%s' object has no attribute '%s'", typeName, attrName)
 
@@ -2146,44 +2112,6 @@ func ThrowAttributeErrorWithHint(env *Env, attrName string, typeName string, ava
 
 	return exc
 }
-
-func getDefaultMethod(obj any, methodName string, env *Env) (any, error) {
-	// Fallback for types not yet converted to classes
-	typeName := types.GetTypeForValue(obj)
-	// Try to get the instance method from built-in types (fallback)
-	if method, exists := types.GetInstanceMethod(typeName, methodName); exists {
-		return Func(func(e *Env, args []any) (any, error) {
-			// Prepend the object as the first argument (this context)
-			methodArgs := make([]any, len(args)+1)
-			methodArgs[0] = obj
-			copy(methodArgs[1:], args)
-
-			// Call the built-in method with interface{} conversion
-			return method(e, methodArgs)
-		}), nil
-	}
-	return nil, ThrowAttributeError(env, methodName, typeName)
-}
-
-func fromString(s string) any {
-	if s == "nil" {
-		return nil
-	}
-	if s == "true" {
-		return true
-	}
-	if s == "false" {
-		return false
-	}
-	if i, err := strconv.Atoi(s); err == nil {
-		return i
-	}
-	if f, err := strconv.ParseFloat(s, 64); err == nil {
-		return f
-	}
-	return s
-}
-
 func equal(a, b any) bool {
 	// Extract primitive values from class instances
 	aVal := extractPrimitiveValue(a)
@@ -2411,28 +2339,15 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 
 	// Prepare arguments: type parameters come first, then constructor args
 	var allArgs []any
-
-	// Add type parameters as arguments
-	// For concrete types, pass the type name as a string or with variance info
-	// For wildcards, pass a wildcard descriptor
+	var gtypes []GenericType
 	for _, tp := range expr.TypeParams {
 		if tp.IsWildcard {
-			// Pass wildcard information as a map
-			wildcardInfo := map[string]any{
-				"isWildcard": true,
-				"kind":       tp.WildcardKind,
-				"bound":      tp.Bound,
-				"variance":   tp.Variance,
-			}
-			allArgs = append(allArgs, wildcardInfo)
-		} else if tp.Variance != "" {
-			// Type parameter with variance annotation
-			varianceInfo := map[string]any{
-				"isWildcard": false,
-				"name":       tp.Name,
-				"variance":   tp.Variance,
-			}
-			allArgs = append(allArgs, varianceInfo)
+
+			gtypes = append(gtypes, GenericType{
+				Variance: tp.Variance,
+				Bounds:   tp.Bounds,
+				Name:     tp.Name,
+			})
 		} else {
 			// Regular type parameter without variance
 			allArgs = append(allArgs, tp.Name)
@@ -2450,7 +2365,17 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 
 	// Call the constructor function
 	if fn, ok := common.ExtractFunc(constructor); ok {
-		return fn(env, allArgs)
+
+		instance, err := fn(env, allArgs)
+		switch instance.(type) {
+		case *ClassInstance:
+			val := instance.(*ClassInstance)
+			if len(gtypes) > 0 {
+				val.GenericTypes = gtypes
+			}
+			return instance, err
+		}
+		return instance, err
 	}
 
 	return nil, ThrowNotCallableError(env, fmt.Sprintf("%T", constructor), utils.ToString(constructor))

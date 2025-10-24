@@ -1,4 +1,4 @@
-package typecheck
+package engine
 
 import (
 	"fmt"
@@ -8,16 +8,130 @@ import (
 	"github.com/ArubikU/polyloft/internal/common"
 )
 
+func GetTypeName(val any) string {
+	switch v := val.(type) {
+	case *common.ClassConstructor:
+		// Format as "Class {Name}@{Package}"
+		pkg := v.Definition.PackageName
+		if pkg == "" {
+			pkg = "default"
+		}
+		return fmt.Sprintf("Class %s@%s", v.Definition.Name, pkg)
+	case *common.EnumConstructor:
+		// Format as "Enum {Name}@{Package}"
+		pkg := v.Definition.PackageName
+		if pkg == "" {
+			pkg = "default"
+		}
+		return fmt.Sprintf("Enum %s@%s", v.Definition.Name, pkg)
+	case *common.ClassInstance:
+		// Return lowercase for primitive wrapper classes to match type system
+		switch v.ClassName {
+		case "String":
+			return "string"
+		case "Int":
+			return "int"
+		case "Float":
+			return "float"
+		case "Bool":
+			return "bool"
+		default:
+			var typeArgs []string
+			typeArgsGeneric := v.GenericTypes
+			if len(v.ParentClass.TypeParams) > 0 {
+				if len(v.GenericTypes) == 0 {
+					if v.ParentClass.ImplementsInterface(common.BuiltinInterfaceCollection.InterfaceDef) {
+						methods := v.ParentClass.GetMethods("asArray")
+						method := common.SelectMethodOverload(methods, 0)
+
+						if method != nil && method.ReturnType != nil {
+							if method.ReturnType == common.BuiltinTypeArray.GetTypeDefinition(nil) && len(method.ReturnType.TypeParams) == 1 {
+								arrayStr, ok := CallInstanceMethod(v, *method, nil, []any{})
+								if ok != nil {
+									inferredType := common.InferCollectionType(arrayStr.([]*common.ClassInstance))
+									if inferredType != nil && len(inferredType.Bounds) > 0 {
+										typeArgsGeneric = append(typeArgsGeneric, *inferredType)
+									}
+								}
+
+							}
+						}
+					}
+					if v.ParentClass == common.BuiltinTypeMap.ClassDef {
+						common.InferMapType()
+					}
+				}
+
+				if len(v.GenericTypes) > 0 {
+					for _, gt := range v.GenericTypes {
+						gTypeArg := ""
+						for _, bound := range gt.Bounds {
+							// Use the first bound's name for type argument
+							typeArg := ""
+							if bound.Variance != "" {
+								typeArg += bound.Variance + " "
+							}
+							typeArg += bound.Name.Name
+							if bound.Extends != nil {
+								typeArg += " extends " + bound.Extends.Name
+							}
+							if bound.Implements != nil {
+								typeArg += " implements " + bound.Implements.Name
+							}
+							if bound.IsVariadic {
+								typeArg += "..."
+							}
+							if gTypeArg == "" {
+								gTypeArg = typeArg
+							} else {
+								gTypeArg += " | " + typeArg
+							}
+						}
+						typeArgs = append(typeArgs, gTypeArg)
+					}
+					return fmt.Sprintf("%s<%s>", v.ClassName, strings.Join(typeArgs, ", "))
+				}
+			}
+			return v.ClassName
+		}
+
+	case *common.EnumValueInstance:
+		if v.Definition != nil {
+			return v.Definition.Name
+		}
+		return "enum"
+	case *common.RecordInstance:
+		if v.Definition != nil {
+			return v.Definition.Name
+		}
+		return "record"
+	case int, int32, int64, float32, float64, string, bool, []any, map[string]any:
+		// Native Go types should be wrapped in Generic builtin
+		return "Generic"
+	case nil:
+		return ast.NIL.Name
+	case common.Func:
+		return "function"
+	case *common.FunctionDefinition:
+		return common.FormatFunctionType(v.Params, v.ReturnType)
+	case *common.LambdaDefinition:
+		return common.FormatFunctionType(v.Params, v.ReturnType)
+	default:
+		fmt.Println("Unknown type for GetTypeName:", v)
+		return v.(fmt.Stringer).String()
+	}
+}
+
 // matchesTypeName checks if a type name matches the expected name, considering aliases
 func matchesTypeName(baseName, typeName string) bool {
 	// Normalize comparison
 	typeName = strings.ToLower(strings.TrimSpace(typeName))
 	baseName = strings.ToLower(baseName)
-	
+
 	if baseName == typeName {
 		return true
 	}
-	
+
 	// Check common aliases
 	aliases := map[string][]string{
 		"int":      {"integer", "int32", "int64"},
@@ -28,7 +142,7 @@ func matchesTypeName(baseName, typeName string) bool {
 		"map":      {"object", "dict", "dictionary"},
 		"function": {"func", "fn"},
 	}
-	
+
 	if aliasList, ok := aliases[baseName]; ok {
 		for _, alias := range aliasList {
 			if alias == typeName {
@@ -36,15 +150,10 @@ func matchesTypeName(baseName, typeName string) bool {
 			}
 		}
 	}
-	
+
 	return false
 }
 
-// IsInstanceOf checks if a value is an instance of the specified type name.
-// This is the unified entry point for all instanceof operations in the system.
-// Supports generic types like Array<Int>, List<String>, Map<String, Int>
-// Supports union types like String | Int
-// Supports wildcards like Array<? extends Number>
 func IsInstanceOf(value any, typeName string) bool {
 	// Parse the type name to check for generic parameters
 	if strings.Contains(typeName, "<") && strings.Contains(typeName, ">") {

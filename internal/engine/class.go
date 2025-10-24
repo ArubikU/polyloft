@@ -6,8 +6,6 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/ast"
 	"github.com/ArubikU/polyloft/internal/common"
-	"github.com/ArubikU/polyloft/internal/engine/typecheck"
-	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 type ClassDefinition = common.ClassDefinition
@@ -414,7 +412,7 @@ func createClassInstance(classDef *ClassDefinition, env *Env, args []any) (any, 
 	// Call constructor if exists (with overload resolution)
 	if len(classDef.Constructors) > 0 {
 		// Select appropriate constructor based on argument count
-		constructor := utils.SelectConstructorOverload(classDef.Constructors, len(args))
+		constructor := common.SelectConstructorOverload(classDef.Constructors, len(args))
 		if constructor == nil {
 			// No matching constructor found - compute available arities
 			available := make([]int, len(classDef.Constructors))
@@ -479,7 +477,7 @@ func callParentConstructor(instance *ClassInstance, parentClass *ClassDefinition
 	}
 
 	// Select appropriate constructor based on argument count
-	constructor := utils.SelectConstructorOverload(parentClass.Constructors, len(args))
+	constructor := common.SelectConstructorOverload(parentClass.Constructors, len(args))
 	if constructor == nil {
 		// No matching constructor found
 		available := make([]int, len(parentClass.Constructors))
@@ -589,7 +587,7 @@ func addParentMethods(superObj map[string]any, instance *ClassInstance, classDef
 		overloads := methodOverloads // Copy for closure
 		superObj[methodName] = Func(func(callEnv *Env, args []any) (any, error) {
 			// Select appropriate method based on argument count
-			method := utils.SelectMethodOverload(overloads, len(args))
+			method := common.SelectMethodOverload(overloads, len(args))
 			if method == nil {
 				return nil, ThrowRuntimeError((*Env)(callEnv), fmt.Sprintf("no overload found for super.%s with %d arguments", methodName, len(args)))
 			}
@@ -662,14 +660,14 @@ func bindMethods(instance *ClassInstance, classDef *ClassDefinition, env *Env) e
 		overloads := methodOverloads // Copy for closure
 		method := Func(func(callEnv *Env, args []any) (any, error) {
 			// Select appropriate method based on argument count
-			selectedMethod := utils.SelectMethodOverload(overloads, len(args))
+			selectedMethod := common.SelectMethodOverload(overloads, len(args))
 			if selectedMethod == nil {
 				return nil, ThrowRuntimeError((*Env)(callEnv), fmt.Sprintf("no overload found for %s.%s with %d arguments", instance.ClassName, name, len(args)))
 			}
 			if selectedMethod.IsStatic || selectedMethod.IsAbstract {
 				return nil, ThrowRuntimeError((*Env)(callEnv), fmt.Sprintf("cannot call static or abstract method %s via instance", name))
 			}
-			return callInstanceMethod(instance, *selectedMethod, callEnv, args)
+			return CallInstanceMethod(instance, *selectedMethod, callEnv, args)
 		})
 		instance.Methods[name] = method
 	}
@@ -713,31 +711,7 @@ func bindMethods(instance *ClassInstance, classDef *ClassDefinition, env *Env) e
 }
 
 // validateReturnType validates that a return value matches the expected type
-func validateReturnType(instance *ClassInstance, expectedType string, value any, env *Env) error {
-	// Check if it's a generic type parameter from the class
-	if instance.ParentClass != nil && instance.ParentClass.IsGeneric {
-		// Check if expectedType is one of the class's generic type parameters
-		for _, typeParam := range instance.ParentClass.TypeParams {
-			if typeParam.Name == expectedType {
-				// It's a generic type parameter
-				// Check if instance has generic type information
-				if genericTypes, ok := instance.Fields["__generic_types__"].(map[string]string); ok {
-					if actualType, found := genericTypes[expectedType]; found {
-						// If the actual type is Any or a generic parameter, skip validation
-						if actualType == "Any" || isGenericTypeParameter(actualType) {
-							return nil
-						}
-						// Strip variance annotations (out/in) from type
-						actualType = stripVarianceAnnotation(actualType)
-						// Validate against the actual type
-						return validateConcreteType(actualType, value, env)
-					}
-				}
-				// If no type info available, skip validation (dynamic typing)
-				return nil
-			}
-		}
-	}
+func validateReturnType(instance *ClassInstance, expectedType *ast.Type, value any, env *Env) error {
 
 	// Check if it's a generic type parameter (single uppercase letter or T-prefixed)
 	if isGenericTypeParameter(expectedType) {
@@ -769,15 +743,15 @@ func validateConcreteType(typeName string, value any, env *Env) error {
 		return nil
 	}
 
-	if !typecheck.IsInstanceOf(value, typeName) {
-		actualType := common.GetTypeName(value)
+	if !IsInstanceOf(value, typeName) {
+		actualType := GetTypeName(value)
 		return ThrowTypeError(env, typeName, actualType)
 	}
 	return nil
 }
 
-// callInstanceMethod calls a method on an instance
-func callInstanceMethod(instance *ClassInstance, methodInfo MethodInfo, env *Env, args []any) (any, error) {
+// CallInstanceMethod calls a method on an instance
+func CallInstanceMethod(instance *ClassInstance, methodInfo MethodInfo, env *Env, args []any) (any, error) {
 	// Create method environment
 	methodEnv := &Env{Parent: env, Vars: map[string]any{}, Consts: map[string]bool{}}
 	methodEnv.Set("this", instance)
@@ -822,9 +796,6 @@ func callInstanceMethod(instance *ClassInstance, methodInfo MethodInfo, env *Env
 		}
 	}
 
-	// Validate return type if specified
-	// Only validate if a return type is explicitly specified
-	// Skip validation for: empty string, "Any", and "Void" (default for methods without return type)
 	returnTypeName := ast.GetTypeNameString(methodInfo.ReturnType)
 	if returnTypeName != "" && returnTypeName != "Any" && returnTypeName != "Void" {
 		if err := validateReturnType(instance, returnTypeName, result, methodEnv); err != nil {

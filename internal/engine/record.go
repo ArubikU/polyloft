@@ -90,7 +90,7 @@ func bindRecordInstanceMethods(instance *common.RecordInstance) {
 		overloads := methodOverloads // Copy for closure
 		instance.Methods[name] = Func(func(callEnv *Env, args []any) (any, error) {
 			// Select appropriate method based on argument count
-			method := utils.SelectMethodOverload(overloads, len(args))
+			method := common.SelectMethodOverload(overloads, len(args))
 			if method == nil {
 				return nil, ThrowRuntimeError(callEnv, fmt.Sprintf("no overload found for %s.%s with %d arguments", def.Name, name, len(args)))
 			}

@@ -11,7 +11,7 @@ import (
 // InstallChannelBuiltin creates the builtin Channel class
 func InstallChannelBuiltin(env *Env) error {
 	channelClass := NewClassBuilder("Channel").
-		AddTypeParameter("T", []string{}, false).
+		AddTypeParameters(common.TBound.AsGenericType().AsArray()).
 		AddField("_channel", ast.ANY, []string{"private"})
 
 	// send(value: T) -> Void
@@ -102,10 +102,10 @@ func evalSelectStmt(env *Env, stmt *ast.SelectStmt) (val any, returned bool, err
 	// Process all cases and check for closed channel cases
 	closedCaseIdx := -1
 	var closedCaseBody []ast.Stmt
-	
+
 	for i, c := range stmt.Cases {
 		var ch *common.Channel
-		
+
 		if c.IsRecv {
 			// For receive case, the Channel expression is typically ch.recv()
 			// We need to extract the channel object without actually calling recv()
@@ -118,7 +118,7 @@ func evalSelectStmt(env *Env, stmt *ast.SelectStmt) (val any, returned bool, err
 					if err != nil {
 						return nil, false, err
 					}
-					
+
 					// Extract the actual channel from ClassInstance
 					if channelInstance, ok := channelVal.(*ClassInstance); ok {
 						if channelInstance.ClassName == "Channel" {
@@ -131,7 +131,7 @@ func evalSelectStmt(env *Env, stmt *ast.SelectStmt) (val any, returned bool, err
 					}
 				}
 			}
-			
+
 			if ch == nil {
 				return nil, false, ThrowRuntimeError(env, "receive case must use ch.recv() pattern")
 			}
@@ -183,9 +183,9 @@ func evalSelectStmt(env *Env, stmt *ast.SelectStmt) (val any, returned bool, err
 
 	// Perform select operation
 	chosen, recv, recvOK := reflect.Select(cases)
-	
+
 	info := caseInfo[chosen]
-	
+
 	// If this is a receive case, check if channel was closed
 	if info.isRecv {
 		if !recvOK {
@@ -210,7 +210,7 @@ func evalSelectStmt(env *Env, stmt *ast.SelectStmt) (val any, returned bool, err
 			}
 			return nil, false, nil
 		}
-		
+
 		// Bind the received value if variable name provided
 		if info.recvVar != "" {
 			env.Set(info.recvVar, recv.Interface())

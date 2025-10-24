@@ -35,11 +35,19 @@ func ToString(v any) string {
 	case float32:
 		return fmt.Sprintf("%g", float64(t))
 	case *common.EnumConstructor:
-		// Return formatted enum type
-		return common.GetTypeName(t)
+		enumc, ok := v.(*common.EnumConstructor)
+		if !ok {
+			return "enum"
+		}
+		enumd := enumc.Definition
+		return enumd.Name
 	case *common.ClassConstructor:
-		// Return formatted class type
-		return common.GetTypeName(t)
+		classc, ok := v.(*common.ClassConstructor)
+		if !ok {
+			return "class"
+		}
+		classd := classc.Definition
+		return classd.Name
 	case *common.ClassInstance:
 		// Handle primitive wrapper classes specially
 		switch t.ClassName {
@@ -67,7 +75,7 @@ func ToString(v any) string {
 		if toStringMethod, exists := t.Methods["toString"]; exists {
 			// toStringMethod is already a common.Func, no need to cast
 			if result, err := toStringMethod(&common.Env{Vars: map[string]any{"this": t}, Consts: map[string]bool{}}, []any{}); err == nil {
-				// Handle the result - it might be a String instance
+				//print type of result
 				return ToString(result)
 			}
 		}
@@ -171,6 +179,11 @@ func AsFloat(v any) (float64, bool) {
 			if val, ok := t.Fields["_value"].(int); ok {
 				return float64(val), true
 			}
+		} else if t.ClassName == "Generic" {
+			// Try to extract a float from Generic wrapper
+			if val, ok := t.Fields["_value"]; ok {
+				return AsFloat(val)
+			}
 		}
 		return 0, false
 	case string:
@@ -184,8 +197,6 @@ func AsFloat(v any) (float64, bool) {
 	}
 }
 
-// AsInt converts a value to int if possible.
-// Returns the int value and a boolean indicating success.
 func AsInt(v any) (int, bool) {
 	switch t := v.(type) {
 	case float64:
@@ -206,6 +217,11 @@ func AsInt(v any) (int, bool) {
 			if val, ok := t.Fields["_value"].(float64); ok {
 				return int(val), true
 			}
+		} else if t.ClassName == "Generic" {
+			// Try to extract an int from Generic wrapper
+			if val, ok := t.Fields["_value"]; ok {
+				return AsInt(val)
+			}
 		}
 		return 0, false
 	case string:
@@ -219,8 +235,6 @@ func AsInt(v any) (int, bool) {
 	}
 }
 
-// AsBool converts a value to bool.
-// Returns the boolean value.
 func AsBool(v any) bool {
 	switch t := v.(type) {
 	case bool:
@@ -230,47 +244,29 @@ func AsBool(v any) bool {
 			if val, ok := t.Fields["_value"].(bool); ok {
 				return val
 			}
-		}
-		return true // Non-nil objects are truthy
-	case nil:
-		return false
-	case string:
-		return t != ""
-	case int:
-		return t != 0
-	case float64:
-		return t != 0
-	case []any:
-		return len(t) > 0
-	case map[string]any:
-		return len(t) > 0
-	default:
-		return true
-	}
-}
-
-// Truthy returns whether a value is considered truthy in Polyloft.
-// This is similar to AsBool but specifically for control flow conditions.
-func Truthy(v any) bool {
-	switch t := v.(type) {
-	case nil:
-		return false
-	case bool:
-		return t
-	case string:
-		return t != ""
-	case int:
-		return t != 0
-	case float64:
-		return t != 0
-	case *common.ClassInstance:
-		if t.ClassName == "Bool" {
-			if val, ok := t.Fields["_value"].(bool); ok {
-				return val
+		} else if t.ClassName == "Generic" {
+			// Try to extract a bool from Generic wrapper
+			if val, ok := t.Fields["_value"]; ok {
+				return AsBool(val)
+			}
+		} else if t.ClassName == "Int" {
+			if val, ok := t.Fields["_value"].(int); ok {
+				return val != 0
+			}
+		} else if t.ClassName == "Float" {
+			if val, ok := t.Fields["_value"].(float64); ok {
+				return val != 0
 			}
 		}
-		// Other class instances are truthy
-		return true
+		return true // Non-nil objects are AsBool
+	case nil:
+		return false
+	case string:
+		return t != ""
+	case int:
+		return t != 0
+	case float64:
+		return t != 0
 	case []any:
 		return len(t) > 0
 	case map[string]any:
@@ -280,8 +276,6 @@ func Truthy(v any) bool {
 	}
 }
 
-// AsFloatArg extracts the i-th argument and converts it to float64.
-// Returns 0, false if the argument doesn't exist or can't be converted.
 func AsFloatArg(args []any, i int) (float64, bool) {
 	if i >= len(args) {
 		return 0, false
@@ -289,8 +283,6 @@ func AsFloatArg(args []any, i int) (float64, bool) {
 	return AsFloat(args[i])
 }
 
-// AsIntArg extracts the i-th argument and converts it to int.
-// Returns 0, false if the argument doesn't exist or can't be converted.
 func AsIntArg(args []any, i int) (int, bool) {
 	if i >= len(args) {
 		return 0, false
@@ -298,8 +290,6 @@ func AsIntArg(args []any, i int) (int, bool) {
 	return AsInt(args[i])
 }
 
-// AsStringArg extracts the i-th argument and converts it to string.
-// Returns empty string if the argument doesn't exist.
 func AsStringArg(args []any, i int) string {
 	if i >= len(args) {
 		return ""

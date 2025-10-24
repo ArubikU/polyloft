@@ -11,22 +11,31 @@ import (
 
 // InstallDequeBuiltin installs the Deque<T> (double-ended queue) builtin class
 func InstallDequeBuiltin(env *Env) error {
+	// Helper function to create array from items
+	createArrayFromItems := func(itemsPtr *[]any, callEnv *common.Env) (any, error) {
+		result := make([]any, len(*itemsPtr))
+		copy(result, *itemsPtr)
+		return CreateArrayInstance((*Env)(callEnv), result)
+	}
+
 	// Step 1: Create basic class structure first with interfaces and fields
 	dequeClass := NewClassBuilder("Deque").
-		AddTypeParameter("T", []string{}, false)
-	
+		AddTypeParameters(common.TBound.AsGenericType().AsArray())
+
 	// Get interface references
 	iterableInterface := common.BuiltinInterfaceIterable.GetInterfaceDefinition(env)
+	collectionInterface := common.BuiltinInterfaceCollection.GetInterfaceDefinition(env)
 	dequeClass.AddInterface(iterableInterface)
-	
+	dequeClass.AddInterface(collectionInterface)
+
 	// Get type references for fields
 	intType := common.BuiltinTypeInt.GetTypeDefinition(env)
 	nativeArrayType := &ast.Type{Name: "array", IsBuiltin: true}
-	
+
 	// Add fields
 	dequeClass.AddField("_items", nativeArrayType, []string{"private"})
 	dequeClass.AddField("_currentIndex", intType, []string{"private"})
-	
+
 	// Step 2: Now get type references for method signatures
 	boolType := common.BuiltinTypeBool.GetTypeDefinition(env)
 	stringType := common.BuiltinTypeString.GetTypeDefinition(env)
@@ -49,7 +58,7 @@ func InstallDequeBuiltin(env *Env) error {
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
-		
+
 		items := make([]any, len(args))
 		copy(items, args)
 		instance.Fields["_items"] = &items
@@ -71,6 +80,21 @@ func InstallDequeBuiltin(env *Env) error {
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		return len(*itemsPtr) == 0, nil
+	}, []string{})
+
+	// contains(item: T) -> Bool
+	dequeClass.AddBuiltinMethod("contains", boolType, []ast.Parameter{
+		{Name: "item", Type: nil},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		for _, item := range *itemsPtr {
+			if equal(item, args[0]) {
+				return true, nil
+			}
+		}
+		return false, nil
 	}, []string{})
 
 	// addFirst(item: T) -> Void - add to front
@@ -95,6 +119,17 @@ func InstallDequeBuiltin(env *Env) error {
 		return nil, nil
 	}, []string{})
 
+	// add(item: T) -> Void - alias for addLast
+	dequeClass.AddBuiltinMethod("add", ast.NIL, []ast.Parameter{
+		{Name: "item", Type: nil},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		*itemsPtr = append(*itemsPtr, args[0])
+		return nil, nil
+	}, []string{})
+
 	// removeFirst() -> T - remove from front
 	dequeClass.AddBuiltinMethod("removeFirst", tType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
@@ -106,6 +141,22 @@ func InstallDequeBuiltin(env *Env) error {
 		result := (*itemsPtr)[0]
 		*itemsPtr = (*itemsPtr)[1:]
 		return result, nil
+	}, []string{})
+
+	// remove(item: T) -> Bool - remove first occurrence of item
+	dequeClass.AddBuiltinMethod("remove", boolType, []ast.Parameter{
+		{Name: "item", Type: nil},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		for i, item := range *itemsPtr {
+			if equal(item, args[0]) {
+				*itemsPtr = append((*itemsPtr)[:i], (*itemsPtr)[i+1:]...)
+				return true, nil
+			}
+		}
+		return false, nil
 	}, []string{})
 
 	// removeLast() -> T - remove from back
@@ -175,9 +226,15 @@ func InstallDequeBuiltin(env *Env) error {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
-		result := make([]any, len(*itemsPtr))
-		copy(result, *itemsPtr)
-		return CreateArrayInstance((*Env)(callEnv), result)
+		return createArrayFromItems(itemsPtr, callEnv)
+	}, []string{})
+
+	// asArray() -> Array - alias for toArray
+	dequeClass.AddBuiltinMethod("asArray", arrayType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		itemsPtr := instance.Fields["_items"].(*[]any)
+		return createArrayFromItems(itemsPtr, callEnv)
 	}, []string{})
 
 	// Iterable interface methods
@@ -209,7 +266,7 @@ func InstallDequeBuiltin(env *Env) error {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
-		
+
 		strs := make([]string, len(*itemsPtr))
 		for i, item := range *itemsPtr {
 			strs[i] = fmt.Sprintf("%v", item)

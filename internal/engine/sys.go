@@ -29,6 +29,58 @@ func InstallSysModule(env *Env, opts Options) {
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 
+	genericType := common.BuiltinTypeGeneric.GetTypeDefinition(env)
+	intType := common.BuiltinTypeInt.GetTypeDefinition(env)
+
+	cronometer := NewClassBuilder("Cronometer")
+	cronometer.AddField("_startTime", genericType, []string{"private"})
+	cronometer.AddField("_endTime", genericType, []string{"private"})
+	cronometer.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		instance.Fields["_startTime"] = time.Now()
+		instance.Fields["_endTime"] = nil
+		return nil, nil
+	})
+	cronometer.AddBuiltinMethod("stop", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{}, common.Func(func(callEnv *Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		instance.Fields["_endTime"] = time.Now()
+		return nil, nil
+	}), []string{})
+	cronometer.AddBuiltinMethod("start", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{}, common.Func(func(callEnv *Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		instance.Fields["_startTime"] = time.Now()
+		instance.Fields["_endTime"] = nil
+		return nil, nil
+	}), []string{})
+	cronometer.AddBuiltinMethod("elapsedMilliseconds", intType, []ast.Parameter{}, common.Func(func(callEnv *Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		startTime, _ := instance.Fields["_startTime"].(time.Time)
+		endTime, ok := instance.Fields["_endTime"].(time.Time)
+		if !ok {
+			endTime = time.Now()
+		}
+		elapsed := endTime.Sub(startTime)
+		return int(elapsed.Milliseconds()), nil
+	}), []string{})
+
+	// Format as HH:MM:SS.mmm
+	cronometer.AddBuiltinMethod("elapsedFormatted", common.BuiltinTypeString.GetTypeDefinition(env), []ast.Parameter{}, common.Func(func(callEnv *Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		startTime, _ := instance.Fields["_startTime"].(time.Time)
+		endTime, ok := instance.Fields["_endTime"].(time.Time)
+		if !ok {
+			endTime = time.Now()
+		}
+		elapsed := endTime.Sub(startTime)
+		return fmt.Sprintf("%02d:%02d:%02d.%03d", int(elapsed.Hours()), int(elapsed.Minutes())%60, int(elapsed.Seconds())%60, int(elapsed.Milliseconds())%1000), nil
+	}), []string{})
+	cronometer.Build(env)
+
 	sysClass := NewClassBuilder("Sys").
 		AddStaticMethod("time", ast.ANY, []ast.Parameter{{Name: "mode", Type: nil, IsVariadic: true}}, Func(func(_ *Env, args []any) (any, error) {
 			ts := time.Now().UnixMilli()

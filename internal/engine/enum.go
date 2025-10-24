@@ -5,7 +5,6 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/ast"
 	"github.com/ArubikU/polyloft/internal/common"
-	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // Global registry for enums
@@ -127,7 +126,7 @@ func evalEnumDecl(env *Env, decl *ast.EnumDecl) (any, error) {
 
 		if len(definition.Constructors) > 0 {
 			// Select appropriate constructor based on argument count
-			constructor := utils.SelectConstructorOverload(definition.Constructors, len(evaluatedArgs))
+			constructor := common.SelectConstructorOverload(definition.Constructors, len(evaluatedArgs))
 			if constructor == nil {
 				return nil, ThrowRuntimeError(env, fmt.Sprintf("no constructor found for enum %s with %d arguments", decl.Name, len(evaluatedArgs)))
 			}
@@ -185,7 +184,7 @@ func bindEnumInstanceMethods(instance *common.EnumValueInstance) {
 		overloads := methodOverloads // Copy for closure
 		instance.Methods[name] = Func(func(callEnv *Env, args []any) (any, error) {
 			// Select appropriate method based on argument count
-			method := utils.SelectMethodOverload(overloads, len(args))
+			method := common.SelectMethodOverload(overloads, len(args))
 			if method == nil {
 				return nil, ThrowRuntimeError(callEnv, fmt.Sprintf("no overload found for %s.%s with %d arguments", def.Name, name, len(args)))
 			}
@@ -232,7 +231,7 @@ func bindEnumStaticMethods(enumObject map[string]any, def *common.EnumDefinition
 		overloads := methodOverloads // Copy for closure
 		enumObject[name] = Func(func(callEnv *Env, args []any) (any, error) {
 			// Select appropriate method based on argument count
-			method := utils.SelectMethodOverload(overloads, len(args))
+			method := common.SelectMethodOverload(overloads, len(args))
 			if method == nil {
 				return nil, ThrowRuntimeError(callEnv, fmt.Sprintf("no overload found for static %s.%s with %d arguments", def.Name, name, len(args)))
 			}

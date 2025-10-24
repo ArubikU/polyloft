@@ -196,6 +196,12 @@ func (p *Parser) curr() lexer.Item {
 	}
 	return p.items[p.pos]
 }
+func (p *Parser) previous() lexer.Item {
+	if p.pos-1 < 0 || p.pos-1 >= len(p.items) {
+		return lexer.Item{Tok: lexer.EOF}
+	}
+	return p.items[p.pos-1]
+}
 func (p *Parser) next() lexer.Item { i := p.curr(); p.pos++; return i }
 func (p *Parser) accept(tok lexer.Token) bool {
 	if p.curr().Tok == tok {
@@ -1448,8 +1454,6 @@ func (p *Parser) parseClassInternal(accessLevel string) (ast.Stmt, error) {
 		if err == nil && params != nil {
 			typeParams = params
 		} else {
-			// If parsing fails, it might be inheritance, reset and continue
-			// The tryParseGenericTypeParams should handle this gracefully
 		}
 	}
 
@@ -1740,8 +1744,6 @@ func (p *Parser) parseExpr(minPrec int) (ast.Expr, error) {
 	case lexer.IDENT:
 		name := tok.Lit
 		p.next()
-
-		// Check for generic type parameters: List<Int>, Map<String, Int>
 		if p.curr().Tok == lexer.LT {
 			// Try to parse as generic type
 			typeParams, err := p.tryParseGenericTypeParams()
@@ -3281,7 +3283,6 @@ func (p *Parser) tryParseGenericTypeParams() ([]ast.TypeParam, error) {
 	}
 
 	p.next() // consume '>'
-
 	return typeParams, nil
 }
 
@@ -3318,7 +3319,7 @@ func (p *Parser) parseTypeParam() (*ast.TypeParam, error) {
 			return &ast.TypeParam{
 				IsWildcard:   true,
 				WildcardKind: "extends",
-				Bound:        bound,
+				Bounds:       []string{bound},
 				Variance:     variance,
 			}, nil
 		} else if p.curr().Tok == lexer.KW_SUPER {
@@ -3332,7 +3333,7 @@ func (p *Parser) parseTypeParam() (*ast.TypeParam, error) {
 			return &ast.TypeParam{
 				IsWildcard:   true,
 				WildcardKind: "super",
-				Bound:        bound,
+				Bounds:       []string{bound},
 				Variance:     variance,
 			}, nil
 		} else {

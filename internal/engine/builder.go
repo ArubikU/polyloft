@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"fmt"
-
 	"github.com/ArubikU/polyloft/internal/ast"
 	"github.com/ArubikU/polyloft/internal/common"
 )
@@ -112,17 +110,6 @@ func (cb *ClassBuilder) SetAbstract(isAbstract bool) *ClassBuilder {
 // AddInterface agrega una interfaz implementada
 func (cb *ClassBuilder) AddInterface(interfaceDef *common.InterfaceDefinition) *ClassBuilder {
 	cb.implements = append(cb.implements, interfaceDef)
-	return cb
-}
-
-// AddTypeParameter agrega un parámetro de tipo genérico
-func (cb *ClassBuilder) AddTypeParameter(name string, bounds []string, isVariadic bool) *ClassBuilder {
-	cb.typeParams = append(cb.typeParams, common.GenericType{
-		Name:       name,
-		Bounds:     bounds,
-		IsVariadic: isVariadic,
-	})
-	cb.isGeneric = true
 	return cb
 }
 
@@ -358,13 +345,8 @@ func NewInterfaceBuilder(name string) *InterfaceBuilder {
 		Type:         &ast.Type{Name: name, IsBuiltin: true, IsInterface: true},
 	}
 }
-
-func (ib *InterfaceBuilder) AddTypeParameter(name string, bounds []string, isVariadic bool) *InterfaceBuilder {
-	ib.typeParams = append(ib.typeParams, common.GenericType{
-		Name:       name,
-		Bounds:     bounds,
-		IsVariadic: isVariadic,
-	})
+func (ib *InterfaceBuilder) AddTypeParameters(typeParams []common.GenericType) *InterfaceBuilder {
+	ib.typeParams = append(ib.typeParams, typeParams...)
 	ib.isGeneric = true
 	return ib
 }
@@ -626,191 +608,6 @@ func createRecordInstance(recordDef *RecordDefinition, env *Env, args []any) (an
 	}
 
 	return instance, nil
-}
-
-// ========================================
-// GenericTypeBuilder - Para crear tipos primitivos con casting
-// ========================================
-
-// GenericTypeBuilder facilita la creación de tipos primitivos builtin con soporte de casting
-// NewGenericTypeBuilder crea un nuevo builder para tipos primitivos
-func NewGenericTypeBuilder(name string) *GenericTypeBuilder {
-	return &GenericTypeBuilder{
-		name:        name,
-		validators:  []func(any) bool{},
-		accessLevel: "public",
-		fileName:    "builtin",
-		packageName: "builtin",
-		Type:        &ast.Type{Name: name, IsBuiltin: true},
-	}
-}
-
-// SetCastFunction establece la función de casting para el tipo
-func (gtb *GenericTypeBuilder) SetCastFunction(castFunc common.Func) *GenericTypeBuilder {
-	gtb.castFunc = castFunc
-	return gtb
-}
-
-// AddValidator agrega una función validadora de tipo
-func (gtb *GenericTypeBuilder) AddValidator(validator func(any) bool) *GenericTypeBuilder {
-	gtb.validators = append(gtb.validators, validator)
-	return gtb
-}
-
-// Build construye y registra el tipo genérico
-func (gtb *GenericTypeBuilder) Build(env *Env) (common.Func, error) {
-	if gtb.castFunc == nil {
-		return nil, ThrowRuntimeError(env, "generic type builder requires a cast function")
-	}
-
-	// Wrap the cast function to provide better error messages
-	wrappedCast := common.Func(func(callEnv *common.Env, args []any) (any, error) {
-		if len(args) != 1 {
-			return nil, ThrowArityError((*Env)(callEnv), 1, len(args))
-		}
-
-		// Perform the cast
-		result, err := gtb.castFunc(callEnv, args)
-		if err != nil {
-			return nil, err
-		}
-
-		// Validate if validators are present
-		for _, validator := range gtb.validators {
-			if !validator(result) {
-				return nil, ThrowTypeError((*Env)(callEnv), gtb.name, result)
-			}
-		}
-
-		return result, nil
-	})
-
-	// Register in environment
-	env.Set(gtb.name, wrappedCast)
-
-	return wrappedCast, nil
-}
-
-// Helper functions for common type casts
-
-// ToInt converts a value to an integer
-func ToInt(v any) (int, error) {
-	switch val := v.(type) {
-	case int:
-		return val, nil
-	case float64:
-		return int(val), nil
-	case string:
-		// Try to parse string as int
-		var result int
-		_, err := fmt.Sscanf(val, "%d", &result)
-		if err != nil {
-			return 0, ThrowConversionError(nil, val, "int")
-		}
-		return result, nil
-	case bool:
-		if val {
-			return 1, nil
-		}
-		return 0, nil
-	default:
-		return 0, ThrowConversionError(nil, v, "int")
-	}
-}
-
-// ToFloat converts a value to a float
-func ToFloat(v any) (float64, error) {
-	switch val := v.(type) {
-	case float64:
-		return val, nil
-	case int:
-		return float64(val), nil
-	case string:
-		var result float64
-		_, err := fmt.Sscanf(val, "%f", &result)
-		if err != nil {
-			return 0, ThrowConversionError(nil, val, "float")
-		}
-		return result, nil
-	case bool:
-		if val {
-			return 1.0, nil
-		}
-		return 0.0, nil
-	default:
-		return 0, ThrowConversionError(nil, v, "float")
-	}
-}
-
-// ToString converts a value to a string
-func ToString(v any) string {
-	if v == nil {
-		return "nil"
-	}
-	return fmt.Sprintf("%v", v)
-}
-
-// InstallPrimitiveTypes instala los tipos primitivos con soporte de casting
-func InstallPrimitiveTypes(env *Env) {
-	// Int/Integer type with casting
-	NewGenericTypeBuilder("Int").
-		SetCastFunction(func(callEnv *common.Env, args []any) (any, error) {
-			result, err := ToInt(args[0])
-			if err != nil {
-				return nil, ThrowTypeError((*Env)(callEnv), "Int", args[0])
-			}
-			return result, nil
-		}).
-		Build(env)
-
-	// Integer as alias for Int
-	intVal, _ := env.Get("Int")
-	env.Set("Integer", intVal)
-
-	// Float type with casting
-	NewGenericTypeBuilder("Float").
-		SetCastFunction(func(callEnv *common.Env, args []any) (any, error) {
-			result, err := ToFloat(args[0])
-			if err != nil {
-				return nil, ThrowTypeError((*Env)(callEnv), "Float", args[0])
-			}
-			return result, nil
-		}).
-		Build(env)
-
-	// Float as alias for Float
-	floatVal, _ := env.Get("Float")
-	env.Set("Float", floatVal)
-
-	// String type with casting
-	NewGenericTypeBuilder("String").
-		SetCastFunction(func(callEnv *common.Env, args []any) (any, error) {
-			return ToString(args[0]), nil
-		}).
-		Build(env)
-
-	// Bool/Boolean type with casting
-	NewGenericTypeBuilder("Bool").
-		SetCastFunction(func(callEnv *common.Env, args []any) (any, error) {
-			val := args[0]
-			switch v := val.(type) {
-			case bool:
-				return v, nil
-			case int:
-				return v != 0, nil
-			case float64:
-				return v != 0.0, nil
-			case string:
-				return v != "" && v != "false" && v != "0", nil
-			default:
-				return val != nil, nil
-			}
-		}).
-		Build(env)
-
-	// Boolean as alias for Bool
-	boolVal, _ := env.Get("Bool")
-	env.Set("Boolean", boolVal)
 }
 
 // ========================================

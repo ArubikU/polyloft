@@ -23,12 +23,13 @@ func InstallStringBuiltin(env *Env) error {
 	intType := common.BuiltinTypeInt.GetTypeDefinition(env)
 	stringType := stringClass.GetType()
 	boolType := common.BuiltinTypeBool.GetTypeDefinition(env)
-
-	stringClass.AddField("_currentIndex", intType, []string{"private"})
-
 	// Step 3: Get interface implementations
 	iterableInterface := common.BuiltinInterfaceIterable.GetInterfaceDefinition(env)
+	sliceableInterface := common.BuiltinSliceableInterface.GetInterfaceDefinition(env)
+	indexableInterface := common.BuiltinIndexableInterface.GetInterfaceDefinition(env)
 	stringClass.AddInterface(iterableInterface)
+	stringClass.AddInterface(sliceableInterface)
+	stringClass.AddInterface(indexableInterface)
 
 	//hasNext() -> Bool
 	stringClass.AddBuiltinMethod("hasNext", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
@@ -49,12 +50,94 @@ func InstallStringBuiltin(env *Env) error {
 		currentIndex++
 		return CreateStringInstance((*Env)(callEnv), string(runes[currentIndex-1]))
 	}, []string{})
-	// length() -> Int
-	stringClass.AddBuiltinMethod("length", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+
+	//Iterable interface methods , __length, __get, __get_step
+	stringClass.AddBuiltinMethod("__length", ast.ANY, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		return utf8.RuneCountInString(str), nil
+	}, []string{})
+	stringClass.AddBuiltinMethod("__get", ast.ANY, []ast.Parameter{
+		{Name: "index", Type: intType},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		str := instance.Fields["_value"].(string)
+
+		index, ok := utils.AsInt(args[0])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
+		}
+
+		runes := []rune(str)
+		if index < 0 || index >= len(runes) {
+			return CreateStringInstance((*Env)(callEnv), "")
+		}
+
+		return CreateStringInstance((*Env)(callEnv), string(runes[index]))
+	}, []string{})
+
+	// __set(index: int, value: String) -> Void (Indexable interface)
+	stringClass.AddBuiltinMethod("__set", ast.ANY, []ast.Parameter{
+		{Name: "index", Type: intType},
+		{Name: "value", Type: stringType},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		str := instance.Fields["_value"].(string)
+		//modify string
+		index, ok := utils.AsInt(args[0])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
+		}
+		//modify string
+		if index < 0 || index >= len(str) {
+			return nil, ThrowIndexError((*Env)(callEnv), index, len(str), "String")
+		}
+		instance.Fields["_value"] = str[:index] + StringValue(args[1]) + str[index+1:]
+		return nil, nil
+	}, []string{})
+
+	// __contains(index: int) -> Bool (Indexable interface)
+	stringClass.AddBuiltinMethod("__contains", boolType, []ast.Parameter{
+		{Name: "index", Type: intType},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		str := instance.Fields["_value"].(string)
+
+		index, ok := utils.AsInt(args[0])
+		if !ok {
+			return false, nil
+		}
+
+		runes := []rune(str)
+		return index >= 0 && index < len(runes), nil
+	}, []string{})
+
+	//Sliceable interface method __slice
+	stringClass.AddBuiltinMethod("__slice", ast.ANY, []ast.Parameter{
+		{Name: "start", Type: ast.ANY},
+		{Name: "end", Type: ast.ANY},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		str := instance.Fields["_value"].(string)
+
+		startIdx, ok := utils.AsInt(args[0])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
+		}
+		endIdx, ok := utils.AsInt(args[1])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(callEnv), "int", args[1])
+		}
+		if startIdx < 0 || endIdx > utf8.RuneCountInString(str) || startIdx > endIdx {
+			return nil, ThrowIndexError((*Env)(callEnv), startIdx, utf8.RuneCountInString(str), "String")
+		}
+		newStr := string([]rune(str)[startIdx:endIdx])
+		return CreateStringInstance((*Env)(callEnv), newStr)
 	}, []string{})
 
 	// isEmpty() -> Bool

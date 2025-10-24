@@ -7,11 +7,7 @@ import (
 )
 
 // GenericType represents a generic type parameter (like T, E, K, V in Java)
-type GenericType struct {
-	Name       string
-	Bounds     []string // upper bounds (extends)
-	IsVariadic bool
-}
+type GenericType = common.GenericType
 
 // GenericInstance represents an instantiated generic type
 type GenericInstance struct {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/ast"
 	"github.com/ArubikU/polyloft/internal/common"
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // InstallRangeBuiltin installs the Range builtin type
@@ -12,7 +13,6 @@ import (
 func InstallRangeBuiltin(env *Env) error {
 	// Get type references from already-installed builtin types
 	intType := common.BuiltinTypeInt.GetTypeDefinition(env)
-	boolType := common.BuiltinTypeBool.GetTypeDefinition(env)
 	stringType := &ast.Type{Name: "string", IsBuiltin: true}
 
 	// Get the Iterable interface definition
@@ -20,48 +20,63 @@ func InstallRangeBuiltin(env *Env) error {
 
 	rangeClass := NewClassBuilder("Range").
 		AddInterface(iterableInterface).
-		AddField("_start", intType, []string{"private"}).
-		AddField("_end", intType, []string{"private"}).
-		AddField("_step", intType, []string{"private"}).
-		AddField("_current", intType, []string{"private"})
+		AddField("_start", ast.ANY, []string{"private"}).
+		AddField("_end", ast.ANY, []string{"private"}).
+		AddField("_step", ast.ANY, []string{"private"}).
 
-	// hasNext() -> Bool - Check if there are more elements
-	rangeClass.AddBuiltinMethod("hasNext", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		// __length() -> Int - Get the length of the range
+		AddBuiltinMethod("__length", ast.ANY, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+			thisVal, _ := callEnv.Get("this")
+			instance := thisVal.(*ClassInstance)
+			start, _ := utils.AsInt(instance.Fields["_start"])
+			end, _ := utils.AsInt(instance.Fields["_end"])
+			step, _ := utils.AsInt(instance.Fields["_step"])
+			// Calculate length
+			length := end - start
+			if step != 0 {
+				length = length/step + 1
+			} else {
+				return 0, fmt.Errorf("step cannot be zero")
+			}
+
+			return CreateIntInstance(env, length)
+		}, []string{})
+		// __get(index: Int) -> Int - Get the value at the given index
+	rangeClass.AddBuiltinMethod("__get", ast.ANY, []ast.Parameter{
+		{Name: "index", Type: intType},
+	}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
-		current := instance.Fields["_current"].(int)
-		end := instance.Fields["_end"].(int)
-		step := instance.Fields["_step"].(int)
 
+		index, _ := utils.AsInt(args[0])
+		start, _ := utils.AsInt(instance.Fields["_start"])
+		end, _ := utils.AsInt(instance.Fields["_end"])
+		step, _ := utils.AsInt(instance.Fields["_step"])
+
+		// Calculate the value at the given index
+		var value int
 		if step > 0 {
-			return current <= end, nil
+			value = start + index*step
+			if value > end {
+				return 0, fmt.Errorf("index out of bounds")
+			}
+		} else {
+			value = start + index*step
+			if value < end {
+				return 0, fmt.Errorf("index out of bounds")
+			}
 		}
-		return current >= end, nil
-	}, []string{})
 
-	// next() -> Int - Get the next element and advance
-	rangeClass.AddBuiltinMethod("next", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
-		instance := thisVal.(*ClassInstance)
-		current := instance.Fields["_current"].(int)
-		step := instance.Fields["_step"].(int)
-
-		// Store current value to return
-		result := current
-
-		// Advance to next
-		instance.Fields["_current"] = current + step
-
-		return result, nil
+		return CreateIntInstance(env, value)
 	}, []string{})
 
 	// toArray() -> Array - Convert range to array
 	rangeClass.AddBuiltinMethod("toArray", &ast.Type{Name: "Array", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
-		start := instance.Fields["_start"].(int)
-		end := instance.Fields["_end"].(int)
-		step := instance.Fields["_step"].(int)
+		start, _ := utils.AsInt(instance.Fields["_start"])
+		end, _ := utils.AsInt(instance.Fields["_end"])
+		step, _ := utils.AsInt(instance.Fields["_step"])
 
 		// Calculate size
 		var size int
@@ -84,7 +99,8 @@ func InstallRangeBuiltin(env *Env) error {
 			if step < 0 && i < end {
 				break
 			}
-			items = append(items, i)
+			e, _ := CreateIntInstance(env, i)
+			items = append(items, e)
 			if i == end {
 				break
 			}
@@ -97,9 +113,9 @@ func InstallRangeBuiltin(env *Env) error {
 	rangeClass.AddBuiltinMethod("size", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
-		start := instance.Fields["_start"].(int)
-		end := instance.Fields["_end"].(int)
-		step := instance.Fields["_step"].(int)
+		start, _ := utils.AsInt(instance.Fields["_start"])
+		end, _ := utils.AsInt(instance.Fields["_end"])
+		step, _ := utils.AsInt(instance.Fields["_step"])
 
 		var size int
 		if step > 0 {
@@ -116,21 +132,21 @@ func InstallRangeBuiltin(env *Env) error {
 			}
 		}
 
-		return size, nil
+		return CreateIntInstance((*Env)(callEnv), size)
 	}, []string{})
 
 	// toString() -> String
 	rangeClass.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
-		start := instance.Fields["_start"].(int)
-		end := instance.Fields["_end"].(int)
-		step := instance.Fields["_step"].(int)
+		start, _ := utils.AsInt(instance.Fields["_start"])
+		end, _ := utils.AsInt(instance.Fields["_end"])
+		step, _ := utils.AsInt(instance.Fields["_step"])
 
 		if step == 1 {
-			return fmt.Sprintf("Range(%d..%d)", start, end), nil
+			return CreateStringInstance(env, fmt.Sprintf("Range(%d..%d)", start, end))
 		}
-		return fmt.Sprintf("Range(%d..%d step %d)", start, end, step), nil
+		return CreateStringInstance(env, fmt.Sprintf("Range(%d..%d step %d)", start, end, step))
 	}, []string{})
 
 	// Build the class

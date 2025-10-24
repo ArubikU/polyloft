@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ArubikU/polyloft/internal/engine"
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 	"github.com/ArubikU/polyloft/internal/lexer"
 	"github.com/ArubikU/polyloft/internal/parser"
 )
@@ -53,8 +54,12 @@ return set.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 3 {
+	iresult, eri := utils.AsInt(result)
+	if !eri {
+		t.Fatalf("Expected int result, got %T", result)
+	}
+
+	if iresult != 3 {
 		t.Fatalf("Expected size 3, got %v", result)
 	}
 }
@@ -70,8 +75,11 @@ return map.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
-	if !ok || size != 1 {
+	iresult, eri := utils.AsInt(result)
+	if !eri {
+		t.Fatalf("Expected int result, got %T", result)
+	}
+	if iresult != 1 {
 		t.Fatalf("Expected size 1, got %v", result)
 	}
 }
@@ -86,7 +94,7 @@ return list.toString()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
+	str, ok := utils.ToString()
 	if !ok {
 		t.Fatalf("Expected string, got %T", result)
 	}
@@ -135,7 +143,7 @@ return list.size()
 func runCodeBounds(code string) (any, error) {
 	// Reset global registries to ensure test isolation
 	engine.ResetGlobalRegistries()
-	
+
 	lx := &lexer.Lexer{}
 	items := lx.Scan([]byte(code))
 	par := parser.New(items)

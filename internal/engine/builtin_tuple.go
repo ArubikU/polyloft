@@ -16,9 +16,9 @@ func InstallTupleClass(env *Env) error {
 
 	// Step 1: Create basic class structure (name, type params, interfaces, fields)
 	tupleBuilder := NewClassBuilder("Tuple")
-	tupleBuilder.AddTypeParameter("T", []string{}, false)
+	tupleBuilder.AddTypeParameters(common.TBound.AsGenericType().AsArray())
 	tupleBuilder.AddInterface(unstructuredInterface)
-	
+
 	// Add field for storing tuple elements (native Go slice)
 	tupleBuilder.AddField("_elements", &ast.Type{Name: "[]any", IsBuiltin: true}, []string{"private"})
 
@@ -46,17 +46,17 @@ func InstallTupleClass(env *Env) error {
 		thisVal, _ := env.Get("this")
 		inst := thisVal.(*common.ClassInstance)
 		elements := inst.Fields["_elements"].([]any)
-		
+
 		index := args[0].(int)
 		if index < 0 || index >= len(elements) {
 			return nil, ThrowRuntimeError((*Env)(env), fmt.Sprintf("Tuple index out of bounds: %d (size: %d)", index, len(elements)))
 		}
-		
+
 		return elements[index], nil
 	}), []string{})
 
 	// pieces() -> Int - Unstructured interface method
-	tupleBuilder.AddBuiltinMethod("pieces", intType, []ast.Parameter{},
+	tupleBuilder.AddBuiltinMethod("__pieces", intType, []ast.Parameter{},
 		common.Func(func(env *common.Env, args []any) (any, error) {
 			thisVal, _ := env.Get("this")
 			inst := thisVal.(*common.ClassInstance)
@@ -65,18 +65,18 @@ func InstallTupleClass(env *Env) error {
 		}), []string{})
 
 	// getPiece(index: Int) -> Any - Unstructured interface method
-	tupleBuilder.AddBuiltinMethod("getPiece", anyType, []ast.Parameter{
+	tupleBuilder.AddBuiltinMethod("__get_piece", anyType, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, common.Func(func(env *common.Env, args []any) (any, error) {
 		thisVal, _ := env.Get("this")
 		inst := thisVal.(*common.ClassInstance)
 		elements := inst.Fields["_elements"].([]any)
-		
+
 		index := args[0].(int)
 		if index < 0 || index >= len(elements) {
 			return nil, ThrowRuntimeError((*Env)(env), fmt.Sprintf("Tuple index out of bounds: %d (size: %d)", index, len(elements)))
 		}
-		
+
 		return elements[index], nil
 	}), []string{})
 
@@ -87,7 +87,7 @@ func InstallTupleClass(env *Env) error {
 			thisVal, _ := env.Get("this")
 			inst := thisVal.(*common.ClassInstance)
 			elements := inst.Fields["_elements"].([]any)
-			
+
 			// Create a copy
 			result := make([]any, len(elements))
 			copy(result, elements)
@@ -101,7 +101,7 @@ func InstallTupleClass(env *Env) error {
 			thisVal, _ := env.Get("this")
 			inst := thisVal.(*common.ClassInstance)
 			elements := inst.Fields["_elements"].([]any)
-			
+
 			var parts []string
 			for _, elem := range elements {
 				parts = append(parts, fmt.Sprintf("%v", elem))

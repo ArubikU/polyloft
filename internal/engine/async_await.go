@@ -34,36 +34,35 @@ type CompletableFuture struct {
 // InstallAsyncAwait sets up async/await support in the environment using ClassBuilder
 func InstallAsyncAwait(env *common.Env) {
 	envTyped := (*Env)(env)
-	
+
 	// Get common type references
 	promiseTypeRef := &ast.Type{Name: "Promise", IsBuiltin: true}
 	futureTypeRef := &ast.Type{Name: "CompletableFuture", IsBuiltin: true}
-	
+
 	// Pre-register the class definitions so they're available in constructors
 	// Build Promise class first, then store definition
 	promiseClass := NewClassBuilder("Promise").
-		AddTypeParameter("T", []string{}, false).
+		AddTypeParameters(common.TBound.AsGenericType().AsArray()).
 		AddField("_promise", promiseTypeRef, []string{"private"})
-	
+
 	promiseDef, _ := buildPromiseClass(promiseClass, envTyped)
 	envTyped.Set("__PromiseClass__", promiseDef)
-	
+
 	// Build CompletableFuture class, then store definition
 	futureClass := NewClassBuilder("CompletableFuture").
-		AddTypeParameter("T", []string{}, false).
+		AddTypeParameters(common.TBound.AsGenericType().AsArray()).
 		AddField("_future", futureTypeRef, []string{"private"})
-	
+
 	futureDef, _ := buildCompletableFutureClass(futureClass, envTyped)
 	envTyped.Set("__CompletableFutureClass__", futureDef)
-	
+
 	// Install async helper function
 	installAsyncFunction(env)
 }
 
 // buildPromiseClass builds the Promise class with all its methods
 func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, error) {
-	
-	
+
 	// Default constructor: Promise() - for internal use
 	promiseClass.AddBuiltinConstructor(
 		[]ast.Parameter{},
@@ -73,7 +72,7 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 			return nil, ThrowRuntimeError((*Env)(callEnv), "Promise() cannot be called directly. Use Promise(executor) or async()")
 		},
 	)
-	
+
 	// Main constructor: Promise(executor: Function)
 	promiseClass.AddBuiltinConstructor(
 		[]ast.Parameter{{Name: "executor", Type: nil}},
@@ -141,11 +140,11 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 
 			// Set the _promise field on the existing instance
 			instance.Fields["_promise"] = promise
-			
+
 			return nil, nil
 		},
 	)
-	
+
 	// then(onFulfilled: Function) -> Promise<U>
 	promiseClass.AddBuiltinMethod("then", &ast.Type{Name: "Promise", IsBuiltin: true}, []ast.Parameter{
 		{Name: "onFulfilled", Type: nil},
@@ -216,10 +215,10 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 
 		newClassInstance := newInstance.(*ClassInstance)
 		newClassInstance.Fields["_promise"] = newPromise
-		
+
 		return newClassInstance, nil
 	}, []string{})
-	
+
 	// catch(onRejected: Function) -> Promise<T>
 	promiseClass.AddBuiltinMethod("catch", &ast.Type{Name: "Promise", IsBuiltin: true}, []ast.Parameter{
 		{Name: "onRejected", Type: nil},
@@ -252,7 +251,7 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 
 		return instance, nil
 	}, []string{})
-	
+
 	// finally(onFinally: Function) -> Promise<T>
 	promiseClass.AddBuiltinMethod("finally", &ast.Type{Name: "Promise", IsBuiltin: true}, []ast.Parameter{
 		{Name: "onFinally", Type: nil},
@@ -283,7 +282,7 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 
 		return instance, nil
 	}, []string{})
-	
+
 	// await() -> T
 	promiseClass.AddBuiltinMethod("await", ast.ANY, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		if len(args) != 0 {
@@ -305,7 +304,7 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 
 		return promise.value, nil
 	}, []string{})
-	
+
 	// getState() -> String
 	promiseClass.AddBuiltinMethod("getState", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
@@ -316,7 +315,7 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 		defer promise.mu.Unlock()
 		return promise.state, nil
 	}, []string{})
-	
+
 	// toString() -> String
 	promiseClass.AddBuiltinMethod("toString", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
@@ -342,9 +341,9 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 	return nil, fmt.Errorf("failed to get Promise class definition")
 }
 
-//  buildCompletableFutureClass builds the CompletableFuture class with all its methods
+// buildCompletableFutureClass builds the CompletableFuture class with all its methods
 func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDefinition, error) {
-	
+
 	// Constructor: CompletableFuture()
 	futureClass.AddBuiltinConstructor(
 		[]ast.Parameter{},
@@ -366,11 +365,11 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 
 			// Set the _future field on the existing instance
 			instance.Fields["_future"] = future
-			
+
 			return nil, nil
 		},
 	)
-	
+
 	// complete(value: T) -> Bool
 	futureClass.AddBuiltinMethod("complete", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
 		{Name: "value", Type: ast.TypeFromString("Any")},
@@ -396,7 +395,7 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 
 		return true, nil
 	}, []string{})
-	
+
 	// completeExceptionally(error: Any) -> Bool
 	futureClass.AddBuiltinMethod("completeExceptionally", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
 		{Name: "error", Type: ast.TypeFromString("Any")},
@@ -426,7 +425,7 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 
 		return true, nil
 	}, []string{})
-	
+
 	// get() -> T
 	futureClass.AddBuiltinMethod("get", ast.ANY, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		if len(args) != 0 {
@@ -448,7 +447,7 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 
 		return future.value, nil
 	}, []string{})
-	
+
 	// getTimeout(timeout: Int) -> T
 	futureClass.AddBuiltinMethod("getTimeout", ast.ANY, []ast.Parameter{
 		{Name: "timeout", Type: ast.TypeFromString("Int")},
@@ -480,7 +479,7 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 			return nil, ThrowRuntimeError((*Env)(callEnv), "timeout waiting for CompletableFuture")
 		}
 	}, []string{})
-	
+
 	// isDone() -> Bool
 	futureClass.AddBuiltinMethod("isDone", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
@@ -491,7 +490,7 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 		defer future.mu.Unlock()
 		return future.completed, nil
 	}, []string{})
-	
+
 	// isCancelled() -> Bool
 	futureClass.AddBuiltinMethod("isCancelled", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
@@ -502,7 +501,7 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 		defer future.mu.Unlock()
 		return future.cancelled, nil
 	}, []string{})
-	
+
 	// cancel() -> Bool
 	futureClass.AddBuiltinMethod("cancel", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
@@ -523,7 +522,7 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 
 		return true, nil
 	}, []string{})
-	
+
 	// toString() -> String
 	futureClass.AddBuiltinMethod("toString", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.Get("this")
@@ -608,7 +607,7 @@ func installAsyncFunction(env *common.Env) {
 		// Set the _promise field
 		classInstance := instance.(*ClassInstance)
 		classInstance.Fields["_promise"] = promise
-		
+
 		return classInstance, nil
 	}))
 }
