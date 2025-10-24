@@ -642,8 +642,22 @@ func (p *Parser) parseVarLike() (ast.Stmt, error) {
 	if id.Tok != lexer.IDENT {
 		return nil, p.errf("expected identifier after %s", kind)
 	}
-	name := id.Lit
+	
+	// Parse first identifier
+	names := []string{id.Lit}
 	p.next()
+	
+	// Check for comma-separated additional identifiers (destructuring)
+	for p.accept(lexer.COMMA) {
+		if p.curr().Tok != lexer.IDENT {
+			return nil, p.errf("expected identifier after ','")
+		}
+		names = append(names, p.curr().Lit)
+		p.next()
+	}
+	
+	// For backward compatibility, use first name as Name field
+	name := names[0]
 
 	typ := ""
 	inferred := false
@@ -659,16 +673,22 @@ func (p *Parser) parseVarLike() (ast.Stmt, error) {
 			inferred = true
 		} else if kind == "var" || kind == "let" {
 			// allow typed without initializer -> default nil
-			return &ast.LetStmt{Name: name, Value: &ast.NilLit{}, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
+			if len(names) > 1 {
+				return nil, p.errf("destructuring requires an initializer")
+			}
+			return &ast.LetStmt{Name: name, Names: names, Value: &ast.NilLit{}, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
 		} else {
 			return nil, p.errf("expected '=' after typed %s %s", kind, name)
 		}
 	} else if p.accept(lexer.COLONASSIGN) {
 		inferred = true
 	} else if !p.accept(lexer.ASSIGN) {
-		// allow declaration without initializer only for var/let
+		// allow declaration without initializer only for var/let (and only single variable)
 		if kind == "var" || kind == "let" {
-			return &ast.LetStmt{Name: name, Value: &ast.NilLit{}, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
+			if len(names) > 1 {
+				return nil, p.errf("destructuring requires an initializer")
+			}
+			return &ast.LetStmt{Name: name, Names: names, Value: &ast.NilLit{}, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
 		}
 		return nil, p.errf("expected '=' or ':=' after %s %s", kind, name)
 	}
@@ -677,7 +697,7 @@ func (p *Parser) parseVarLike() (ast.Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ast.LetStmt{Name: name, Value: expr, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
+	return &ast.LetStmt{Name: name, Names: names, Value: expr, Type: ast.TypeFromString(typ), Modifiers: mods, Kind: kind, Inferred: inferred}, nil
 }
 
 // parseBlock parses a sequence of statements until a terminator token.

@@ -444,7 +444,8 @@ func (*FieldExpr) expr() {}
 
 // Statements
 type LetStmt struct {
-	Name      string
+	Name      string   // Single variable name (for backward compatibility)
+	Names     []string // Multiple variable names for destructuring (e.g., let a, b = [1,2])
 	Value     Expr
 	Type      *Type    // Type annotation using unified type system
 	Modifiers []string // optional modifiers: public/private/protected/static

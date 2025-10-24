@@ -550,6 +550,96 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 		if err != nil {
 			return nil, false, err
 		}
+		
+		// Handle destructuring if multiple names are present
+		if len(s.Names) > 1 {
+			// Try to destructure the value
+			var values []any
+			
+			// Check if value is a plain Go array first
+			if arr, ok := v.([]any); ok {
+				values = arr
+			} else if instance, ok := v.(*ClassInstance); ok {
+				// For Array ClassInstance, extract the underlying array
+				if instance.ClassName == "Array" {
+					if arrData, ok := instance.Fields["_items"].([]any); ok {
+						values = arrData
+					} else {
+						return nil, false, fmt.Errorf("Array instance missing _items field")
+					}
+				} else {
+					// Check if it implements Unstructured interface
+					unstructuredInterfaceDef := common.BuiltinInterfaceUnstructured.GetInterfaceDefinition(env)
+					implementsUnstructured := false
+					if unstructuredInterfaceDef != nil && instance.ParentClass != nil {
+						for _, interfaceDef := range instance.ParentClass.Implements {
+							if interfaceDef == unstructuredInterfaceDef {
+								implementsUnstructured = true
+								break
+							}
+						}
+					}
+					
+					if implementsUnstructured {
+						// Use __pieces() and __getPiece(i) methods
+						piecesMethod, ok := instance.Methods["__pieces"]
+						if !ok {
+							return nil, false, fmt.Errorf("Unstructured object missing __pieces() method")
+						}
+						piecesFunc, ok := common.ExtractFunc(piecesMethod)
+						if !ok {
+							return nil, false, fmt.Errorf("__pieces is not a function")
+						}
+						piecesResult, err := piecesFunc(env, []any{})
+						if err != nil {
+							return nil, false, err
+						}
+						numPieces, ok := utils.AsInt(piecesResult)
+						if !ok {
+							return nil, false, fmt.Errorf("__pieces() must return an integer")
+						}
+						
+						getPieceMethod, ok := instance.Methods["__getPiece"]
+						if !ok {
+							return nil, false, fmt.Errorf("Unstructured object missing __getPiece() method")
+						}
+						getPieceFunc, ok := common.ExtractFunc(getPieceMethod)
+						if !ok {
+							return nil, false, fmt.Errorf("__getPiece is not a function")
+						}
+						
+						values = make([]any, numPieces)
+						for i := 0; i < numPieces; i++ {
+							piece, err := getPieceFunc(env, []any{i})
+							if err != nil {
+								return nil, false, err
+							}
+							values[i] = piece
+						}
+					} else {
+						// Can't destructure this object
+						return nil, false, fmt.Errorf("cannot destructure value of type %s", instance.ClassName)
+					}
+				}
+			} else {
+				// Can't destructure non-array, non-Unstructured value
+				return nil, false, fmt.Errorf("cannot destructure value of type %T", v)
+			}
+			
+			// Assign values to variables
+			for i, name := range s.Names {
+				var val any
+				if i < len(values) {
+					val = values[i]
+				} else {
+					val = nil // Not enough values, assign nil
+				}
+				env.Define(name, val, s.Kind)
+			}
+			return v, false, nil
+		}
+		
+		// Single variable assignment (backward compatible)
 		env.Define(s.Name, v, s.Kind)
 		return v, false, nil
 	case *ast.AssignStmt:
