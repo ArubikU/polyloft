@@ -111,11 +111,8 @@ return list.toString()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok {
-		t.Fatalf("Expected string, got %T", result)
-	}
-
+	str := utils.ToString(result)
+	
 	if !strings.Contains(str, "? super Integer") {
 		t.Fatalf("Expected type string to contain '? super Integer', got %s", str)
 	}

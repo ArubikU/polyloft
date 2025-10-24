@@ -267,9 +267,41 @@ func InstallListBuiltin(env *Env) error {
 
 		strs := make([]string, len(*itemsPtr))
 		for i, item := range *itemsPtr {
-			strs[i] = fmt.Sprintf("%v", item)
+			strs[i] = utils.ToString(item)
 		}
-		return CreateStringInstance(callEnv, fmt.Sprintf("List(%s)", strings.Join(strs, ", ")))
+		
+		// Build type string with generic parameters if present
+		typeStr := "List"
+		if len(instance.GenericTypes) > 0 {
+			var typeParams []string
+			for _, gt := range instance.GenericTypes {
+				for _, bound := range gt.Bounds {
+					param := ""
+					// Check if this is a wildcard type (has extends/super)
+					if bound.Variance != "" {
+						// Variance can be "extends" or "super"
+						param = "? " + bound.Variance + " " + bound.Name.Name
+					} else if bound.Name.Name != "" {
+						// Regular type parameter
+						param = bound.Name.Name
+					}
+					if bound.Extends != nil {
+						param += " extends " + bound.Extends.Name
+					}
+					if bound.Implements != nil {
+						param += " implements " + bound.Implements.Name
+					}
+					if param != "" {
+						typeParams = append(typeParams, param)
+					}
+				}
+			}
+			if len(typeParams) > 0 {
+				typeStr = fmt.Sprintf("List<%s>", strings.Join(typeParams, ", "))
+			}
+		}
+		
+		return CreateStringInstance(callEnv, fmt.Sprintf("%s(%s)", typeStr, strings.Join(strs, ", ")))
 	}, []string{})
 
 	// Build and register
