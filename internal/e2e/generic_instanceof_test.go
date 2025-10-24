@@ -10,8 +10,8 @@ import (
 	"github.com/ArubikU/polyloft/internal/parser"
 )
 
-// TestArrayInstanceOfGeneric tests instanceof for arrays with generic types
-func TestArrayInstanceOfGeneric(t *testing.T) {
+// TestArrayInstanceOf tests instanceof for arrays (arrays are not generic, they're type Any)
+func TestArrayInstanceOf(t *testing.T) {
 	tests := []struct {
 		name     string
 		code     string
@@ -26,74 +26,18 @@ func TestArrayInstanceOfGeneric(t *testing.T) {
 			expected: "true",
 		},
 		{
-			name: "Array<Int> - all ints",
-			code: `
-				let arr = [1, 2, 3, 4]
-				println(Sys.instanceof(arr, "Array<Int>"))
-			`,
-			expected: "true",
-		},
-		{
-			name: "Array<Number> - all ints",
-			code: `
-				let arr = [1, 2, 3, 4]
-				println(Sys.instanceof(arr, "Array<Number>"))
-			`,
-			expected: "true",
-		},
-		{
-			name: "Array<Integer> - all ints",
-			code: `
-				let arr = [1, 2, 3, 4]
-				println(Sys.instanceof(arr, "Array<Integer>"))
-			`,
-			expected: "true",
-		},
-		{
-			name: "Array<Float> - should be false for ints",
-			code: `
-				let arr = [1, 2, 3, 4]
-				println(Sys.instanceof(arr, "Array<Float>"))
-			`,
-			expected: "false",
-		},
-		{
-			name: "Array<String | Int> - union type",
-			code: `
-				let arr = [1, 2, 3, 4]
-				println(Sys.instanceof(arr, "Array<String | Int>"))
-			`,
-			expected: "true",
-		},
-		{
-			name: "Array with mixed types - String | Int",
+			name: "Array with mixed types",
 			code: `
 				let arr = ["hello", 1, "world", 2]
-				println(Sys.instanceof(arr, "Array<String | Int>"))
+				println(Sys.instanceof(arr, "Array"))
 			`,
 			expected: "true",
 		},
 		{
-			name: "Array<? extends Number> - wildcard",
+			name: "Empty array",
 			code: `
-				let arr = [1, 2, 3, 4]
-				println(Sys.instanceof(arr, "Array<? extends Number>"))
-			`,
-			expected: "true",
-		},
-		{
-			name: "Array<Float> with floats",
-			code: `
-				let arr = [1.5, 2.5, 3.5]
-				println(Sys.instanceof(arr, "Array<Float>"))
-			`,
-			expected: "true",
-		},
-		{
-			name: "Array<String> with strings",
-			code: `
-				let arr = ["a", "b", "c"]
-				println(Sys.instanceof(arr, "Array<String>"))
+				let arr = []
+				println(Sys.instanceof(arr, "Array"))
 			`,
 			expected: "true",
 		},
@@ -195,6 +139,7 @@ func TestListInstanceOfGeneric(t *testing.T) {
 }
 
 // TestSysTypeWithGenerics tests Sys.type() for generic collections
+// Note: Arrays are not generic (they're type Any), only List/Set/Map have generic types
 func TestSysTypeWithGenerics(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -202,41 +147,9 @@ func TestSysTypeWithGenerics(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "Array of ints shows Array<Int>",
+			name: "Array shows Array (not generic)",
 			code: `
 				let arr = [1, 2, 3, 4]
-				println(Sys.type(arr))
-			`,
-			expected: "Array<Int>",
-		},
-		{
-			name: "Array of floats shows Array<Float>",
-			code: `
-				let arr = [1.5, 2.5, 3.5]
-				println(Sys.type(arr))
-			`,
-			expected: "Array<Float>",
-		},
-		{
-			name: "Array of strings shows Array<String>",
-			code: `
-				let arr = ["a", "b", "c"]
-				println(Sys.type(arr))
-			`,
-			expected: "Array<String>",
-		},
-		{
-			name: "Mixed int/float array shows Array<Number>",
-			code: `
-				let arr = [1, 2.5, 3]
-				println(Sys.type(arr))
-			`,
-			expected: "Array<Number>",
-		},
-		{
-			name: "Empty array shows Array without type parameter",
-			code: `
-				let arr = []
 				println(Sys.type(arr))
 			`,
 			expected: "Array",
@@ -287,36 +200,13 @@ func TestSysTypeWithGenerics(t *testing.T) {
 }
 
 // TestUnionTypesInGenerics tests union types in generic parameters
+// Note: Arrays are not generic, so union tests focus on List/Set/Map
 func TestUnionTypesInGenerics(t *testing.T) {
 	tests := []struct {
 		name     string
 		code     string
 		expected string
 	}{
-		{
-			name: "Array with String | Int union",
-			code: `
-				let arr = ["hello", 1, "world", 2]
-				println(Sys.instanceof(arr, "Array<String | Int>"))
-			`,
-			expected: "true",
-		},
-		{
-			name: "Array with Int | Float union",
-			code: `
-				let arr = [1, 2.5, 3]
-				println(Sys.instanceof(arr, "Array<Int | Float>"))
-			`,
-			expected: "true",
-		},
-		{
-			name: "Array with String | Int | Float union",
-			code: `
-				let arr = ["hello", 1, 2.5]
-				println(Sys.instanceof(arr, "Array<String | Int | Float>"))
-			`,
-			expected: "true",
-		},
 		{
 			name: "List with union type parameter",
 			code: `
@@ -339,44 +229,13 @@ func TestUnionTypesInGenerics(t *testing.T) {
 }
 
 // TestWildcardTypes tests wildcard type parameters
+// Note: Arrays are not generic, so wildcard tests focus on List/Set/Map
 func TestWildcardTypes(t *testing.T) {
 	tests := []struct {
 		name     string
 		code     string
 		expected string
 	}{
-		{
-			name: "Array<? extends Number> with ints",
-			code: `
-				let arr = [1, 2, 3]
-				println(Sys.instanceof(arr, "Array<? extends Number>"))
-			`,
-			expected: "true",
-		},
-		{
-			name: "Array<? extends Number> with floats",
-			code: `
-				let arr = [1.5, 2.5, 3.5]
-				println(Sys.instanceof(arr, "Array<? extends Number>"))
-			`,
-			expected: "true",
-		},
-		{
-			name: "Array<? extends Number> with mixed numbers",
-			code: `
-				let arr = [1, 2.5, 3]
-				println(Sys.instanceof(arr, "Array<? extends Number>"))
-			`,
-			expected: "true",
-		},
-		{
-			name: "Array<?> unbounded wildcard",
-			code: `
-				let arr = ["hello", 1, true]
-				println(Sys.instanceof(arr, "Array<?>"))
-			`,
-			expected: "true",
-		},
 		{
 			name: "List<? extends Number>",
 			code: `
