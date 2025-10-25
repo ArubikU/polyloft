@@ -65,7 +65,6 @@ enum Planet
 	end
 
 	def weight(mass: Float):
-		println("Weight",this.gravity * mass)
 		return mass * this.gravity
 	end
 end

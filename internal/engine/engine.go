@@ -1997,7 +1997,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			stringType := common.BuiltinTypeString.GetClassDefinition(env)
 			intType := common.BuiltinTypeInt.GetClassDefinition(env)
 
-			if aClass.ParentClass.IsSubclassOf(intType) && bClass.ParentClass.IsSubclassOf(floatType) {
+			if aClass.ParentClass.IsSubclassOf(stringType) && bClass.ParentClass.IsSubclassOf(intType) {
 				count, ok := utils.AsInt(b)
 				if !ok {
 					return nil, typeError("int", b)
