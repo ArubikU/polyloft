@@ -2560,6 +2560,41 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 		}
 	}
 
+	// Validate generic type constraints if this is a generic class
+	if classConst, ok := constructor.(*common.ClassConstructor); ok {
+		if classConst.Definition != nil && len(classConst.Definition.TypeParams) > 0 {
+			// Check that the number of type arguments matches the number of type parameters
+			if len(gtypes) != len(classConst.Definition.TypeParams) {
+				return nil, ThrowRuntimeError(env, fmt.Sprintf("class %s expects %d type arguments, got %d", 
+					classConst.Definition.Name, len(classConst.Definition.TypeParams), len(gtypes)))
+			}
+
+			// Validate each type argument against its constraint
+			for i, typeParam := range classConst.Definition.TypeParams {
+				if len(typeParam.Bounds) > 0 {
+					bound := typeParam.Bounds[0]
+					// Check if the bound has an "extends" constraint
+					if bound.Extends != nil {
+						// Get the provided type argument name
+						providedTypeName := gtypes[i].Bounds[0].Name.Name
+						
+						// Resolve the provided type to a ClassDefinition
+						providedTypeDef, err := resolveTypeToClassDef(env, providedTypeName)
+						if err != nil {
+							return nil, ThrowRuntimeError(env, fmt.Sprintf("cannot resolve type %s: %v", providedTypeName, err))
+						}
+						
+						// Check if providedTypeDef is a subclass of the extends constraint
+						if providedTypeDef != nil && !providedTypeDef.IsSubclassOf(bound.Extends) {
+							return nil, ThrowRuntimeError(env, fmt.Sprintf("type %s does not satisfy constraint: must extends %s", 
+								providedTypeName, bound.Extends.Name))
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Evaluate and add constructor arguments (only actual arguments, not type parameters)
 	var allArgs []any
 	for _, arg := range expr.Args {
@@ -2586,6 +2621,27 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 	}
 
 	return nil, ThrowNotCallableError(env, fmt.Sprintf("%T", constructor), utils.ToString(constructor))
+}
+
+// resolveTypeToClassDef resolves a type name to its ClassDefinition
+func resolveTypeToClassDef(env *common.Env, typeName string) (*ClassDefinition, error) {
+	// Try to get the type from the environment
+	typeVal, ok := env.Get(typeName)
+	if !ok {
+		return nil, fmt.Errorf("type %s not found", typeName)
+	}
+
+	// Check if it's a ClassConstructor
+	if classConst, ok := typeVal.(*common.ClassConstructor); ok {
+		return classConst.Definition, nil
+	}
+
+	// Check if it's a ClassDefinition directly
+	if classDef, ok := typeVal.(*ClassDefinition); ok {
+		return classDef, nil
+	}
+
+	return nil, fmt.Errorf("type %s is not a class", typeName)
 }
 
 // evaluateInterpolationExpr evaluates a simple interpolation expression
