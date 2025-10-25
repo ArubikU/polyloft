@@ -3,6 +3,8 @@ package e2e
 import (
 	"strings"
 	"testing"
+
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // Tests for variance error handling (in/out)
@@ -92,8 +94,8 @@ return producer.get()
 		t.Fatalf("Unexpected error for covariant type parameter in return position: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "hello" {
+	str := utils.ToString(result)
+	if str != "hello" {
 		t.Fatalf("Expected 'hello', got %v", result)
 	}
 }
@@ -127,7 +129,7 @@ return consumer.getValue()
 		t.Fatalf("Unexpected error for contravariant type parameter in parameter position: %v", err)
 	}
 
-	val, ok := result.(int)
+	val, ok := utils.AsInt(result)
 	if !ok || val != 42 {
 		t.Fatalf("Expected 42, got %v", result)
 	}
@@ -163,8 +165,8 @@ return box.get()
 		t.Fatalf("Unexpected error for invariant type parameter: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "world" {
+	str := utils.ToString(result)
+	if str != "world" {
 		t.Fatalf("Expected 'world', got %v", result)
 	}
 }
@@ -249,8 +251,8 @@ return sound
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "Woof!" {
+	str := utils.ToString(result)
+	if str != "Woof!" {
 		t.Fatalf("Expected 'Woof!', got %v", result)
 	}
 }
