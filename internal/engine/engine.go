@@ -550,12 +550,12 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 		if err != nil {
 			return nil, false, err
 		}
-		
+
 		// Handle destructuring if multiple names are present
 		if len(s.Names) > 1 {
 			// Try to destructure the value
 			var values []any
-			
+
 			// Check if value is a plain Go array first
 			if arr, ok := v.([]any); ok {
 				values = arr
@@ -579,7 +579,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 							}
 						}
 					}
-					
+
 					if implementsUnstructured {
 						// Use __pieces() and __getPiece(i) methods
 						piecesMethod, ok := instance.Methods["__pieces"]
@@ -598,7 +598,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 						if !ok {
 							return nil, false, fmt.Errorf("__pieces() must return an integer")
 						}
-						
+
 						getPieceMethod, ok := instance.Methods["__getPiece"]
 						if !ok {
 							return nil, false, fmt.Errorf("Unstructured object missing __getPiece() method")
@@ -607,7 +607,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 						if !ok {
 							return nil, false, fmt.Errorf("__getPiece is not a function")
 						}
-						
+
 						values = make([]any, numPieces)
 						for i := 0; i < numPieces; i++ {
 							piece, err := getPieceFunc(env, []any{i})
@@ -625,7 +625,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 				// Can't destructure non-array, non-Unstructured value
 				return nil, false, fmt.Errorf("cannot destructure value of type %T", v)
 			}
-			
+
 			// Assign values to variables
 			for i, name := range s.Names {
 				var val any
@@ -638,7 +638,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 			}
 			return v, false, nil
 		}
-		
+
 		// Single variable assignment (backward compatible)
 		env.Define(s.Name, v, s.Kind)
 		return v, false, nil
@@ -889,12 +889,12 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 		if typeAliasRegistry[packageName] == nil {
 			typeAliasRegistry[packageName] = make(map[string]*TypeAlias)
 		}
-		
+
 		// Check if alias already exists
 		if _, exists := typeAliasRegistry[packageName][s.Name]; exists {
 			return nil, false, ThrowRuntimeError(env, fmt.Sprintf("type alias '%s' already defined in package '%s'", s.Name, packageName))
 		}
-		
+
 		// Create and register the alias
 		alias := &TypeAlias{
 			Name:        s.Name,
@@ -903,7 +903,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 			PackageName: packageName,
 		}
 		typeAliasRegistry[packageName][s.Name] = alias
-		
+
 		return nil, false, nil
 	case *ast.InterfaceDecl:
 		_, err := evalInterfaceDecl(env, s)
@@ -1992,7 +1992,12 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			if !ok || !ok2 {
 				return nil, typeError("ClassInstance", a, b)
 			}
-			if aClass.ParentClass == common.BuiltinTypeString.GetClassDefinition(env) && bClass.ParentClass == common.BuiltinTypeInt.GetClassDefinition(env) {
+
+			floatType := common.BuiltinTypeFloat.GetClassDefinition(env)
+			stringType := common.BuiltinTypeString.GetClassDefinition(env)
+			intType := common.BuiltinTypeInt.GetClassDefinition(env)
+
+			if aClass.ParentClass.IsSubclassOf(intType) && bClass.ParentClass.IsSubclassOf(floatType) {
 				count, ok := utils.AsInt(b)
 				if !ok {
 					return nil, typeError("int", b)
@@ -2000,7 +2005,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				originalStr := utils.ToString(a)
 				return CreateStringInstance(env, strings.Repeat(originalStr, count))
 			}
-			if bClass.ParentClass == common.BuiltinTypeString.GetClassDefinition(env) && aClass.ParentClass == common.BuiltinTypeInt.GetClassDefinition(env) {
+			if bClass.ParentClass.IsSubclassOf(stringType) && aClass.ParentClass.IsSubclassOf(intType) {
 				count, ok := utils.AsInt(a)
 				if !ok {
 					return nil, typeError("int", a)
@@ -2009,7 +2014,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				return CreateStringInstance(env, strings.Repeat(originalStr, count))
 			}
 			//check if any of the 2 are float
-			if bClass.ParentClass == common.BuiltinTypeFloat.GetClassDefinition(env) || aClass.ParentClass == common.BuiltinTypeFloat.GetClassDefinition(env) {
+			if bClass.ParentClass.IsSubclassOf(floatType) || aClass.ParentClass.IsSubclassOf(floatType) {
 				fa, oka := utils.AsFloat(a)
 				fb, okb := utils.AsFloat(b)
 				if !oka || !okb {
@@ -2017,6 +2022,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				}
 				return CreateFloatInstance(env, fa*fb)
 			}
+
 			ia, oka := utils.AsInt(a)
 			ib, okb := utils.AsInt(b)
 			if !oka || !okb {
@@ -2138,7 +2144,6 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 		}
 		return fn(env, args)
 	case *ast.GenericCallExpr:
-		// Handle generic type constructor: List<Int>(), Map<String, Int>(), etc.
 		return evalGenericCallExpr(env, x)
 	case *ast.InstanceOfExpr:
 		return evalInstanceOfExpr(env, x)
@@ -2151,7 +2156,6 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 	case *ast.ChannelExpr:
 		return evalChannelExpr(env, x)
 	case *ast.RangeExpr:
-		// Evaluate range expression to create a Range instance
 		startVal, err := evalExpr(env, x.Start)
 		if err != nil {
 			return nil, err
@@ -2530,24 +2534,24 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 			if len(tp.Bounds) > 0 {
 				boundTypeName = tp.Bounds[0]
 			}
-			
+
 			bound := common.GenericBound{
 				Name:       ast.Type{Name: boundTypeName},
-				Variance:   tp.WildcardKind,  // "extends", "super", or "unbounded"
+				Variance:   tp.WildcardKind, // "extends", "super", or "unbounded"
 				IsVariadic: tp.IsVariadic,
 			}
-			
+
 			gtypes = append(gtypes, GenericType{
 				Bounds: []common.GenericBound{bound},
 			})
 		} else {
 			// Regular type parameter without variance
 			// Don't add to allArgs - type parameters are NOT constructor arguments
-			
+
 			// Create a GenericType for regular type parameters
 			bound := common.GenericBound{
 				Name:       ast.Type{Name: tp.Name},
-				Variance:   tp.Variance,  // This will be "" for non-wildcard types
+				Variance:   tp.Variance, // This will be "" for non-wildcard types
 				IsVariadic: tp.IsVariadic,
 			}
 			gtypes = append(gtypes, GenericType{

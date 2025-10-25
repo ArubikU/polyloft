@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -77,10 +78,11 @@ end
 
 let notAnimal = NotAnAnimal()
 let container = AnimalContainer<NotAnAnimal>(notAnimal)
-return "Should not reach here"
+return Sys.type(container)
 `
-	_, err := runCode(code)
+	backward, err := runCode(code)
 	if err == nil {
+		fmt.Println(backward)
 		t.Fatal("Expected error for constraint violation, got nil")
 	}
 

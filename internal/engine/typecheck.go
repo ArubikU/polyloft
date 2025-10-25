@@ -71,24 +71,28 @@ func GetTypeName(val any) string {
 						gTypeArg := ""
 						for _, bound := range gt.Bounds {
 							// Use the first bound's name for type argument
-							typeArg := ""
+							param := ""
+							// Check if this is a wildcard type (has extends/super)
 							if bound.Variance != "" {
-								typeArg += bound.Variance + " "
+								// Variance can be "extends" or "super"
+								param = "? " + bound.Variance + " " + bound.Name.Name
+							} else if bound.Name.Name != "" {
+								// Regular type parameter
+								param = bound.Name.Name
 							}
-							typeArg += bound.Name.Name
 							if bound.Extends != nil {
-								typeArg += " extends " + bound.Extends.Name
+								param += " extends " + bound.Extends.Name
 							}
 							if bound.Implements != nil {
-								typeArg += " implements " + bound.Implements.Name
+								param += " implements " + bound.Implements.Name
 							}
 							if bound.IsVariadic {
-								typeArg += "..."
+								param += "..."
 							}
 							if gTypeArg == "" {
-								gTypeArg = typeArg
+								gTypeArg = param
 							} else {
-								gTypeArg += " | " + typeArg
+								gTypeArg += " | " + param
 							}
 						}
 						typeArgs = append(typeArgs, gTypeArg)
@@ -171,7 +175,7 @@ func IsInstanceOf(value any, typeName string) bool {
 	if resolvedType := resolveTypeAlias(typeName); resolvedType != typeName {
 		return IsInstanceOf(value, resolvedType)
 	}
-	
+
 	// Parse the type name to check for generic parameters
 	if strings.Contains(typeName, "<") && strings.Contains(typeName, ">") {
 		return isInstanceOfGenericType(value, typeName)
@@ -286,7 +290,7 @@ func isInstanceOfGenericType(value any, typeName string) bool {
 				return areTypeArgsCompatible(typeArgs, typeParams)
 			}
 		}
-		
+
 		// Fallback: check __type_args__ field (for backward compatibility)
 		if typeArgs, ok := v.Fields["__type_args__"].([]string); ok {
 			// If stored type is Any, fall through to check elements directly
