@@ -1367,8 +1367,8 @@ done_method_modifiers:
 		returnType = p.curr().Lit
 		p.next()
 	} else {
-		// If no return type specified, default to Void for methods without return
-		returnType = "Void"
+		// If no return type specified, default to Any (allowing any return value)
+		returnType = "Any"
 	}
 
 	var body []ast.Stmt

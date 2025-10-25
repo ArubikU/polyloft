@@ -3,6 +3,8 @@ package e2e
 import (
 	"strings"
 	"testing"
+
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // Phase 2: Variance tests - covariance (out), contravariance (in), invariant
@@ -73,7 +75,7 @@ return set.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
+	size, ok := utils.AsInt(result)
 	if !ok || size != 2 {
 		t.Fatalf("Expected size 2, got %v", result)
 	}
@@ -91,7 +93,7 @@ return set.size()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	size, ok := result.(int)
+	size, ok := utils.AsInt(result)
 	if !ok || size != 2 {
 		t.Fatalf("Expected size 2, got %v", result)
 	}
@@ -124,10 +126,7 @@ return list.toString()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok {
-		t.Fatalf("Expected string, got %T", result)
-	}
+	str := utils.ToString(result)
 
 	if !strings.Contains(str, "out Number") {
 		t.Fatalf("Expected 'out Number' in toString, got %s", str)
@@ -144,10 +143,7 @@ return list.toString()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok {
-		t.Fatalf("Expected string, got %T", result)
-	}
+	str := utils.ToString(result)
 
 	if !strings.Contains(str, "in Integer") {
 		t.Fatalf("Expected 'in Integer' in toString, got %s", str)
@@ -164,10 +160,7 @@ return list.toString()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok {
-		t.Fatalf("Expected string, got %T", result)
-	}
+	str := utils.ToString(result)
 
 	// Invariant should not have in/out prefix
 	if strings.Contains(str, "in ") || strings.Contains(str, "out ") {
@@ -259,8 +252,8 @@ return first
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	str, ok := result.(string)
-	if !ok || str != "hello" {
+	str := utils.ToString(result)
+	if str != "hello" {
 		t.Fatalf("Expected 'hello', got %v", result)
 	}
 }

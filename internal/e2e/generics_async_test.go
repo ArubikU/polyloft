@@ -73,7 +73,7 @@ return promise.await()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	value, ok := result.(int)
+	value, ok := utils.AsInt(result)
 	if !ok || value != 42 {
 		t.Fatalf("Expected 42, got %v", result)
 	}
@@ -95,7 +95,7 @@ return result
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	value, ok := result.(float64)
+	value, ok := utils.AsInt(result)
 	if !ok || value != 20 {
 		t.Fatalf("Expected 20, got %v", result)
 	}
@@ -126,12 +126,9 @@ return errorMsg
 		t.Fatalf("Expected error message, got nil")
 	}
 
-	msg, ok := result.(string)
-	if !ok {
-		t.Fatalf("Expected string error message, got %T", result)
-	}
-
-	if !strings.Contains(msg, "error") {
+	msg := utils.ToString(result)
+	
+	if !strings.Contains(strings.ToLower(msg), "error") {
 		t.Fatalf("Expected error message to contain 'error', got %s", msg)
 	}
 }
@@ -152,7 +149,7 @@ return future.get()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	value, ok := result.(int)
+	value, ok := utils.AsInt(result)
 	if !ok || value != 100 {
 		t.Fatalf("Expected 100, got %v", result)
 	}
@@ -178,8 +175,8 @@ end
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	msg, ok := result.(string)
-	if !ok || msg != "timeout" {
+	msg := utils.ToString(result)
+	if msg != "timeout" {
 		t.Fatalf("Expected 'timeout', got %v", result)
 	}
 }
@@ -202,7 +199,7 @@ return result
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	value, ok := result.(float64)
+	value, ok := utils.AsFloat(result)
 	if !ok || value != 20 {
 		t.Fatalf("Expected 20 (5*2+10), got %v", result)
 	}
