@@ -8,7 +8,7 @@
 
 Fix in engine.go 1983 ast.OpMul, aparently the weight and mult value are detected as int instead of float, need to ensure the type is float when multiplying with float.
 maybe its the fault of the way that the value is instantiated in the first place,
-because it should work as its codede
+because it should work as its coded.
 
 ## TestGenericConstraint_ViolationAtCreation and others
 AnimalContainer<NotAnAnimal>
@@ -27,7 +27,7 @@ AnimalContainer<NotAnAnimal>
 When creating a generic with constraints, example class AnimalContainer<T extends Animal>, and laster AnimalContainer<NotAnAnimal>, the engine should check if NotAnAnimal is subclass of Animal, and throw an error if not.
 
 The others are based on the same principle, when instantiating a generic type with specific type parameters, the engine should check if the provided type parameters satisfy the constraints defined in the generic type. or when a function with generic type parameters is called, the engine should check if the provided arguments match the expected types based on the generic constraints of the class instance.
-
+use ast.Type and GenericBound of ClassDef and ClassInstance when building
 
 ### TestGenerics and others
 
