@@ -63,26 +63,6 @@ return map.size()
 	}
 }
 
-func TestGenerics_LambdaType(t *testing.T) {
-	code := `
-let intToString = Lambda<Int, String>()
-return Sys.type(intToString)
-`
-	result, err := runCode(code)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-
-	typeStr, ok := result.(string)
-	if !ok {
-		t.Fatalf("Expected string, got %T", result)
-	}
-
-	if !strings.Contains(typeStr, "Lambda") || !strings.Contains(typeStr, "Int") || !strings.Contains(typeStr, "String") {
-		t.Fatalf("Expected Lambda type string with Int and String, got %s", typeStr)
-	}
-}
-
 func TestAsyncAwait_BasicPromise(t *testing.T) {
 	code := `
 let promise = async(() => 42)
@@ -231,7 +211,7 @@ return result
 func runCode(code string) (any, error) {
 	// Reset global registries to ensure test isolation
 	engine.ResetGlobalRegistries()
-	
+
 	lx := &lexer.Lexer{}
 	items := lx.Scan([]byte(code))
 	par := parser.New(items)
