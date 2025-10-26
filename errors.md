@@ -5,10 +5,16 @@
         want "GREEN 1\n2 5 7 Point true\n3.71 37.1"
          got "GREEN 1\n2 5 7 Point true\n3.71 30"
 
-**Status**: UNFIXED - Pre-existing test isolation issue
-- Test passes when run alone but fails when run after TestEval_Basics
-- Appears to be related to global state contamination between tests
-- Root cause still under investigation (may be related to ast.OpMul at ~line 2012 in engine.go)
+**Status**: ✅ FIXED
+- **Root Cause**: Test isolation issue caused by stale builtin class definition pointers. When ResetGlobalRegistries() 
+  was called, new class definitions were created but the cached ClassDef pointers in Builtin structs were not cleared. 
+  This caused IsSubclassOf() checks to fail when comparing class instances created before and after the reset.
+- **Fix**: 
+  - Added ClearBuiltinClassCache() function in common/types.go to clear cached ClassDef and InterfaceDef pointers
+  - Modified ResetGlobalRegistries() in engine/class.go to call ClearBuiltinClassCache()
+  - Added ResetGlobalRegistries() calls to TestEval_Basics and TestEval_EnumAndRecord for proper test isolation
+  - Enhanced AsFloat() in utils/conversions.go to handle int values stored in Float ClassInstances
+- Result: Multiplication now correctly identifies Float types and computes 10.0 * 3.71 = 37.1
 
 ## TestGenericConstraint_ViolationAtCreation and others
 --- FAIL: TestGenericTypeChecking (0.00s)

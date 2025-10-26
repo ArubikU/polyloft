@@ -410,6 +410,30 @@ var (
 	BuiltinInterfaceUnstructured = Builtin{Name: "__UnstructuredInterface__", IsInterface: true}
 )
 
+// ClearBuiltinClassCache clears the cached ClassDef pointers in all builtin types
+// This should be called when ResetGlobalRegistries is called to avoid stale pointer references
+func ClearBuiltinClassCache() {
+	BuiltinTypeBool.ClassDef = nil
+	BuiltinTypeInt.ClassDef = nil
+	BuiltinTypeString.ClassDef = nil
+	BuiltinTypeMap.ClassDef = nil
+	BuiltinTypeFloat.ClassDef = nil
+	BuiltinTypeNumber.ClassDef = nil
+	BuiltinTypeArray.ClassDef = nil
+	BuiltinTypeGeneric.ClassDef = nil
+	BuiltinTypeRange.ClassDef = nil
+	BuiltinTypeList.ClassDef = nil
+	BuiltinTypeSet.ClassDef = nil
+	BuiltinTypeDeque.ClassDef = nil
+	BuiltinTypePair.ClassDef = nil
+	BuiltinTypeTuple.ClassDef = nil
+	BuiltinInterfaceIterable.InterfaceDef = nil
+	BuiltinInterfaceCollection.InterfaceDef = nil
+	BuiltinSliceableInterface.InterfaceDef = nil
+	BuiltinIndexableInterface.InterfaceDef = nil
+	BuiltinInterfaceUnstructured.InterfaceDef = nil
+}
+
 func (bt *Builtin) GetClassDefinition(env *Env) *ClassDefinition {
 	if bt.ClassDef != nil {
 		return bt.ClassDef
