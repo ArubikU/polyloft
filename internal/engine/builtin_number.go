@@ -126,7 +126,7 @@ func installIntClass(env *Env) error {
 		// Get int value from argument
 		intVal, ok := utils.AsInt(args[0])
 		if !ok {
-			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
+			return nil, ThrowTypeError((*Env)(callEnv), "Integer", args[0])
 		}
 		instance.Fields["_value"] = intVal
 		return nil, nil
@@ -237,7 +237,7 @@ func installFloatClass(env *Env) error {
 		// Get float value from argument
 		floatVal, ok := utils.AsFloat(args[0])
 		if !ok {
-			return nil, ThrowTypeError((*Env)(callEnv), "float", args[0])
+			return nil, ThrowTypeError((*Env)(callEnv), "Float", args[0])
 		}
 		instance.Fields["_value"] = floatVal
 		return nil, nil
