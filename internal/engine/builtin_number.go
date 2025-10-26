@@ -7,6 +7,7 @@ import (
 
 	"github.com/ArubikU/polyloft/internal/ast"
 	"github.com/ArubikU/polyloft/internal/common"
+	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // InstallNumberBuiltin installs Int and Float builtin types as classes
@@ -108,6 +109,29 @@ func installIntClass(env *Env) error {
 		return CreateStringInstance((*Env)(callEnv), strconv.Itoa(num))
 	}, []string{})
 
+	// Constructor: Integer() - no args, initialize to 0
+	intClass.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		instance.Fields["_value"] = 0
+		return nil, nil
+	})
+
+	// Constructor: Integer(value: int)
+	intClass.AddBuiltinConstructor([]ast.Parameter{
+		{Name: "value", Type: &ast.Type{Name: "int", IsBuiltin: true}},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		// Get int value from argument
+		intVal, ok := utils.AsInt(args[0])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
+		}
+		instance.Fields["_value"] = intVal
+		return nil, nil
+	})
+
 	// Build the class
 	_, err := intClass.Build(env)
 	return err
@@ -195,6 +219,29 @@ func installFloatClass(env *Env) error {
 		num := instance.Fields["_value"].(float64)
 		return CreateStringInstance((*Env)(callEnv), strconv.FormatFloat(num, 'f', -1, 64))
 	}, []string{})
+
+	// Constructor: Float() - no args, initialize to 0.0
+	floatClass.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		instance.Fields["_value"] = 0.0
+		return nil, nil
+	})
+
+	// Constructor: Float(value: float)
+	floatClass.AddBuiltinConstructor([]ast.Parameter{
+		{Name: "value", Type: &ast.Type{Name: "float", IsBuiltin: true}},
+	}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.Get("this")
+		instance := thisVal.(*ClassInstance)
+		// Get float value from argument
+		floatVal, ok := utils.AsFloat(args[0])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(callEnv), "float", args[0])
+		}
+		instance.Fields["_value"] = floatVal
+		return nil, nil
+	})
 
 	// Build the class
 	_, err := floatClass.Build(env)
