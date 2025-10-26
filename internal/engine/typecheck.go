@@ -28,16 +28,16 @@ func GetTypeName(val any) string {
 		}
 		return fmt.Sprintf("Enum %s@%s", v.Definition.Name, pkg)
 	case *common.ClassInstance:
-		// Return lowercase for primitive wrapper classes to match type system
+		// Return canonical class name for wrapper classes
 		switch v.ClassName {
 		case "String":
-			return "string"
-		case "Int":
-			return "int"
+			return "String"
+		case "Integer", "Int":
+			return "Integer"
 		case "Float":
-			return "float"
+			return "Float"
 		case "Bool":
-			return "bool"
+			return "Bool"
 		default:
 			var typeArgs []string
 			typeArgsGeneric := v.GenericTypes
@@ -145,6 +145,8 @@ func GetTypeName(val any) string {
 			return v.Definition.Name
 		}
 		return "record"
+	case *common.InterfaceDefinition:
+		return fmt.Sprintf("Interface %s@%s", v.Name, v.PackageName)
 	case int, int32, int64, float32, float64, string, bool, []any, map[string]any:
 		// Native Go types should be wrapped in Generic builtin
 		return "Generic"
