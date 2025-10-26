@@ -65,7 +65,7 @@ return consumer.getValue()
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	val, ok := result.(int)
+	val, ok := utils.AsInt(result)
 	if !ok || val != 100 {
 		t.Fatalf("Expected 100, got %v", result)
 	}

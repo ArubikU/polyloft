@@ -197,9 +197,20 @@ func evalClassDecl(env *Env, s *ast.ClassDecl) (any, error) {
 			IsVariadic: tp.IsVariadic,
 		}
 		
-		// Note: Extends and Implements will be resolved later after all types are loaded
-		// For now, we just store the bounds as strings in the Name field
-		// This will need proper resolution in a second pass
+		// If there are bounds (extends constraints), resolve them now
+		// tp.Bounds contains the names of the types that this type parameter extends
+		if len(tp.Bounds) > 0 {
+			// For now, we'll try to resolve the first bound (the extends constraint)
+			extendsName := tp.Bounds[0]
+			if extVal, ok := env.Get(extendsName); ok {
+				if classConst, ok := extVal.(*common.ClassConstructor); ok {
+					bound.Extends = classConst.Definition
+				} else if classDef, ok := extVal.(*ClassDefinition); ok {
+					bound.Extends = classDef
+				}
+			}
+		}
+		
 		bounds = append(bounds, bound)
 		
 		typeParams = append(typeParams, common.GenericType{

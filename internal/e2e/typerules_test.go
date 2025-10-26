@@ -344,8 +344,14 @@ return [intBox.getValue(), floatBox.getValue()]
 		t.Fatalf("Expected array of 2 elements, got: %v", result)
 	}
 	
-	intVal, _ := utils.AsInt(arr[0])
-	floatVal, _ := utils.AsFloat(arr[1])
+	intVal, ok := utils.AsInt(arr[0])
+	if !ok {
+		t.Fatalf("Failed to extract int from arr[0]: %v (type: %T)", arr[0], arr[0])
+	}
+	floatVal, ok := utils.AsFloat(arr[1])
+	if !ok {
+		t.Fatalf("Failed to extract float from arr[1]: %v (type: %T)", arr[1], arr[1])
+	}
 	
 	if intVal != 200 {
 		t.Errorf("Expected 200, got: %d", intVal)
