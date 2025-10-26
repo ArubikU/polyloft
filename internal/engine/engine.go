@@ -2582,15 +2582,36 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 	var gtypes []GenericType
 	for _, tp := range expr.TypeParams {
 		if tp.IsWildcard {
-			var boundTypeName string
-			if len(tp.Bounds) > 0 {
-				boundTypeName = tp.Bounds[0]
+			// For wildcards, Name should be "?" and bounds should be resolved
+			bound := common.GenericBound{
+				Name:       ast.Type{Name: "?"},
+				Variance:   tp.WildcardKind, // "extends", "super", or "unbounded"
+				IsVariadic: tp.IsVariadic,
 			}
 
-			bound := common.GenericBound{
-				Name:       ast.Type{Name: boundTypeName},
-				Variance:   tp.Variance, // "extends", "super", or "unbounded"
-				IsVariadic: tp.IsVariadic,
+			// Resolve the bound type to ClassDefinition if present
+			if len(tp.Bounds) > 0 && tp.Bounds[0] != "" {
+				boundTypeName := tp.Bounds[0]
+				
+				// Try to resolve the bound type
+				if boundTypeVal, ok := env.Get(boundTypeName); ok {
+					if classConst, ok := boundTypeVal.(*common.ClassConstructor); ok {
+						if tp.WildcardKind == "extends" || tp.WildcardKind == "super" {
+							bound.Extends = classConst.Definition
+						}
+					} else if classDef, ok := boundTypeVal.(*ClassDefinition); ok {
+						if tp.WildcardKind == "extends" || tp.WildcardKind == "super" {
+							bound.Extends = classDef
+						}
+					}
+				} else {
+					// If we can't resolve the type, create a placeholder ClassDefinition
+					// This allows us to display the bound type name even if it doesn't exist yet
+					bound.Extends = &ClassDefinition{
+						Name: boundTypeName,
+						Type: &ast.Type{Name: boundTypeName},
+					}
+				}
 			}
 
 			gtypes = append(gtypes, GenericType{

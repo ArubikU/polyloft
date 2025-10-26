@@ -72,23 +72,43 @@ func GetTypeName(val any) string {
 						for _, bound := range gt.Bounds {
 							// Use the first bound's name for type argument
 							param := ""
-							// Check if this is a wildcard type (has extends/super)
-							if bound.Variance != "" {
-								// Variance can be "extends" or "super"
-								param = bound.Variance + " " + bound.Name.Name
-							} else if bound.Name.Name != "" {
-								// Regular type parameter
-								param = bound.Name.Name
+							
+							// Check if this is a wildcard type (Name is "?")
+							if bound.Name.Name == "?" {
+								// This is a wildcard
+								param = "?"
+								
+								// Add bound constraint if present
+								if bound.Extends != nil {
+									if bound.Variance == "extends" {
+										param += " extends " + bound.Extends.Name
+									} else if bound.Variance == "super" {
+										param += " super " + bound.Extends.Name
+									}
+								} else if bound.Implements != nil {
+									param += " implements " + bound.Implements.Name
+								}
 							} else {
-								param = "Any"
+								// Regular type parameter or variance-annotated type
+								if bound.Variance != "" && bound.Variance != "extends" && bound.Variance != "super" && bound.Variance != "unbounded" {
+									// Variance annotation (in/out)
+									param = bound.Variance + " " + bound.Name.Name
+								} else if bound.Name.Name != "" {
+									// Regular type parameter
+									param = bound.Name.Name
+								} else {
+									param = "Any"
+								}
+								
+								// Add extends/implements for non-wildcard types
+								if bound.Extends != nil && bound.Variance != "extends" {
+									param += " extends " + bound.Extends.Name
+								}
+								if bound.Implements != nil {
+									param += " implements " + bound.Implements.Name
+								}
 							}
-							if bound.Extends != nil {
-								fmt.Println(bound.Extends.Aliases)
-								param += " extends " + bound.Extends.Name
-							}
-							if bound.Implements != nil {
-								param += " implements " + bound.Implements.Name
-							}
+							
 							if bound.IsVariadic {
 								param += "..."
 							}
