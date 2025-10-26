@@ -82,10 +82,15 @@ func GetTypeName(val any) string {
 								// Add bound constraint if present
 								// For wildcards, Variance contains the wildcard kind
 								if bound.Extends != nil {
+									// Use Type.Name if available to preserve original alias name (e.g., "Number" instead of "Int")
+									boundName := bound.Extends.Name
+									if bound.Extends.Type != nil && bound.Extends.Type.Name != "" {
+										boundName = bound.Extends.Type.Name
+									}
 									if bound.Variance == "extends" {
-										param += " extends " + bound.Extends.Name
+										param += " extends " + boundName
 									} else if bound.Variance == "super" {
-										param += " super " + bound.Extends.Name
+										param += " super " + boundName
 									}
 								} else if bound.Implements != nil {
 									param += " implements " + bound.Implements.Name

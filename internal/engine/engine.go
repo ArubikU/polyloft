@@ -2596,18 +2596,52 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 			if len(tp.Bounds) > 0 && tp.Bounds[0] != "" {
 				boundTypeName := tp.Bounds[0]
 				
-				// Try to resolve the bound type
+				// Try to resolve the bound type for type checking
+				resolved := false
 				if boundTypeVal, ok := env.Get(boundTypeName); ok {
 					if classConst, ok := boundTypeVal.(*common.ClassConstructor); ok {
 						if tp.WildcardKind == "extends" || tp.WildcardKind == "super" {
+							// Use the resolved ClassDefinition for type checking
 							bound.Extends = classConst.Definition
+							// But override the Type to preserve the original name for display
+							bound.Extends = &ClassDefinition{
+								Name:        classConst.Definition.Name,
+								Type:        &ast.Type{Name: boundTypeName}, // Preserve original name
+								Parent:      classConst.Definition.Parent,
+								Implements:  classConst.Definition.Implements,
+								IsAbstract:  classConst.Definition.IsAbstract,
+								AccessLevel: classConst.Definition.AccessLevel,
+								IsSealed:    classConst.Definition.IsSealed,
+								Fields:      classConst.Definition.Fields,
+								Methods:     classConst.Definition.Methods,
+								TypeParams:  classConst.Definition.TypeParams,
+								IsGeneric:   classConst.Definition.IsGeneric,
+								Aliases:     classConst.Definition.Aliases,
+							}
+							resolved = true
 						}
 					} else if classDef, ok := boundTypeVal.(*ClassDefinition); ok {
 						if tp.WildcardKind == "extends" || tp.WildcardKind == "super" {
-							bound.Extends = classDef
+							bound.Extends = &ClassDefinition{
+								Name:        classDef.Name,
+								Type:        &ast.Type{Name: boundTypeName}, // Preserve original name
+								Parent:      classDef.Parent,
+								Implements:  classDef.Implements,
+								IsAbstract:  classDef.IsAbstract,
+								AccessLevel: classDef.AccessLevel,
+								IsSealed:    classDef.IsSealed,
+								Fields:      classDef.Fields,
+								Methods:     classDef.Methods,
+								TypeParams:  classDef.TypeParams,
+								IsGeneric:   classDef.IsGeneric,
+								Aliases:     classDef.Aliases,
+							}
+							resolved = true
 						}
 					}
-				} else {
+				}
+				
+				if !resolved {
 					// If we can't resolve the type, create a placeholder ClassDefinition
 					// This allows us to display the bound type name even if it doesn't exist yet
 					bound.Extends = &ClassDefinition{

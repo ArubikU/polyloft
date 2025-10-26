@@ -26,6 +26,7 @@ func InstallNumberBuiltin(env *Env) error {
 // installIntClass installs the Int builtin type as a class
 func installIntClass(env *Env) error {
 	intClass := NewClassBuilder("Int").
+		AddAlias("Integer").
 		AddField("_value", &ast.Type{Name: "int", IsBuiltin: true}, []string{"private"})
 
 	// utils.ToString() -> String
