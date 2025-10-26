@@ -86,7 +86,7 @@ func bindParametersWithVariadic(env *common.Env, params []ast.Parameter, args []
 			
 			// Also check GenericTypes field (new path for GenericCallExpr)
 			// Only process if the class has type parameters defined
-			if len(classInst.GenericTypes) > 0 && classInst.ParentClass != nil && len(classInst.ParentClass.TypeParams) > 0 {
+			if shouldExtractVarianceFromGenericTypes(classInst) {
 				// Build genericTypes and varianceMap from GenericTypes and class TypeParams
 				if genericTypes == nil {
 					genericTypes = make(map[string]string)
@@ -95,22 +95,7 @@ func bindParametersWithVariadic(env *common.Env, params []ast.Parameter, args []
 					varianceMap = make(map[string]string)
 				}
 				
-				// Match GenericTypes to TypeParams from the class definition
-				for i, gt := range classInst.GenericTypes {
-					if i < len(classInst.ParentClass.TypeParams) {
-						typeParam := classInst.ParentClass.TypeParams[i]
-						if len(typeParam.Bounds) > 0 && len(gt.Bounds) > 0 {
-							paramName := typeParam.Bounds[0].Name.Name
-							concreteType := gt.Bounds[0].Name.Name
-							variance := typeParam.Bounds[0].Variance
-							
-							genericTypes[paramName] = concreteType
-							if variance != "" {
-								varianceMap[paramName] = variance
-							}
-						}
-					}
-				}
+				extractVarianceFromGenericTypes(classInst, genericTypes, varianceMap)
 			}
 		}
 	}
@@ -184,6 +169,47 @@ func bindParametersWithVariadic(env *common.Env, params []ast.Parameter, args []
 	}
 
 	return nil
+}
+
+// shouldExtractVarianceFromGenericTypes checks if we should extract variance info from GenericTypes field
+func shouldExtractVarianceFromGenericTypes(classInst *common.ClassInstance) bool {
+	if len(classInst.GenericTypes) == 0 {
+		return false
+	}
+	if classInst.ParentClass == nil {
+		return false
+	}
+	if len(classInst.ParentClass.TypeParams) == 0 {
+		return false
+	}
+	return true
+}
+
+// extractVarianceFromGenericTypes safely extracts variance information from GenericTypes field
+func extractVarianceFromGenericTypes(classInst *common.ClassInstance, genericTypes map[string]string, varianceMap map[string]string) {
+	// Match GenericTypes to TypeParams from the class definition
+	for i, gt := range classInst.GenericTypes {
+		if i >= len(classInst.ParentClass.TypeParams) {
+			break
+		}
+		
+		typeParam := classInst.ParentClass.TypeParams[i]
+		
+		// Safely extract type parameter name and concrete type
+		if len(typeParam.Bounds) > 0 && len(gt.Bounds) > 0 {
+			paramName := typeParam.Bounds[0].Name.Name
+			concreteType := gt.Bounds[0].Name.Name
+			variance := typeParam.Bounds[0].Variance
+			
+			// Only update maps if we have valid names
+			if paramName != "" && concreteType != "" {
+				genericTypes[paramName] = concreteType
+				if variance != "" {
+					varianceMap[paramName] = variance
+				}
+			}
+		}
+	}
 }
 
 // isWildcardType checks if a type name represents a wildcard type or variance-annotated type
