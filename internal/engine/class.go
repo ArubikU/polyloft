@@ -76,6 +76,8 @@ func ResetGlobalRegistries() {
 	enumRegistry = make(map[string]*common.EnumDefinition)
 	// Reset exception classes
 	exceptionClasses = map[string]common.Func{}
+	// Clear cached builtin class definitions to avoid stale pointer references
+	common.ClearBuiltinClassCache()
 }
 
 // isClassAccessible checks if a class is accessible from the current file/package context

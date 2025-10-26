@@ -175,6 +175,10 @@ func AsFloat(v any) (float64, bool) {
 			if val, ok := t.Fields["_value"].(float64); ok {
 				return val, true
 			}
+			// Also handle case where float value is stored as int (e.g., 10.0 stored as 10)
+			if val, ok := t.Fields["_value"].(int); ok {
+				return float64(val), true
+			}
 		} else if t.ClassName == "Int" {
 			if val, ok := t.Fields["_value"].(int); ok {
 				return float64(val), true

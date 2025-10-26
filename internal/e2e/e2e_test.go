@@ -11,6 +11,7 @@ import (
 )
 
 func TestEval_Basics(t *testing.T) {
+	engine.ResetGlobalRegistries()
 	src := `
 let x = 2 + 3 * 4
 let y = [1,2,3][1]
@@ -36,6 +37,7 @@ println(x, y, m.foo)
 }
 
 func TestEval_EnumAndRecord(t *testing.T) {
+	engine.ResetGlobalRegistries()
 	src := `
 enum Color
     RED
