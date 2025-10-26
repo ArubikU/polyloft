@@ -76,12 +76,41 @@ func bindParametersWithVariadic(env *common.Env, params []ast.Parameter, args []
 	var varianceMap map[string]string // Maps type parameter name to variance ("in", "out", or "")
 	if thisVal, ok := env.Get("this"); ok {
 		if classInst, ok := thisVal.(*common.ClassInstance); ok {
+			// First try to get from __generic_types__ and __variance__ fields (old path)
 			if typeMap, ok := classInst.Fields["__generic_types__"].(map[string]string); ok {
 				genericTypes = typeMap
 			}
-			// Get variance information from __variance__ field if available
 			if varMap, ok := classInst.Fields["__variance__"].(map[string]string); ok {
 				varianceMap = varMap
+			}
+			
+			// Also check GenericTypes field (new path for GenericCallExpr)
+			// Only process if the class has type parameters defined
+			if len(classInst.GenericTypes) > 0 && classInst.ParentClass != nil && len(classInst.ParentClass.TypeParams) > 0 {
+				// Build genericTypes and varianceMap from GenericTypes and class TypeParams
+				if genericTypes == nil {
+					genericTypes = make(map[string]string)
+				}
+				if varianceMap == nil {
+					varianceMap = make(map[string]string)
+				}
+				
+				// Match GenericTypes to TypeParams from the class definition
+				for i, gt := range classInst.GenericTypes {
+					if i < len(classInst.ParentClass.TypeParams) {
+						typeParam := classInst.ParentClass.TypeParams[i]
+						if len(typeParam.Bounds) > 0 && len(gt.Bounds) > 0 {
+							paramName := typeParam.Bounds[0].Name.Name
+							concreteType := gt.Bounds[0].Name.Name
+							variance := typeParam.Bounds[0].Variance
+							
+							genericTypes[paramName] = concreteType
+							if variance != "" {
+								varianceMap[paramName] = variance
+							}
+						}
+					}
+				}
 			}
 		}
 	}

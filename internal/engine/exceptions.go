@@ -653,7 +653,6 @@ func ValidateArgumentType(value any, expectedType string) error {
 	if IsInstanceOf(value, expectedType) {
 		return nil
 	}
-	fmt.Println("Validation failed:", GetTypeName(value), "is not", expectedType)
 
 	actualType := GetTypeName(value)
 	return ThrowTypeError(nil, expectedType, actualType)
