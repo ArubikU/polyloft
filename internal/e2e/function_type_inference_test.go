@@ -47,7 +47,7 @@ return Sys.type(stringToN)
 		t.Fatalf("Expected string, got %T", result)
 	}
 
-	expected := "Function<String,Int>"
+	expected := "Function<String,Integer>"
 	if typeStr != expected {
 		t.Fatalf("Expected %s, got %s", expected, typeStr)
 	}
@@ -70,7 +70,7 @@ return Sys.type(aToN)
 		t.Fatalf("Expected string, got %T", result)
 	}
 
-	expected := "Function<Any,Int>"
+	expected := "Function<Any,Integer>"
 	if typeStr != expected {
 		t.Fatalf("Expected %s, got %s", expected, typeStr)
 	}

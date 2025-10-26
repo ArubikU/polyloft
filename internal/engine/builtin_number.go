@@ -53,6 +53,7 @@ func installNumberInterface(env *Env) error {
 	// Register the Number interface
 	interfaceRegistry["Number"] = numberInterface
 	env.Set("Number", numberInterface)
+	env.Set("__NumberInterface__", numberInterface)
 
 	return nil
 }

@@ -55,7 +55,7 @@ func ToString(v any) string {
 			if val, ok := t.Fields["_value"].(string); ok {
 				return val
 			}
-		case "Int":
+		case "Integer", "Int":
 			if val, ok := t.Fields["_value"].(int); ok {
 				return fmt.Sprintf("%d", val)
 			}

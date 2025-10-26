@@ -390,11 +390,11 @@ type Builtin struct {
 
 var (
 	BuiltinTypeBool              = Builtin{Name: "__BoolClass__", IsPrimitive: true}
-	BuiltinTypeInt               = Builtin{Name: "__IntClass__", IsPrimitive: true}
+	BuiltinTypeInt               = Builtin{Name: "__IntegerClass__", IsPrimitive: true}
 	BuiltinTypeString            = Builtin{Name: "__StringClass__", IsPrimitive: true}
 	BuiltinTypeMap               = Builtin{Name: "__MapClass__", IsPrimitive: false}
-	BuiltinTypeFloat             = Builtin{Name: "__FloatClass__", IsPrimitive: true}
-	BuiltinTypeNumber            = Builtin{Name: "__NumberClass__", IsPrimitive: true}
+	BuiltinTypeFloat             = Builtin{Name: "__FloatClass__", IsPrimitive: false}
+	BuiltinTypeNumber            = Builtin{Name: "__NumberInterface__", IsPrimitive: true}
 	BuiltinTypeArray             = Builtin{Name: "__ArrayClass__", IsPrimitive: false}
 	BuiltinTypeGeneric           = Builtin{Name: "__GenericClass__", IsPrimitive: false}
 	BuiltinTypeRange             = Builtin{Name: "__RangeClass__", IsPrimitive: false}
