@@ -72,23 +72,52 @@ func GetTypeName(val any) string {
 						for _, bound := range gt.Bounds {
 							// Use the first bound's name for type argument
 							param := ""
-							// Check if this is a wildcard type (has extends/super)
-							if bound.Variance != "" {
-								// Variance can be "extends" or "super"
-								param = bound.Variance + " " + bound.Name.Name
-							} else if bound.Name.Name != "" {
-								// Regular type parameter
-								param = bound.Name.Name
+							
+							// Check if this is a wildcard type (Name is "?")
+							// Note: For wildcards, Variance contains WildcardKind ("extends", "super", "unbounded")
+							if bound.Name.Name == "?" {
+								// This is a wildcard
+								param = "?"
+								
+								// Add bound constraint if present
+								// For wildcards, Variance contains the wildcard kind
+								if bound.Extends != nil {
+									// Use Type.Name if available to preserve original alias name (e.g., "Number" instead of "Int")
+									boundName := bound.Extends.Name
+									if bound.Extends.Type != nil && bound.Extends.Type.Name != "" {
+										boundName = bound.Extends.Type.Name
+									}
+									if bound.Variance == "extends" {
+										param += " extends " + boundName
+									} else if bound.Variance == "super" {
+										param += " super " + boundName
+									}
+								} else if bound.Implements != nil {
+									param += " implements " + bound.Implements.Name
+								}
 							} else {
-								param = "Any"
+								// Regular type parameter or variance-annotated type
+								// For non-wildcards, Variance contains variance annotation ("in", "out", "")
+								if bound.Variance == "in" || bound.Variance == "out" {
+									// Variance annotation (in/out)
+									param = bound.Variance + " " + bound.Name.Name
+								} else if bound.Name.Name != "" {
+									// Regular type parameter
+									param = bound.Name.Name
+								} else {
+									param = "Any"
+								}
+								
+								// Add extends/implements for non-wildcard types
+								// Only add if not already part of wildcard formatting
+								if bound.Extends != nil && bound.Variance != "extends" {
+									param += " extends " + bound.Extends.Name
+								}
+								if bound.Implements != nil {
+									param += " implements " + bound.Implements.Name
+								}
 							}
-							if bound.Extends != nil {
-								fmt.Println(bound.Extends.Aliases)
-								param += " extends " + bound.Extends.Name
-							}
-							if bound.Implements != nil {
-								param += " implements " + bound.Implements.Name
-							}
+							
 							if bound.IsVariadic {
 								param += "..."
 							}

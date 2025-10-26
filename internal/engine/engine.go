@@ -2582,15 +2582,73 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 	var gtypes []GenericType
 	for _, tp := range expr.TypeParams {
 		if tp.IsWildcard {
-			var boundTypeName string
-			if len(tp.Bounds) > 0 {
-				boundTypeName = tp.Bounds[0]
+			// For wildcards, Name should be "?" and bounds should be resolved
+			// Note: For wildcards, we store the WildcardKind in Variance field
+			// (e.g., "extends", "super", "unbounded") rather than the variance annotation
+			// This is because GenericBound.Variance serves dual purpose based on context
+			bound := common.GenericBound{
+				Name:       ast.Type{Name: "?"},
+				Variance:   tp.WildcardKind, // "extends", "super", or "unbounded"
+				IsVariadic: tp.IsVariadic,
 			}
 
-			bound := common.GenericBound{
-				Name:       ast.Type{Name: boundTypeName},
-				Variance:   tp.Variance, // "extends", "super", or "unbounded"
-				IsVariadic: tp.IsVariadic,
+			// Resolve the bound type to ClassDefinition if present
+			if len(tp.Bounds) > 0 && tp.Bounds[0] != "" {
+				boundTypeName := tp.Bounds[0]
+				
+				// Try to resolve the bound type for type checking
+				resolved := false
+				if boundTypeVal, ok := env.Get(boundTypeName); ok {
+					if classConst, ok := boundTypeVal.(*common.ClassConstructor); ok {
+						if tp.WildcardKind == "extends" || tp.WildcardKind == "super" {
+							// Use the resolved ClassDefinition for type checking
+							bound.Extends = classConst.Definition
+							// But override the Type to preserve the original name for display
+							bound.Extends = &ClassDefinition{
+								Name:        classConst.Definition.Name,
+								Type:        &ast.Type{Name: boundTypeName}, // Preserve original name
+								Parent:      classConst.Definition.Parent,
+								Implements:  classConst.Definition.Implements,
+								IsAbstract:  classConst.Definition.IsAbstract,
+								AccessLevel: classConst.Definition.AccessLevel,
+								IsSealed:    classConst.Definition.IsSealed,
+								Fields:      classConst.Definition.Fields,
+								Methods:     classConst.Definition.Methods,
+								TypeParams:  classConst.Definition.TypeParams,
+								IsGeneric:   classConst.Definition.IsGeneric,
+								Aliases:     classConst.Definition.Aliases,
+							}
+							resolved = true
+						}
+					} else if classDef, ok := boundTypeVal.(*ClassDefinition); ok {
+						if tp.WildcardKind == "extends" || tp.WildcardKind == "super" {
+							bound.Extends = &ClassDefinition{
+								Name:        classDef.Name,
+								Type:        &ast.Type{Name: boundTypeName}, // Preserve original name
+								Parent:      classDef.Parent,
+								Implements:  classDef.Implements,
+								IsAbstract:  classDef.IsAbstract,
+								AccessLevel: classDef.AccessLevel,
+								IsSealed:    classDef.IsSealed,
+								Fields:      classDef.Fields,
+								Methods:     classDef.Methods,
+								TypeParams:  classDef.TypeParams,
+								IsGeneric:   classDef.IsGeneric,
+								Aliases:     classDef.Aliases,
+							}
+							resolved = true
+						}
+					}
+				}
+				
+				if !resolved {
+					// If we can't resolve the type, create a placeholder ClassDefinition
+					// This allows us to display the bound type name even if it doesn't exist yet
+					bound.Extends = &ClassDefinition{
+						Name: boundTypeName,
+						Type: &ast.Type{Name: boundTypeName},
+					}
+				}
 			}
 
 			gtypes = append(gtypes, GenericType{
@@ -2603,7 +2661,7 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 			// Create a GenericType for regular type parameters
 			bound := common.GenericBound{
 				Name:       ast.Type{Name: tp.Name},
-				Variance:   tp.Variance, // This will be "" for non-wildcard types
+				Variance:   tp.Variance, // Variance annotation: "in", "out", or ""
 				IsVariadic: tp.IsVariadic,
 			}
 			gtypes = append(gtypes, GenericType{

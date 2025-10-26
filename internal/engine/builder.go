@@ -278,6 +278,12 @@ func (cb *ClassBuilder) Build(env *Env) (*ClassDefinition, error) {
 
 	env.Set("__"+cb.name+"Class"+"__", classDef)
 	env.Set(cb.name, classConstructor)
+	
+	// Register aliases
+	for _, alias := range cb.aliases {
+		env.Set(alias, classConstructor)
+	}
+	
 	return classDef, nil
 }
 
