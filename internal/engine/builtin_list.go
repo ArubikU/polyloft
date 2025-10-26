@@ -266,13 +266,13 @@ func InstallListBuiltin(env *Env) error {
 		thisVal, _ := callEnv.Get("this")
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
-		
+
 		// Extract the callback function
 		callback, ok := common.ExtractFunc(args[0])
 		if !ok {
 			return nil, ThrowTypeError((*Env)(callEnv), "function", args[0])
 		}
-		
+
 		// Call the callback for each item
 		for _, item := range *itemsPtr {
 			_, err := callback(callEnv, []any{item})
@@ -280,7 +280,7 @@ func InstallListBuiltin(env *Env) error {
 				return nil, err
 			}
 		}
-		
+
 		return nil, nil
 	}, []string{})
 
@@ -294,38 +294,10 @@ func InstallListBuiltin(env *Env) error {
 		for i, item := range *itemsPtr {
 			strs[i] = utils.ToString(item)
 		}
-		
+
 		// Build type string with generic parameters if present
-		typeStr := "List"
-		if len(instance.GenericTypes) > 0 {
-			var typeParams []string
-			for _, gt := range instance.GenericTypes {
-				for _, bound := range gt.Bounds {
-					param := ""
-					// Check if this is a wildcard type (has extends/super)
-					if bound.Variance != "" {
-						// Variance can be "extends" or "super"
-						param = "? " + bound.Variance + " " + bound.Name.Name
-					} else if bound.Name.Name != "" {
-						// Regular type parameter
-						param = bound.Name.Name
-					}
-					if bound.Extends != nil {
-						param += " extends " + bound.Extends.Name
-					}
-					if bound.Implements != nil {
-						param += " implements " + bound.Implements.Name
-					}
-					if param != "" {
-						typeParams = append(typeParams, param)
-					}
-				}
-			}
-			if len(typeParams) > 0 {
-				typeStr = fmt.Sprintf("List<%s>", strings.Join(typeParams, ", "))
-			}
-		}
-		
+		typeStr := GetTypeName(thisVal)
+
 		return CreateStringInstance(callEnv, fmt.Sprintf("%s(%s)", typeStr, strings.Join(strs, ", ")))
 	}, []string{})
 

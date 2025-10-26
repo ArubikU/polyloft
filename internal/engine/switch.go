@@ -29,12 +29,12 @@ func evalSwitchStmt(env *Env, stmt *ast.SwitchStmt) (val any, returned bool, err
 		// Type matching case: case (varName: TypeName):
 		if c.TypeName != "" {
 			// Get the type of the switch value
-			typeName := getTypeName(switchValue)
-			
+			typeName := GetTypeName(switchValue)
+
 			// Check if types match (case-insensitive comparison for built-in types)
-			if matchesTypeNameSwitch(typeName, c.TypeName) {
+			if IsInstanceOf(typeName, c.TypeName) {
 				matched = true
-				
+
 				// If a variable name is provided, bind the value to that variable
 				if c.VarName != "" {
 					env.Set(c.VarName, switchValue)
@@ -87,36 +87,6 @@ func evalSwitchStmt(env *Env, stmt *ast.SwitchStmt) (val any, returned bool, err
 	return nil, false, nil
 }
 
-// getTypeName returns the type name of a value
-func getTypeName(val any) string {
-	if val == nil {
-		return "nil"
-	}
-
-	// Check for Polyloft types
-	switch v := val.(type) {
-	case bool:
-		return "bool"
-	case int, int8, int16, int32, int64:
-		return "int"
-	case float32, float64:
-		return "float"
-	case string:
-		return "string"
-	case []any:
-		return "array"
-	case map[string]any:
-		return "map"
-	case *ClassInstance:
-		return v.ClassName
-	case *EnumValue:
-		return v.EnumName
-	default:
-		// Use reflection as fallback
-		return reflect.TypeOf(val).String()
-	}
-}
-
 // matchesTypeNameSwitch checks if a type name matches the expected type name
 // Handles case-insensitive matching for built-in types and their aliases
 func matchesTypeNameSwitch(actual, expected string) bool {
@@ -128,7 +98,7 @@ func matchesTypeNameSwitch(actual, expected string) bool {
 	// Normalize and compare for built-in types
 	actualNorm := normalizeTypeNameSwitch(actual)
 	expectedNorm := normalizeTypeNameSwitch(expected)
-	
+
 	return actualNorm == expectedNorm
 }
 

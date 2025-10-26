@@ -75,12 +75,15 @@ func GetTypeName(val any) string {
 							// Check if this is a wildcard type (has extends/super)
 							if bound.Variance != "" {
 								// Variance can be "extends" or "super"
-								param = "? " + bound.Variance + " " + bound.Name.Name
+								param = bound.Variance + " " + bound.Name.Name
 							} else if bound.Name.Name != "" {
 								// Regular type parameter
 								param = bound.Name.Name
+							} else {
+								param = "Any"
 							}
 							if bound.Extends != nil {
+								fmt.Println(bound.Extends.Aliases)
 								param += " extends " + bound.Extends.Name
 							}
 							if bound.Implements != nil {
@@ -290,16 +293,6 @@ func isInstanceOfGenericType(value any, typeName string) bool {
 				return areTypeArgsCompatible(typeArgs, typeParams)
 			}
 		}
-
-		// Fallback: check __type_args__ field (for backward compatibility)
-		if typeArgs, ok := v.Fields["__type_args__"].([]string); ok {
-			// If stored type is Any, fall through to check elements directly
-			if len(typeArgs) > 0 && normalizeTypeName(typeArgs[0]) != "any" {
-				// Check if the stored type arguments are compatible with the requested type
-				return areTypeArgsCompatible(typeArgs, typeParams)
-			}
-		}
-
 		// If no type args stored or type args is Any, check the elements directly
 		switch baseName {
 		case "Array":

@@ -83,7 +83,7 @@ func bindParametersWithVariadic(env *common.Env, params []ast.Parameter, args []
 			if varMap, ok := classInst.Fields["__variance__"].(map[string]string); ok {
 				varianceMap = varMap
 			}
-			
+
 			// Also check GenericTypes field (new path for GenericCallExpr)
 			// Only process if the class has type parameters defined
 			if shouldExtractVarianceFromGenericTypes(classInst) {
@@ -94,7 +94,7 @@ func bindParametersWithVariadic(env *common.Env, params []ast.Parameter, args []
 				if varianceMap == nil {
 					varianceMap = make(map[string]string)
 				}
-				
+
 				extractVarianceFromGenericTypes(classInst, genericTypes, varianceMap)
 			}
 		}
@@ -192,15 +192,15 @@ func extractVarianceFromGenericTypes(classInst *common.ClassInstance, genericTyp
 		if i >= len(classInst.ParentClass.TypeParams) {
 			break
 		}
-		
+
 		typeParam := classInst.ParentClass.TypeParams[i]
-		
+
 		// Safely extract type parameter name and concrete type
 		if len(typeParam.Bounds) > 0 && len(gt.Bounds) > 0 {
 			paramName := typeParam.Bounds[0].Name.Name
 			concreteType := gt.Bounds[0].Name.Name
 			variance := typeParam.Bounds[0].Variance
-			
+
 			// Only update maps if we have valid names
 			if paramName != "" && concreteType != "" {
 				genericTypes[paramName] = concreteType
@@ -2582,9 +2582,6 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 	var gtypes []GenericType
 	for _, tp := range expr.TypeParams {
 		if tp.IsWildcard {
-			// Create a GenericBound for the wildcard type parameter
-			// For wildcards, the Bounds array contains the type names (e.g., ["Number"])
-			// and WildcardKind is "extends", "super", or "unbounded"
 			var boundTypeName string
 			if len(tp.Bounds) > 0 {
 				boundTypeName = tp.Bounds[0]
@@ -2592,7 +2589,7 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 
 			bound := common.GenericBound{
 				Name:       ast.Type{Name: boundTypeName},
-				Variance:   tp.WildcardKind, // "extends", "super", or "unbounded"
+				Variance:   tp.Variance, // "extends", "super", or "unbounded"
 				IsVariadic: tp.IsVariadic,
 			}
 
@@ -2620,7 +2617,7 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 		if classConst.Definition != nil && len(classConst.Definition.TypeParams) > 0 {
 			// Check that the number of type arguments matches the number of type parameters
 			if len(gtypes) != len(classConst.Definition.TypeParams) {
-				return nil, ThrowRuntimeError(env, fmt.Sprintf("class %s expects %d type arguments, got %d", 
+				return nil, ThrowRuntimeError(env, fmt.Sprintf("class %s expects %d type arguments, got %d",
 					classConst.Definition.Name, len(classConst.Definition.TypeParams), len(gtypes)))
 			}
 
@@ -2632,16 +2629,16 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 					if bound.Extends != nil {
 						// Get the provided type argument name
 						providedTypeName := gtypes[i].Bounds[0].Name.Name
-						
+
 						// Resolve the provided type to a ClassDefinition
 						providedTypeDef, err := resolveTypeToClassDef(env, providedTypeName)
 						if err != nil {
 							return nil, ThrowRuntimeError(env, fmt.Sprintf("cannot resolve type %s: %v", providedTypeName, err))
 						}
-						
+
 						// Check if providedTypeDef is a subclass of the extends constraint
 						if providedTypeDef != nil && !providedTypeDef.IsSubclassOf(bound.Extends) {
-							return nil, ThrowRuntimeError(env, fmt.Sprintf("type %s does not satisfy constraint: must extends %s", 
+							return nil, ThrowRuntimeError(env, fmt.Sprintf("type %s does not satisfy constraint: must extends %s",
 								providedTypeName, bound.Extends.Name))
 						}
 					}

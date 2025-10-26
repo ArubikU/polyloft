@@ -36,15 +36,15 @@ func isClassPermitted(permitNames []common.PrebuildedDefinition, className, clas
 var (
 	classRegistry     = make(map[string]map[string]*ClassDefinition) // packageName -> className -> ClassDefinition
 	interfaceRegistry = make(map[string]*InterfaceDefinition)
-	builtinClasses    = make(map[string]*ClassDefinition) // builtin classes (always available)
+	builtinClasses    = make(map[string]*ClassDefinition)      // builtin classes (always available)
 	typeAliasRegistry = make(map[string]map[string]*TypeAlias) // packageName -> aliasName -> TypeAlias
 )
 
 // TypeAlias represents a type alias definition
 type TypeAlias struct {
-	Name      string
-	BaseType  string
-	IsFinal   bool // if true, this is a nominal type (distinct from base type)
+	Name        string
+	BaseType    string
+	IsFinal     bool // if true, this is a nominal type (distinct from base type)
 	PackageName string
 }
 
@@ -191,14 +191,14 @@ func evalClassDecl(env *Env, s *ast.ClassDecl) (any, error) {
 	for _, tp := range s.TypeParams {
 		// Create a GenericBound from the TypeParam
 		var bounds []common.GenericBound
-		
+
 		// Create the primary bound from the type parameter name
 		bound := common.GenericBound{
 			Name:       ast.Type{Name: tp.Name},
 			Variance:   tp.Variance,
 			IsVariadic: tp.IsVariadic,
 		}
-		
+
 		// If there are bounds (extends constraints), resolve them now
 		// tp.Bounds contains the names of the types that this type parameter extends
 		if len(tp.Bounds) > 0 {
@@ -212,9 +212,9 @@ func evalClassDecl(env *Env, s *ast.ClassDecl) (any, error) {
 				}
 			}
 		}
-		
+
 		bounds = append(bounds, bound)
-		
+
 		typeParams = append(typeParams, common.GenericType{
 			Bounds: bounds,
 		})
@@ -377,32 +377,6 @@ func evalClassDecl(env *Env, s *ast.ClassDecl) (any, error) {
 		instance, err := createClassInstance(classDef, callEnv, constructorArgs)
 		if err != nil {
 			return nil, err
-		}
-
-		// Store type arguments if available
-		if classInst, ok := instance.(*ClassInstance); ok && len(typeArgs) > 0 {
-			classInst.Fields["__type_args__"] = typeArgs
-
-			// Also create a map for easy lookup
-			typeMap := make(map[string]string)
-			for i, typeParam := range classDef.TypeParams {
-				if i < len(typeArgs) && len(typeParam.Bounds) > 0 {
-					// Use the first bound's name as the type parameter name
-					typeMap[typeParam.Bounds[0].Name.Name] = typeArgs[i]
-				}
-			}
-			classInst.Fields["__generic_types__"] = typeMap
-
-			// Store variance information for runtime checking
-			varianceMap := make(map[string]string)
-			for _, typeParam := range classDef.TypeParams {
-				if len(typeParam.Bounds) > 0 && typeParam.Bounds[0].Variance != "" {
-					varianceMap[typeParam.Bounds[0].Name.Name] = typeParam.Bounds[0].Variance
-				}
-			}
-			if len(varianceMap) > 0 {
-				classInst.Fields["__variance__"] = varianceMap
-			}
 		}
 
 		return instance, nil
