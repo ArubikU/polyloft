@@ -2583,6 +2583,9 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 	for _, tp := range expr.TypeParams {
 		if tp.IsWildcard {
 			// For wildcards, Name should be "?" and bounds should be resolved
+			// Note: For wildcards, we store the WildcardKind in Variance field
+			// (e.g., "extends", "super", "unbounded") rather than the variance annotation
+			// This is because GenericBound.Variance serves dual purpose based on context
 			bound := common.GenericBound{
 				Name:       ast.Type{Name: "?"},
 				Variance:   tp.WildcardKind, // "extends", "super", or "unbounded"
@@ -2624,7 +2627,7 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 			// Create a GenericType for regular type parameters
 			bound := common.GenericBound{
 				Name:       ast.Type{Name: tp.Name},
-				Variance:   tp.Variance, // This will be "" for non-wildcard types
+				Variance:   tp.Variance, // Variance annotation: "in", "out", or ""
 				IsVariadic: tp.IsVariadic,
 			}
 			gtypes = append(gtypes, GenericType{

@@ -74,11 +74,13 @@ func GetTypeName(val any) string {
 							param := ""
 							
 							// Check if this is a wildcard type (Name is "?")
+							// Note: For wildcards, Variance contains WildcardKind ("extends", "super", "unbounded")
 							if bound.Name.Name == "?" {
 								// This is a wildcard
 								param = "?"
 								
 								// Add bound constraint if present
+								// For wildcards, Variance contains the wildcard kind
 								if bound.Extends != nil {
 									if bound.Variance == "extends" {
 										param += " extends " + bound.Extends.Name
@@ -90,7 +92,8 @@ func GetTypeName(val any) string {
 								}
 							} else {
 								// Regular type parameter or variance-annotated type
-								if bound.Variance != "" && bound.Variance != "extends" && bound.Variance != "super" && bound.Variance != "unbounded" {
+								// For non-wildcards, Variance contains variance annotation ("in", "out", "")
+								if bound.Variance == "in" || bound.Variance == "out" {
 									// Variance annotation (in/out)
 									param = bound.Variance + " " + bound.Name.Name
 								} else if bound.Name.Name != "" {
@@ -101,6 +104,7 @@ func GetTypeName(val any) string {
 								}
 								
 								// Add extends/implements for non-wildcard types
+								// Only add if not already part of wildcard formatting
 								if bound.Extends != nil && bound.Variance != "extends" {
 									param += " extends " + bound.Extends.Name
 								}
