@@ -24,12 +24,12 @@ println(contenidoActualizado)
 
 // 5. Verificar si el archivo existe
 println("\n=== Verificar archivo ===")
-if IO.exists("salida.txt"):
+if IO.fileExists("salida.txt"):
     println("✓ El archivo existe")
     
     // Obtener información del archivo
-    let info = IO.stat("salida.txt")
-    println("Tamaño: #{info.size} bytes")
+    let info = IO.fileSize("salida.txt")
+    println("Tamaño: #{info} bytes")
 end
 
 // 6. Copiar el archivo

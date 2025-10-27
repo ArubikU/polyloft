@@ -750,7 +750,7 @@ func InstallIOModule(env *Env, opts Options) error {
 				return nil, err
 			}
 
-			return lines, nil
+			return CreateArrayInstance(env, lines)
 		})).
 		AddStaticMethod("writeLines", boolType, []ast.Parameter{
 			{Name: "path", Type: stringType},
