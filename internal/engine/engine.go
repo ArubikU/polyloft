@@ -2783,39 +2783,29 @@ func resolveTypeToClassDef(env *common.Env, typeName string) (*ClassDefinition, 
 	return nil, fmt.Errorf("type %s is not a class", typeName)
 }
 
-// evaluateInterpolationExpr evaluates a simple interpolation expression
-// For now, we'll support basic field access like "this.x"
+// evaluateInterpolationExpr evaluates an interpolation expression
+// Supports: variables, function calls, ternary operators, method calls, binary operations, etc.
 func evaluateInterpolationExpr(env *Env, exprStr string) (any, error) {
 	exprStr = strings.TrimSpace(exprStr)
-
-	// Handle "this.field" pattern
-	if strings.HasPrefix(exprStr, "this.") {
-		fieldName := exprStr[5:] // Remove "this."
-
-		// Get "this" from environment
-		thisVal, ok := env.This()
-		if !ok {
-			return nil, ThrowNameError(env, "this")
-		}
-
-		// Get the field value
-		switch obj := thisVal.(type) {
-		case *ClassInstance:
-			if value, exists := obj.Fields[fieldName]; exists {
-				return value, nil
-			}
-			return nil, ThrowAttributeError(env, fieldName, fmt.Sprintf("class '%s'", obj.ClassName))
-		default:
-			return nil, ThrowTypeError(env, "object with fields", thisVal)
-		}
+	
+	// Use the lexer and parser to parse the expression properly
+	lx := &lexer.Lexer{}
+	tokens := lx.Scan([]byte(exprStr))
+	
+	// Create a parser for the expression
+	p := parser.New(tokens)
+	
+	// Parse the expression
+	expr, err := p.ParseExpression()
+	if err != nil {
+		return nil, ThrowRuntimeError(env, fmt.Sprintf("failed to parse interpolation expression '%s': %v", exprStr, err))
 	}
-
-	// Handle simple variable access
-	if val, ok := env.Get(exprStr); ok {
-		return val, nil
+	
+	// Evaluate the parsed expression
+	result, err := evalExpr(env, expr)
+	if err != nil {
+		return nil, err
 	}
-
-	//handle fun
-
-	return nil, ThrowRuntimeError(env, fmt.Sprintf("unsupported interpolation expression: %s", exprStr))
+	
+	return result, nil
 }

@@ -229,6 +229,16 @@ func (p *Parser) Parse() (*ast.Program, error) {
 	return prog, nil
 }
 
+// ParseExpression parses a single expression from the token stream
+// This is useful for parsing interpolation expressions and other standalone expressions
+func (p *Parser) ParseExpression() (ast.Expr, error) {
+	expr, err := p.parseExpr(0)
+	if err != nil {
+		return nil, err
+	}
+	return expr, nil
+}
+
 func (p *Parser) parseStmt() (ast.Stmt, error) {
 	switch p.curr().Tok {
 	case lexer.KW_PUBLIC, lexer.KW_PRIVATE, lexer.KW_PROTECTED:
