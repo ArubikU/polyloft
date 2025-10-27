@@ -659,85 +659,54 @@ func ConvertToClassInstance(env *Env, value any) any {
 		return nil
 	}
 
+	// If already a ClassInstance, return as is
+	if inst, ok := value.(*ClassInstance); ok {
+		return inst
+	}
+
+	// Try to determine the type and use the instance creator
 	switch v := value.(type) {
 	case string:
-		// Convert native string to String ClassInstance
-		if strInst, err := CreateStringInstance(env, v); err == nil {
-			return strInst
+		if inst, err := CreateInstanceFor(env, "String", v); err == nil {
+			return inst
 		}
 		return v
-	case int:
-		// Convert native int to Int ClassInstance
-		if intInst, err := CreateIntInstance(env, v); err == nil {
-			return intInst
-		}
-		return v
-	case int8, int16, int32, int64:
-		// Convert to int first, then to Int ClassInstance
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		intVal, _ := utils.AsInt(v)
-		if intInst, err := CreateIntInstance(env, intVal); err == nil {
-			return intInst
+		if inst, err := CreateInstanceFor(env, "Int", intVal); err == nil {
+			return inst
 		}
 		return v
-	case uint, uint8, uint16, uint32, uint64:
-		// Convert to int first, then to Int ClassInstance
-		intVal, _ := utils.AsInt(v)
-		if intInst, err := CreateIntInstance(env, intVal); err == nil {
-			return intInst
-		}
-		return v
-	case float32:
-		// Convert to Float ClassInstance
-		if floatInst, err := CreateFloatInstance(env, float64(v)); err == nil {
-			return floatInst
-		}
-		return v
-	case float64:
-		// Convert to Float ClassInstance
-		if floatInst, err := CreateFloatInstance(env, v); err == nil {
-			return floatInst
+	case float32, float64:
+		floatVal, _ := utils.AsFloat(v)
+		if inst, err := CreateInstanceFor(env, "Float", floatVal); err == nil {
+			return inst
 		}
 		return v
 	case bool:
-		// Convert to Bool ClassInstance
-		if boolInst, err := CreateBoolInstance(env, v); err == nil {
-			return boolInst
+		if inst, err := CreateInstanceFor(env, "Bool", v); err == nil {
+			return inst
 		}
 		return v
 	case []byte:
-		// Convert to Bytes ClassInstance
-		if bytesInst, err := CreateBytesInstance(env, v); err == nil {
-			return bytesInst
+		if inst, err := CreateInstanceFor(env, "Bytes", v); err == nil {
+			return inst
 		}
 		return v
 	case []any:
-		// Convert slice to Array instance (which will convert items recursively)
-		// To avoid infinite recursion, we convert items manually here
+		// Convert slice items recursively
 		convertedSlice := make([]any, len(v))
 		for i, item := range v {
 			convertedSlice[i] = ConvertToClassInstance(env, item)
 		}
-		arrayInst, err := createArrayInstanceDirect(env, convertedSlice)
-		if err == nil {
-			return arrayInst
+		if inst, err := createArrayInstanceDirect(env, convertedSlice); err == nil {
+			return inst
 		}
 		return v
-	case map[string]any:
-		// Convert nested map to Map instance
-		mapInst, err := CreateMapInstance(env, v)
-		if err == nil {
-			return mapInst
+	case map[string]any, map[any]any:
+		if inst, err := CreateInstanceFor(env, "Map", v); err == nil {
+			return inst
 		}
-		return v
-	case map[any]any:
-		// Convert nested map to Map instance
-		mapInst, err := CreateMapInstance(env, v)
-		if err == nil {
-			return mapInst
-		}
-		return v
-	case *ClassInstance:
-		// Already a ClassInstance, return as is
 		return v
 	default:
 		// For other types, keep as is

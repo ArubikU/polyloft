@@ -711,71 +711,20 @@ func MapToData(env *Env, value any) (map[string]any, bool) {
 // ConvertMapKey converts a key to the appropriate type for use in a Map
 func ConvertMapKey(env *Env, key any) any {
 	if key == nil {
+		// Create a String instance for "null"
+		if strInst, err := CreateInstanceFor(env, "String", "null"); err == nil {
+			return strInst
+		}
 		return "null"
 	}
 
-	switch v := key.(type) {
-	case string:
-		// Convert native string to String ClassInstance
-		if strInst, err := CreateStringInstance(env, v); err == nil {
-			return strInst
-		}
-		return v
-	case int:
-		// Convert native int to Int ClassInstance
-		if intInst, err := CreateIntInstance(env, v); err == nil {
-			return intInst
-		}
-		return v
-	case int8, int16, int32, int64:
-		// Convert to int first, then to Int ClassInstance
-		intVal, _ := utils.AsInt(v)
-		if intInst, err := CreateIntInstance(env, intVal); err == nil {
-			return intInst
-		}
-		return v
-	case uint, uint8, uint16, uint32, uint64:
-		// Convert to int first, then to Int ClassInstance
-		intVal, _ := utils.AsInt(v)
-		if intInst, err := CreateIntInstance(env, intVal); err == nil {
-			return intInst
-		}
-		return v
-	case float32:
-		// Convert to Float ClassInstance
-		if floatInst, err := CreateFloatInstance(env, float64(v)); err == nil {
-			return floatInst
-		}
-		return v
-	case float64:
-		// Convert to Float ClassInstance
-		if floatInst, err := CreateFloatInstance(env, v); err == nil {
-			return floatInst
-		}
-		return v
-	case bool:
-		// Convert to Bool ClassInstance
-		if boolInst, err := CreateBoolInstance(env, v); err == nil {
-			return boolInst
-		}
-		return v
-	case []byte:
-		// Convert to Bytes ClassInstance for use as key
-		if bytesInst, err := CreateBytesInstance(env, v); err == nil {
-			return bytesInst
-		}
-		return v
-	case *ClassInstance:
-		// ClassInstances (including Bytes) can be used as keys directly
-		// No need to extract primitive values, keep as ClassInstance
-		return v
-	default:
-		// For any other type, convert to string as key
-		if strInst, err := CreateStringInstance(env, utils.ToString(key)); err == nil {
-			return strInst
-		}
-		return utils.ToString(key)
+	// If already a ClassInstance, return as is
+	if inst, ok := key.(*ClassInstance); ok {
+		return inst
 	}
+
+	// Use ConvertToClassInstance for all other cases
+	return ConvertToClassInstance(env, key)
 }
 
 // ConvertMapValue converts a value to the appropriate type for storage in a Map
@@ -784,85 +733,8 @@ func ConvertMapValue(env *Env, value any) any {
 		return nil
 	}
 
-	switch v := value.(type) {
-	case string:
-		// Convert native string to String ClassInstance
-		if strInst, err := CreateStringInstance(env, v); err == nil {
-			return strInst
-		}
-		return v
-	case int:
-		// Convert native int to Int ClassInstance
-		if intInst, err := CreateIntInstance(env, v); err == nil {
-			return intInst
-		}
-		return v
-	case int8, int16, int32, int64:
-		// Convert to int first, then to Int ClassInstance
-		intVal, _ := utils.AsInt(v)
-		if intInst, err := CreateIntInstance(env, intVal); err == nil {
-			return intInst
-		}
-		return v
-	case uint, uint8, uint16, uint32, uint64:
-		// Convert to int first, then to Int ClassInstance
-		intVal, _ := utils.AsInt(v)
-		if intInst, err := CreateIntInstance(env, intVal); err == nil {
-			return intInst
-		}
-		return v
-	case float32:
-		// Convert to Float ClassInstance
-		if floatInst, err := CreateFloatInstance(env, float64(v)); err == nil {
-			return floatInst
-		}
-		return v
-	case float64:
-		// Convert to Float ClassInstance
-		if floatInst, err := CreateFloatInstance(env, v); err == nil {
-			return floatInst
-		}
-		return v
-	case bool:
-		// Convert to Bool ClassInstance
-		if boolInst, err := CreateBoolInstance(env, v); err == nil {
-			return boolInst
-		}
-		return v
-	case []byte:
-		// Convert to Bytes ClassInstance
-		if bytesInst, err := CreateBytesInstance(env, v); err == nil {
-			return bytesInst
-		}
-		return v
-	case []any:
-		// Convert slice to Array instance with recursive conversion
-		arrayInst, err := CreateArrayInstance(env, v)
-		if err == nil {
-			return arrayInst
-		}
-		return v
-	case map[string]any:
-		// Convert nested map to Map instance (recursively)
-		mapInst, err := CreateMapInstance(env, v)
-		if err == nil {
-			return mapInst
-		}
-		return v
-	case map[any]any:
-		// Convert nested map to Map instance (recursively)
-		mapInst, err := CreateMapInstance(env, v)
-		if err == nil {
-			return mapInst
-		}
-		return v
-	case *ClassInstance:
-		// ClassInstances are stored as is
-		return v
-	default:
-		// For other types, try to keep as is
-		return v
-	}
+	// Use ConvertToClassInstance which handles all types uniformly
+	return ConvertToClassInstance(env, value)
 }
 
 // MapToObject converts a Map instance back to a Go map[string]any for JSON serialization
