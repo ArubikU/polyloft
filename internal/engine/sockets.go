@@ -195,21 +195,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 		if err != nil {
 			return nil, err
 		}
-
-		// Create Bytes instance
-		bytesClassDef := common.BuiltinTypeBytes.GetClassDefinition(callEnv)
-		if bytesClassDef == nil {
-			return nil, ThrowRuntimeError((*Env)(callEnv), "Bytes class not found")
-		}
-
-		bytesInst := &ClassInstance{
-			ClassName:   "Bytes",
-			Fields:      make(map[string]any),
-			Methods:     make(map[string]common.Func),
-			ParentClass: bytesClassDef,
-		}
-		bytesInst.Fields["_data"] = buf[:n]
-		return bytesInst, nil
+		return CreateBytesInstance(env, buf[:n])
 	}, []string{})
 
 	// close() -> Void

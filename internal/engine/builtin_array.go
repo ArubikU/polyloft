@@ -699,7 +699,7 @@ func ConvertToClassInstance(env *Env, value any) any {
 		for i, item := range v {
 			convertedSlice[i] = ConvertToClassInstance(env, item)
 		}
-		if inst, err := createArrayInstanceDirect(env, convertedSlice); err == nil {
+		if inst, err := CreateArrayInstance(env, convertedSlice); err == nil {
 			return inst
 		}
 		return v
@@ -712,24 +712,6 @@ func ConvertToClassInstance(env *Env, value any) any {
 		// For other types, keep as is
 		return v
 	}
-}
-
-// createArrayInstanceDirect creates an Array instance without recursive conversion (used internally)
-func createArrayInstanceDirect(env *Env, items []any) (*ClassInstance, error) {
-	arrayClass := common.BuiltinTypeArray.GetClassDefinition(env)
-	if arrayClass == nil {
-		return nil, ThrowInitializationError(env, "Array class")
-	}
-
-	instance, err := createClassInstance(arrayClass, env, []any{})
-	if err != nil {
-		return nil, err
-	}
-
-	classInstance := instance.(*ClassInstance)
-	classInstance.Fields["_items"] = items
-
-	return classInstance, nil
 }
 
 func CreateArrayInstance(env *Env, items []any) (*ClassInstance, error) {
