@@ -22,7 +22,7 @@ import (
 	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
-func InstallIOModule(env *Env, opts Options) {
+func InstallIOModule(env *Env, opts Options) error {
 	// Get type references from already-installed builtin types
 	stringType := common.BuiltinTypeString.GetTypeDefinition(env)
 	intType := common.BuiltinTypeInt.GetTypeDefinition(env)
@@ -812,6 +812,7 @@ func InstallIOModule(env *Env, opts Options) {
 	if err != nil {
 		panic(err)
 	}
+	return nil
 }
 
 // getEncoding returns the appropriate encoding based on the encoding name

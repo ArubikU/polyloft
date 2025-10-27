@@ -595,7 +595,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 					break // Exit loop if condition is false
 				}
 			}
-			
+
 			brk, cont, ret, val, err := runBlock(env, s.Body)
 			if err != nil {
 				return nil, false, err
@@ -628,7 +628,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 			// Continue should proceed to condition check
 			// (already handled by not returning early)
 			_ = cont // Mark as used
-			
+
 			// Evaluate the condition after body execution
 			condVal, err := evalExpr(env, s.Condition)
 			if err != nil {
@@ -1232,6 +1232,10 @@ func installBuiltins(env *common.Env, opts Options) {
 		fmt.Printf("Warning: Failed to install Crypto module: %v\n", err)
 	}
 
+	//install InstallIOModule
+	if err := InstallIOModule(env, opts); err != nil {
+		fmt.Printf("Warning: Failed to install IO module: %v\n", err)
+	}
 	// Initialize the unified type converter registry (after all types are installed)
 	InitializeBuiltinTypeConverters()
 	// Initialize instance creators (after types are installed)
