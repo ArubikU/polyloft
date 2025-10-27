@@ -1,12 +1,12 @@
 package e2e
 
 import (
-"bytes"
-"testing"
+	"bytes"
+	"testing"
 
-"github.com/ArubikU/polyloft/internal/engine"
-"github.com/ArubikU/polyloft/internal/lexer"
-"github.com/ArubikU/polyloft/internal/parser"
+	"github.com/ArubikU/polyloft/internal/engine"
+	"github.com/ArubikU/polyloft/internal/lexer"
+	"github.com/ArubikU/polyloft/internal/parser"
 )
 
 func TestStringInterpolationEnhancements(t *testing.T) {
