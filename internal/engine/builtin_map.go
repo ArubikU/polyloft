@@ -686,33 +686,26 @@ func CreateMapInstance(env *Env, data any) (*ClassInstance, error) {
 
 // MapToData converts various types to a map[string]any representation
 func MapToData(env *Env, value any) (map[string]any, bool) {
-	if value == nil {
-		return make(map[string]any), true
+	// Use the unified type converter
+	result, ok := ConvertTo(env, "Map", value)
+	if !ok {
+		return nil, false
 	}
-
-	switch v := value.(type) {
+	
+	// The converter might return the internal hash structure or a map[string]any
+	switch v := result.(type) {
 	case map[string]any:
 		return v, true
 	case map[any]any:
 		// Convert map[any]any to map[string]any
-		result := make(map[string]any)
+		converted := make(map[string]any)
 		for key, val := range v {
-			result[utils.ToString(key)] = val
+			converted[utils.ToString(key)] = val
 		}
-		return result, true
-	case *ClassInstance:
-		mapDef := common.BuiltinTypeMap.GetClassDefinition(env)
-		if v.ParentClass.IsSubclassOf(mapDef) {
-			// It's already a Map instance, extract the data
-			obj, err := MapToObject(v)
-			if err != nil {
-				return nil, false
-			}
-			return obj, true
-		}
+		return converted, true
+	default:
+		return nil, false
 	}
-
-	return nil, false
 }
 
 // ConvertMapKey converts a key to the appropriate type for use in a Map
