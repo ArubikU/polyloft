@@ -1,1 +1,79 @@
-println(Crypto.sha256("hello world"))
+// ========================================
+// Ejemplo de uso de Sockets
+// ========================================
+
+// Ejemplo 1: Cliente TCP simple
+println("=== Ejemplo 1: Cliente TCP ===")
+const client = Socket()
+
+// Conectar a un servidor (ej: google.com en puerto 80)
+const connected = client.connect("google.com", 80, 5)
+if (connected):
+    println("✓ Conectado exitosamente")
+    println("  Dirección remota: " + client.remoteAddr)
+    println("  Dirección local: " + client.localAddr)
+    
+    // Enviar una petición HTTP simple
+    const request = "GET / HTTP/1.1\r\nHost: google.com\r\n\r\n"
+    const bytesSent = client.send(request)
+    println("  Bytes enviados: " + bytesSent.toString())
+    
+    // Recibir respuesta
+    const response = client.recv(1024, 5)
+    println("  Respuesta recibida:")
+    println(response)
+    
+    // Cerrar conexión
+    client.close()
+    println("✓ Conexión cerrada")
+else:
+    println("✗ No se pudo conectar al servidor")
+end
+
+println("")
+
+// Ejemplo 2: Servidor TCP simple
+println("=== Ejemplo 2: Servidor TCP ===")
+const server = ServerSocket()
+
+// Vincular el servidor al puerto 8080
+const bound = server.bind("127.0.0.1", 8080)
+if (bound):
+    println("✓ Servidor escuchando en " + server.address)
+    println("  Esperando conexión del cliente...")
+    println("  (Este ejemplo requiere un cliente que se conecte)")
+    
+    // Nota: En un caso real, aquí esperarías una conexión con server.accept()
+    // const clientSocket = server.accept()
+    // clientSocket.send("Hola desde el servidor!\n")
+    // clientSocket.close()
+    
+    server.close()
+    println("✓ Servidor cerrado")
+else:
+    println("✗ No se pudo iniciar el servidor")
+end
+
+println("")
+
+// Ejemplo 3: Envío de datos binarios
+println("=== Ejemplo 3: Envío de Bytes ===")
+const binaryClient = Socket()
+if (binaryClient.connect("httpbin.org", 80, 5)):
+    println("✓ Conectado a httpbin.org")
+    
+    // Crear datos binarios
+    const data = Bytes(100)
+    const message = "GET /get HTTP/1.1\r\nHost: httpbin.org\r\n\r\n"
+    
+    // Enviar como string
+    binaryClient.send(message)
+    
+    // Recibir bytes
+    const responseBytes = binaryClient.recvBytes(2048, 5)
+    if (responseBytes != nil):
+        println("✓ Bytes recibidos: " + responseBytes.size().toString())
+    end
+    
+    binaryClient.close()
+end

@@ -106,7 +106,6 @@ func InstallBytesBuiltin(env *Env) error {
 		data[idx] = byte(val)
 		return nil, nil
 	}, []string{})
-
 	// toString() -> String
 	bytesBuilder.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
 		thisVal, _ := callEnv.This()
