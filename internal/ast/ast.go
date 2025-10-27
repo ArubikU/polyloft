@@ -342,6 +342,7 @@ func (*Ident) expr() {}
 // Literals
 type NumberLit struct{ Value any } // Can be int or float64
 type StringLit struct{ Value string }
+type BytesLit struct{ Value []byte }
 type InterpolatedStringLit struct {
 	Parts []Expr // alternating string literals and expressions
 }
@@ -358,6 +359,8 @@ func (*BoolLit) node()               {}
 func (*BoolLit) expr()               {}
 func (*NilLit) node()                {}
 func (*NilLit) expr()                {}
+func (*BytesLit) node()              {}
+func (*BytesLit) expr()              {}
 
 // Composite literals
 type ArrayLit struct{ Elems []Expr }
@@ -455,10 +458,10 @@ type LetStmt struct {
 
 // TypeAliasStmt represents type alias declaration: final type Age = Int
 type TypeAliasStmt struct {
-	Name       string   // Alias name (e.g., "Age")
-	BaseType   string   // Base type name (e.g., "Int")
-	IsFinal    bool     // true if declared with 'final type' (nominal type)
-	Modifiers  []string // optional modifiers: public/private/protected
+	Name      string   // Alias name (e.g., "Age")
+	BaseType  string   // Base type name (e.g., "Int")
+	IsFinal   bool     // true if declared with 'final type' (nominal type)
+	Modifiers []string // optional modifiers: public/private/protected
 }
 
 type AssignStmt struct {
@@ -527,36 +530,36 @@ type DeferStmt struct {
 	Pos  Position
 }
 
-func (*LetStmt) node()      {}
-func (*LetStmt) stmt()      {}
+func (*LetStmt) node()       {}
+func (*LetStmt) stmt()       {}
 func (*TypeAliasStmt) node() {}
 func (*TypeAliasStmt) stmt() {}
-func (*AssignStmt) node()   {}
-func (*AssignStmt) stmt()   {}
-func (*ReturnStmt) node()   {}
-func (*ReturnStmt) stmt()   {}
-func (*ExprStmt) node()     {}
-func (*ExprStmt) stmt()     {}
-func (*DefStmt) node()      {}
-func (*DefStmt) stmt()      {}
-func (*IfStmt) node()       {}
-func (*IfStmt) stmt()       {}
-func (*ForInStmt) node()    {}
-func (*ForInStmt) stmt()    {}
-func (*LoopStmt) node()     {}
-func (*LoopStmt) stmt()     {}
-func (*BreakStmt) node()    {}
-func (*BreakStmt) stmt()    {}
-func (*ContinueStmt) node() {}
-func (*ContinueStmt) stmt() {}
-func (*ImportStmt) node()   {}
-func (*ImportStmt) stmt()   {}
-func (*TryStmt) node()      {}
-func (*TryStmt) stmt()      {}
-func (*ThrowStmt) node()    {}
-func (*ThrowStmt) stmt()    {}
-func (*DeferStmt) node()    {}
-func (*DeferStmt) stmt()    {}
+func (*AssignStmt) node()    {}
+func (*AssignStmt) stmt()    {}
+func (*ReturnStmt) node()    {}
+func (*ReturnStmt) stmt()    {}
+func (*ExprStmt) node()      {}
+func (*ExprStmt) stmt()      {}
+func (*DefStmt) node()       {}
+func (*DefStmt) stmt()       {}
+func (*IfStmt) node()        {}
+func (*IfStmt) stmt()        {}
+func (*ForInStmt) node()     {}
+func (*ForInStmt) stmt()     {}
+func (*LoopStmt) node()      {}
+func (*LoopStmt) stmt()      {}
+func (*BreakStmt) node()     {}
+func (*BreakStmt) stmt()     {}
+func (*ContinueStmt) node()  {}
+func (*ContinueStmt) stmt()  {}
+func (*ImportStmt) node()    {}
+func (*ImportStmt) stmt()    {}
+func (*TryStmt) node()       {}
+func (*TryStmt) stmt()       {}
+func (*ThrowStmt) node()     {}
+func (*ThrowStmt) stmt()     {}
+func (*DeferStmt) node()     {}
+func (*DeferStmt) stmt()     {}
 
 // Interface declaration with method signatures
 type InterfaceDecl struct {

@@ -17,97 +17,114 @@ import (
 
 // InstallHttpModule installs the HTTP module using the builder pattern
 func InstallHttpModule(env *Env, opts Options) {
-	// Create Http class with static methods for HTTP client operations
-	NewClassBuilder("Http").
-		AddStaticMethod("get", ast.ANY, []ast.Parameter{
-			{Name: "url", Type: ast.TypeFromString("String")},
-			{Name: "timeout", Type: ast.TypeFromString("Int")},
-		}, common.Func(httpGet)).
-		AddStaticMethod("post", ast.ANY, []ast.Parameter{
-			{Name: "url", Type: ast.TypeFromString("String")},
-			{Name: "data", Type: ast.TypeFromString("any")},
-			{Name: "timeout", Type: ast.TypeFromString("Int")},
-		}, common.Func(httpPost)).
-		AddStaticMethod("put", ast.ANY, []ast.Parameter{
-			{Name: "url", Type: ast.TypeFromString("String")},
-			{Name: "data", Type: ast.TypeFromString("any")},
-			{Name: "timeout", Type: ast.TypeFromString("Int")},
-		}, common.Func(httpPut)).
-		AddStaticMethod("delete", ast.ANY, []ast.Parameter{
-			{Name: "url", Type: ast.TypeFromString("String")},
-			{Name: "timeout", Type: ast.TypeFromString("Int")},
-		}, common.Func(httpDelete)).
-		AddStaticMethod("request", ast.ANY, []ast.Parameter{
-			{Name: "method", Type: ast.TypeFromString("String")},
-			{Name: "url", Type: ast.TypeFromString("String")},
-			{Name: "data", Type: ast.TypeFromString("any")},
-			{Name: "timeout", Type: ast.TypeFromString("Int")},
-			{Name: "headers", Type: ast.TypeFromString("Map")},
-		}, common.Func(httpRequest)).
-		AddStaticMethod("createServer", &ast.Type{Name: "HttpServer", IsBuiltin: true}, []ast.Parameter{
-			{Name: "debug", Type: ast.TypeFromString("Bool")},
-		}, common.Func(createHttpServer)).
-		AddStaticMethod("createServer", &ast.Type{Name: "HttpServer", IsBuiltin: true}, []ast.Parameter{}, common.Func(createHttpServer)).
-		BuildStatic(env)
+	// Get type references from already-installed builtin types
+	stringType := common.BuiltinTypeString.GetTypeDefinition(env)
+	intType := common.BuiltinTypeInt.GetTypeDefinition(env)
+	boolType := common.BuiltinTypeBool.GetTypeDefinition(env)
+	mapType := common.BuiltinTypeMap.GetTypeDefinition(env)
+	voidType := &ast.Type{Name: "void", IsBuiltin: true}
 
-	// Create HttpServer class (instanciable)
-	NewClassBuilder("HttpServer").
-		AddField("router", &ast.Type{Name: "HttpRouter", IsBuiltin: true}, []string{"private"}).
-		SetBuiltinConstructor([]ast.Parameter{}, common.Func(newHttpServer)).
-		AddBuiltinMethod("get", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{
-			{Name: "path", Type: ast.TypeFromString("String")},
-			{Name: "handler", Type: ast.TypeFromString("Function")},
-		}, common.Func(httpServerGet), []string{}).
-		AddBuiltinMethod("post", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{
-			{Name: "path", Type: ast.TypeFromString("String")},
-			{Name: "handler", Type: ast.TypeFromString("Function")},
-		}, common.Func(httpServerPost), []string{}).
-		AddBuiltinMethod("put", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{
-			{Name: "path", Type: ast.TypeFromString("String")},
-			{Name: "handler", Type: ast.TypeFromString("Function")},
-		}, common.Func(httpServerPut), []string{}).
-		AddBuiltinMethod("delete", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{
-			{Name: "path", Type: ast.TypeFromString("String")},
-			{Name: "handler", Type: ast.TypeFromString("Function")},
-		}, common.Func(httpServerDelete), []string{}).
-		AddBuiltinMethod("listen", ast.ANY, []ast.Parameter{
-			{Name: "port", Type: ast.TypeFromString("String")},
-		}, common.Func(httpServerListen), []string{}).
-		Build(env)
+	// Step 1: Create HttpRequest builder and get its type BEFORE building
+	httpRequestBuilder := NewClassBuilder("HttpRequest").
+		AddField("method", stringType, []string{"public"}).
+		AddField("path", stringType, []string{"public"}).
+		AddField("url", stringType, []string{"public"}).
+		AddField("headers", mapType, []string{"public"}).
+		AddField("query", mapType, []string{"public"}).
+		AddField("body", ast.ANY, []string{"public"})
 
-	// Create HttpRequest class (represents incoming requests)
-	NewClassBuilder("HttpRequest").
-		AddField("method", &ast.Type{Name: "string", IsBuiltin: true}, []string{"public"}).
-		AddField("path", &ast.Type{Name: "string", IsBuiltin: true}, []string{"public"}).
-		AddField("url", &ast.Type{Name: "string", IsBuiltin: true}, []string{"public"}).
-		AddField("headers", &ast.Type{Name: "Map", IsBuiltin: true}, []string{"public"}).
-		AddField("query", &ast.Type{Name: "Map", IsBuiltin: true}, []string{"public"}).
-		AddField("body", ast.ANY, []string{"public"}).
-		Build(env)
-
-	// Create HttpResponse class (represents outgoing responses)
-	NewClassBuilder("HttpResponse").
+	// Step 2: Create HttpResponse builder and get its type BEFORE building
+	httpResponseBuilder := NewClassBuilder("HttpResponse").
 		AddField("_writer", ast.ANY, []string{"private"}).
-		AddField("_statusCode", &ast.Type{Name: "int", IsBuiltin: true}, []string{"private"}).
-		AddField("_headers", &ast.Type{Name: "Map", IsBuiltin: true}, []string{"private"}).
-		AddField("_sent", &ast.Type{Name: "bool", IsBuiltin: true}, []string{"private"}).
-		AddBuiltinMethod("status", &ast.Type{Name: "HttpResponse", IsBuiltin: true}, []ast.Parameter{
-			{Name: "code", Type: ast.TypeFromString("Int")},
+		AddField("_statusCode", intType, []string{"private"}).
+		AddField("_headers", mapType, []string{"private"}).
+		AddField("_sent", boolType, []string{"private"})
+
+	// Get HttpResponse type reference BEFORE adding methods
+	httpResponseType := httpResponseBuilder.GetType()
+
+	// Now add methods using the type reference
+	httpResponseBuilder.
+		AddBuiltinMethod("status", httpResponseType, []ast.Parameter{
+			{Name: "code", Type: intType},
 		}, common.Func(httpResponseStatus), []string{}).
-		AddBuiltinMethod("header", &ast.Type{Name: "HttpResponse", IsBuiltin: true}, []ast.Parameter{
-			{Name: "name", Type: ast.TypeFromString("String")},
-			{Name: "value", Type: ast.TypeFromString("String")},
+		AddBuiltinMethod("header", httpResponseType, []ast.Parameter{
+			{Name: "name", Type: stringType},
+			{Name: "value", Type: stringType},
 		}, common.Func(httpResponseHeader), []string{}).
-		AddBuiltinMethod("json", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{
-			{Name: "data", Type: ast.TypeFromString("any")},
+		AddBuiltinMethod("json", voidType, []ast.Parameter{
+			{Name: "data", Type: ast.ANY},
 		}, common.Func(httpResponseJson), []string{}).
-		AddBuiltinMethod("send", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{
-			{Name: "text", Type: ast.TypeFromString("String")},
+		AddBuiltinMethod("send", voidType, []ast.Parameter{
+			{Name: "text", Type: stringType},
 		}, common.Func(httpResponseSend), []string{}).
-		AddBuiltinMethod("html", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{
-			{Name: "html", Type: ast.TypeFromString("String")},
-		}, common.Func(httpResponseHtml), []string{}).
-		Build(env)
+		AddBuiltinMethod("html", voidType, []ast.Parameter{
+			{Name: "html", Type: stringType},
+		}, common.Func(httpResponseHtml), []string{})
+
+	// Step 3: Create HttpServer builder and get its type BEFORE building
+	httpServerBuilder := NewClassBuilder("HttpServer").
+		AddField("router", ast.ANY, []string{"private"}).
+		SetBuiltinConstructor([]ast.Parameter{}, common.Func(newHttpServer)).
+		AddBuiltinMethod("get", voidType, []ast.Parameter{
+			{Name: "path", Type: stringType},
+			{Name: "handler", Type: ast.ANY},
+		}, common.Func(httpServerGet), []string{}).
+		AddBuiltinMethod("post", voidType, []ast.Parameter{
+			{Name: "path", Type: stringType},
+			{Name: "handler", Type: ast.ANY},
+		}, common.Func(httpServerPost), []string{}).
+		AddBuiltinMethod("put", voidType, []ast.Parameter{
+			{Name: "path", Type: stringType},
+			{Name: "handler", Type: ast.ANY},
+		}, common.Func(httpServerPut), []string{}).
+		AddBuiltinMethod("delete", voidType, []ast.Parameter{
+			{Name: "path", Type: stringType},
+			{Name: "handler", Type: ast.ANY},
+		}, common.Func(httpServerDelete), []string{}).
+		AddBuiltinMethod("listen", mapType, []ast.Parameter{
+			{Name: "port", Type: stringType},
+		}, common.Func(httpServerListen), []string{})
+
+	httpServerType := httpServerBuilder.GetType()
+
+	// Step 5: Create Http class with static methods using proper type references
+	httpStaticClassBuilder := NewClassBuilder("Http").
+		AddStaticMethod("get", mapType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+			{Name: "timeout", Type: intType},
+		}, common.Func(httpGet)).
+		AddStaticMethod("post", mapType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+			{Name: "data", Type: ast.ANY},
+			{Name: "timeout", Type: intType},
+		}, common.Func(httpPost)).
+		AddStaticMethod("put", mapType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+			{Name: "data", Type: ast.ANY},
+			{Name: "timeout", Type: intType},
+		}, common.Func(httpPut)).
+		AddStaticMethod("delete", mapType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+			{Name: "timeout", Type: intType},
+		}, common.Func(httpDelete)).
+		AddStaticMethod("request", mapType, []ast.Parameter{
+			{Name: "method", Type: stringType},
+			{Name: "url", Type: stringType},
+			{Name: "data", Type: ast.ANY},
+			{Name: "timeout", Type: intType},
+			{Name: "headers", Type: mapType},
+		}, common.Func(httpRequest)).
+		AddStaticMethod("createServer", httpServerType, []ast.Parameter{
+			{Name: "debug", Type: boolType},
+		}, common.Func(createHttpServer)).
+		AddStaticMethod("createServer", httpServerType, []ast.Parameter{}, common.Func(createHttpServer))
+
+	// Step 4: NOW build all classes after getting their type references
+	_, _ = httpRequestBuilder.Build(env)
+	_, _ = httpResponseBuilder.Build(env)
+	_, _ = httpServerBuilder.Build(env)
+	_, _ = httpStaticClassBuilder.BuildStatic(env)
 }
 
 // httpGet performs an HTTP GET request
@@ -728,7 +745,7 @@ func (r *httpResponse) sendJSON(data any) {
 		json.NewEncoder(r.writer).Encode(objMap)
 		return
 	}
-	
+
 	// Handle regular data
 	json.NewEncoder(r.writer).Encode(data)
 }

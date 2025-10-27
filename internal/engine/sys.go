@@ -180,7 +180,7 @@ func InstallSysModule(env *Env, opts Options) {
 			fmt.Print(printArgs...)
 			return nil, nil
 		})).
-		AddStaticMethod("format", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{
+		AddStaticMethod("format", common.BuiltinTypeString.GetTypeDefinition(env), []ast.Parameter{
 			{Name: "format", Type: ast.TypeFromString("")},
 			{Name: "values", Type: nil, IsVariadic: true},
 		}, Func(func(_ *Env, args []any) (any, error) {
@@ -203,10 +203,10 @@ func InstallSysModule(env *Env, opts Options) {
 			}
 			return fmt.Sprintf(format, unwrappedArgs...), nil
 		})).
-		AddStaticMethod("type", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{{Name: "value", Type: ast.TypeFromString("")}}, Func(func(_ *Env, args []any) (any, error) {
+		AddStaticMethod("type", common.BuiltinTypeString.GetTypeDefinition(env), []ast.Parameter{{Name: "value", Type: ast.TypeFromString("")}}, Func(func(_ *Env, args []any) (any, error) {
 			return GetTypeName(args[0]), nil
 		})).
-		AddStaticMethod("instanceof", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
+		AddStaticMethod("instanceof", common.BuiltinTypeBool.GetTypeDefinition(env), []ast.Parameter{
 			{Name: "object", Type: ast.TypeFromString("")},
 			{Name: "target", Type: ast.TypeFromString("")},
 		}, Func(func(e *Env, args []any) (any, error) {

@@ -18,6 +18,8 @@ const (
 	IDENT  // foo, Bar, _baz
 	NUMBER // 10, 3.14, -5, 2.5e10
 	INT    // 10, 42, -5
+	HEX    // 0x1A, 0xFF
+	BYTES  // 0b1010, 0b1101
 	FLOAT  // 10.0f, 3.14f
 	STRING
 	INTERPOLATED_STRING // "text #{expr} more text"
@@ -76,28 +78,28 @@ const (
 	KW_OUT
 
 	// Operators and delimiters
-	ASSIGN      // =
-	PLUS        // +
-	MINUS       // -
-	STAR        // *
-	SLASH       // /
-	PERCENT     // %
+	ASSIGN       // =
+	PLUS         // +
+	MINUS        // -
+	STAR         // *
+	SLASH        // /
+	PERCENT      // %
 	PLUS_ASSIGN  // +=
 	MINUS_ASSIGN // -=
 	STAR_ASSIGN  // *=
 	SLASH_ASSIGN // /=
-	EQ          // ==
-	NEQ         // !=
-	LT          // <
-	LTE         // <=
-	GT          // >
-	GTE         // >=
-	AND         // &&
-	OR          // ||
-	NOT         // !
-	ARROW       // =>
-	RARROW      // ->
-	COLONASSIGN // :=
+	EQ           // ==
+	NEQ          // !=
+	LT           // <
+	LTE          // <=
+	GT           // >
+	GTE          // >=
+	AND          // &&
+	OR           // ||
+	NOT          // !
+	ARROW        // =>
+	RARROW       // ->
+	COLONASSIGN  // :=
 
 	COMMA    // ,
 	COLON    // :

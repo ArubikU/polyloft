@@ -92,13 +92,65 @@ func (l *Lexer) Scan(src []byte) []Item {
 			continue
 		}
 
-		// Number (int, float, float with proper type detection)
+		// Number (int, float, hex, binary with proper type detection)
 		if unicode.IsDigit(r) {
 			i := off + size
 			ccol := col + 1
-			dot := false
 
-			// Scan digits and optional decimal point
+			// Check for hex (0x) or binary (0b) prefixes
+			if r == '0' && i < len(src) {
+				next := src[i]
+				// Hexadecimal: 0x or 0X
+				if next == 'x' || next == 'X' {
+					i++
+					ccol++
+					// Scan hex digits (0-9, a-f, A-F) and underscores
+					for i < len(src) {
+						rr, sz := utf8.DecodeRune(src[i:])
+						if rr == '_' {
+							i += sz
+							ccol++
+							continue
+						}
+						if !((rr >= '0' && rr <= '9') || (rr >= 'a' && rr <= 'f') || (rr >= 'A' && rr <= 'F')) {
+							break
+						}
+						i += sz
+						ccol++
+					}
+					add(HEX, string(src[off:i]), start, ast.Position{Offset: i, Line: line, Col: ccol})
+					col = ccol
+					off = i
+					continue
+				}
+				// Binary: 0b or 0B
+				if next == 'b' || next == 'B' {
+					i++
+					ccol++
+					// Scan binary digits (0-1) and underscores
+					for i < len(src) {
+						rr, sz := utf8.DecodeRune(src[i:])
+						if rr == '_' {
+							i += sz
+							ccol++
+							continue
+						}
+						if rr != '0' && rr != '1' {
+							break
+						}
+						i += sz
+						ccol++
+					}
+					add(BYTES, string(src[off:i]), start, ast.Position{Offset: i, Line: line, Col: ccol})
+					col = ccol
+					off = i
+					continue
+				}
+			}
+
+			// Regular decimal number
+			dot := false
+			// Scan digits, underscores (as separators), and optional decimal point
 			for i < len(src) {
 				rr, sz := utf8.DecodeRune(src[i:])
 				if rr == '.' && !dot {
@@ -108,6 +160,12 @@ func (l *Lexer) Scan(src []byte) []Item {
 						break
 					}
 					dot = true
+					i += sz
+					ccol++
+					continue
+				}
+				if rr == '_' {
+					// Allow underscore as digit separator (like Python)
 					i += sz
 					ccol++
 					continue

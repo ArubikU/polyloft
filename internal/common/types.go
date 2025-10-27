@@ -403,6 +403,7 @@ var (
 	BuiltinTypeDeque             = Builtin{Name: "__DequeClass__", IsPrimitive: false}
 	BuiltinTypePair              = Builtin{Name: "__PairClass__", IsPrimitive: false}
 	BuiltinTypeTuple             = Builtin{Name: "__TupleClass__", IsPrimitive: false}
+	BuiltinTypeBytes             = Builtin{Name: "__BytesClass__", IsPrimitive: true}
 	BuiltinInterfaceIterable     = Builtin{Name: "__IterableInterface__", IsInterface: true}
 	BuiltinInterfaceCollection   = Builtin{Name: "__CollectionInterface__", IsInterface: true}
 	BuiltinSliceableInterface    = Builtin{Name: "__SliceableInterface__", IsInterface: true}
@@ -427,6 +428,7 @@ func ClearBuiltinClassCache() {
 	BuiltinTypeDeque.ClassDef = nil
 	BuiltinTypePair.ClassDef = nil
 	BuiltinTypeTuple.ClassDef = nil
+	BuiltinTypeBytes.ClassDef = nil
 	BuiltinInterfaceIterable.InterfaceDef = nil
 	BuiltinInterfaceCollection.InterfaceDef = nil
 	BuiltinSliceableInterface.InterfaceDef = nil

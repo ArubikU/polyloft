@@ -1059,7 +1059,7 @@ func installBuiltins(env *common.Env, opts Options) {
 			// For Array and Map ClassInstances, use their length() method
 			if v.ClassName == "Array" {
 				if items, ok := v.Fields["_items"].([]any); ok {
-					return float64(len(items)), nil
+					return CreateFloatInstance(env, float64(len(items)))
 				}
 			} else if v.ClassName == "Map" {
 				if data, ok := v.Fields["_data"].(map[uint64][]*mapEntry); ok {
@@ -1067,54 +1067,13 @@ func installBuiltins(env *common.Env, opts Options) {
 					for _, entries := range data {
 						size += len(entries)
 					}
-					return float64(size), nil
+					return CreateFloatInstance(env, float64(size))
 				}
 			}
 			return nil, ThrowTypeError(e, "string, array, or map", args[0])
 		default:
 			return nil, ThrowTypeError(e, "string, array, or map", args[0])
 		}
-	}))
-
-	// range() - generate a range of numbers (global convenience function)
-	env.Set("range", common.Func(func(e *common.Env, args []any) (any, error) {
-		if len(args) == 0 || len(args) > 3 {
-			return nil, ThrowArityError((*Env)(e), 1, len(args))
-		}
-
-		var start, stop, step int
-		if len(args) == 1 {
-			// range(stop) -> 0..stop-1
-			stop, _ = utils.AsInt(args[0])
-			start = 0
-			step = 1
-		} else if len(args) == 2 {
-			// range(start, stop) -> start..stop-1
-			start, _ = utils.AsInt(args[0])
-			stop, _ = utils.AsInt(args[1])
-			step = 1
-		} else {
-			// range(start, stop, step)
-			start, _ = utils.AsInt(args[0])
-			stop, _ = utils.AsInt(args[1])
-			step, _ = utils.AsInt(args[2])
-			if step == 0 {
-				return nil, ThrowValueError(e, "range() step argument must not be zero")
-			}
-		}
-
-		result := []any{}
-		if step > 0 {
-			for i := start; i < stop; i += step {
-				result = append(result, float64(i))
-			}
-		} else {
-			for i := start; i > stop; i += step {
-				result = append(result, float64(i))
-			}
-		}
-		// Return an Array instance, not a native slice
-		return CreateArrayInstance((*Env)(e), result)
 	}))
 
 	// str() - convert to string (global convenience function)
@@ -1128,6 +1087,14 @@ func installBuiltins(env *common.Env, opts Options) {
 	// Install Net module
 	InstallNetModule(env, opts)
 	InstallHttpModule(env, opts)
+
+	// Install IO and Bytes builtins
+	if err := InstallBytesBuiltin(env); err != nil {
+		fmt.Printf("Warning: Failed to install Bytes builtin: %v\n", err)
+	}
+	if err := InstallSocketsModule(env, opts); err != nil {
+		fmt.Printf("Warning: Failed to install Sockets module: %v\n", err)
+	}
 
 	// Install Iterable interface (base for all collections)
 	if err := InstallIterableInterface((*Env)(env)); err != nil {
@@ -1618,6 +1585,8 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			return CreateFloatInstance(env, float64(v))
 		}
 		return x.Value, nil
+	case *ast.BytesLit:
+		return CreateBytesInstance(env, x.Value)
 	case *ast.StringLit:
 		// Check if string contains interpolation
 		if strings.Contains(x.Value, "#{") {

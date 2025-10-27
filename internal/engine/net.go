@@ -7,14 +7,22 @@ import (
 	"time"
 
 	"github.com/ArubikU/polyloft/internal/ast"
+	"github.com/ArubikU/polyloft/internal/common"
 	"github.com/ArubikU/polyloft/internal/engine/utils"
 )
 
 // InstallNetModule installs the complete Net module with networking functions
 func InstallNetModule(env *Env, opts Options) {
+	// Get type references from already-installed builtin types
+	stringType := common.BuiltinTypeString.GetTypeDefinition(env)
+	intType := common.BuiltinTypeInt.GetTypeDefinition(env)
+	boolType := common.BuiltinTypeBool.GetTypeDefinition(env)
+	mapType := common.BuiltinTypeMap.GetTypeDefinition(env)
+	arrayType := common.BuiltinTypeArray.GetTypeDefinition(env)
+
 	netClass := NewClassBuilder("Net").
-		AddStaticMethod("listen", &ast.Type{Name: "Map", IsBuiltin: true}, []ast.Parameter{
-			{Name: "addr", Type: ast.TypeFromString("String")},
+		AddStaticMethod("listen", mapType, []ast.Parameter{
+			{Name: "addr", Type: stringType},
 		}, Func(func(env *Env, _ []any) (any, error) {
 			addr, _ := env.Get("addr")
 			addrStr := utils.ToString(addr)
@@ -64,9 +72,9 @@ func InstallNetModule(env *Env, opts Options) {
 			})
 			return server, nil
 		})).
-		AddStaticMethod("connect", &ast.Type{Name: "Map", IsBuiltin: true}, []ast.Parameter{
-			{Name: "addr", Type: ast.TypeFromString("String")},
-			{Name: "timeout", Type: ast.TypeFromString("Int"), IsVariadic: false},
+		AddStaticMethod("connect", mapType, []ast.Parameter{
+			{Name: "addr", Type: stringType},
+			{Name: "timeout", Type: intType, IsVariadic: false},
 		}, Func(func(env *Env, _ []any) (any, error) {
 			addr, _ := env.Get("addr")
 			addrStr := utils.ToString(addr)
@@ -128,8 +136,8 @@ func InstallNetModule(env *Env, opts Options) {
 
 			return client, nil
 		})).
-		AddStaticMethod("listenUdp", &ast.Type{Name: "Map", IsBuiltin: true}, []ast.Parameter{
-			{Name: "addr", Type: ast.TypeFromString("String")},
+		AddStaticMethod("listenUdp", mapType, []ast.Parameter{
+			{Name: "addr", Type: stringType},
 		}, Func(func(env *Env, _ []any) (any, error) {
 			addr, _ := env.Get("addr")
 			addrStr := utils.ToString(addr)
@@ -197,8 +205,8 @@ func InstallNetModule(env *Env, opts Options) {
 
 			return server, nil
 		})).
-		AddStaticMethod("dialUdp", &ast.Type{Name: "Map", IsBuiltin: true}, []ast.Parameter{
-			{Name: "addr", Type: ast.TypeFromString("String")},
+		AddStaticMethod("dialUdp", mapType, []ast.Parameter{
+			{Name: "addr", Type: stringType},
 		}, Func(func(env *Env, _ []any) (any, error) {
 			addr, _ := env.Get("addr")
 			addrStr := utils.ToString(addr)
@@ -256,8 +264,8 @@ func InstallNetModule(env *Env, opts Options) {
 
 			return client, nil
 		})).
-		AddStaticMethod("resolveIp", &ast.Type{Name: "Array", IsBuiltin: true}, []ast.Parameter{
-			{Name: "hostname", Type: ast.TypeFromString("String")},
+		AddStaticMethod("resolveIp", arrayType, []ast.Parameter{
+			{Name: "hostname", Type: stringType},
 		}, Func(func(env *Env, _ []any) (any, error) {
 			hostname, _ := env.Get("hostname")
 			hostnameStr := utils.ToString(hostname)
@@ -273,8 +281,8 @@ func InstallNetModule(env *Env, opts Options) {
 			}
 			return result, nil
 		})).
-		AddStaticMethod("resolveHost", &ast.Type{Name: "Array", IsBuiltin: true}, []ast.Parameter{
-			{Name: "ip", Type: ast.TypeFromString("String")},
+		AddStaticMethod("resolveHost", arrayType, []ast.Parameter{
+			{Name: "ip", Type: stringType},
 		}, Func(func(env *Env, _ []any) (any, error) {
 			ip, _ := env.Get("ip")
 			ipStr := utils.ToString(ip)
@@ -290,7 +298,7 @@ func InstallNetModule(env *Env, opts Options) {
 			}
 			return result, nil
 		})).
-		AddStaticMethod("getLocalIPs", &ast.Type{Name: "Array", IsBuiltin: true}, []ast.Parameter{}, Func(func(_ *Env, _ []any) (any, error) {
+		AddStaticMethod("getLocalIPs", arrayType, []ast.Parameter{}, Func(func(_ *Env, _ []any) (any, error) {
 			addrs, err := net.InterfaceAddrs()
 			if err != nil {
 				return nil, err
@@ -306,10 +314,10 @@ func InstallNetModule(env *Env, opts Options) {
 			}
 			return ips, nil
 		})).
-		AddStaticMethod("isPortOpen", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
-			{Name: "host", Type: ast.TypeFromString("String")},
-			{Name: "port", Type: ast.TypeFromString("Int")},
-			{Name: "timeout", Type: ast.TypeFromString("Int"), IsVariadic: false},
+		AddStaticMethod("isPortOpen", boolType, []ast.Parameter{
+			{Name: "host", Type: stringType},
+			{Name: "port", Type: intType},
+			{Name: "timeout", Type: intType, IsVariadic: false},
 		}, Func(func(env *Env, _ []any) (any, error) {
 			host, _ := env.Get("host")
 			portVal, _ := env.Get("port")

@@ -576,7 +576,7 @@ func (p *Parser) parseStmt() (ast.Stmt, error) {
 				}
 				// Create assignment statement
 				return &ast.AssignStmt{Target: lhs, Value: rhs, Pos: assignPos}, nil
-			
+
 			case lexer.PLUS_ASSIGN, lexer.MINUS_ASSIGN, lexer.STAR_ASSIGN, lexer.SLASH_ASSIGN:
 				// Handle compound assignment: a += b  becomes  a = a + b
 				op := p.curr().Tok
@@ -586,7 +586,7 @@ func (p *Parser) parseStmt() (ast.Stmt, error) {
 				if err != nil {
 					return nil, err
 				}
-				
+
 				// Convert compound assignment operator to basic operator
 				var basicOp lexer.Token
 				switch op {
@@ -599,17 +599,17 @@ func (p *Parser) parseStmt() (ast.Stmt, error) {
 				case lexer.SLASH_ASSIGN:
 					basicOp = lexer.SLASH
 				}
-				
+
 				// Create binary expression: lhs op rhs using ast operator constant
 				binaryExpr := &ast.BinaryExpr{
 					Lhs: lhs,
-					Op:  p.toOp(basicOp),  // Convert to ast operator
+					Op:  p.toOp(basicOp), // Convert to ast operator
 					Rhs: rhs,
 				}
-				
+
 				// Create assignment: lhs = (lhs op rhs)
 				return &ast.AssignStmt{Target: lhs, Value: binaryExpr, Pos: assignPos}, nil
-			
+
 			default:
 				// Not an assignment, treat as expression statement
 				p.pos = saved_pos // restore position
@@ -668,27 +668,27 @@ func (p *Parser) parseVarLike() (ast.Stmt, error) {
 	case lexer.KW_FINAL:
 		kind = "final"
 		p.next()
-		
+
 		// Check if this is a type alias: final type Age = Int
 		if p.curr().Tok == lexer.IDENT && p.curr().Lit == "type" {
 			p.next() // consume 'type'
-			
+
 			if p.curr().Tok != lexer.IDENT {
 				return nil, p.errf("expected type alias name after 'final type'")
 			}
 			aliasName := p.curr().Lit
 			p.next()
-			
+
 			if !p.accept(lexer.ASSIGN) {
 				return nil, p.errf("expected '=' after type alias name")
 			}
-			
+
 			if p.curr().Tok != lexer.IDENT {
 				return nil, p.errf("expected base type name after '='")
 			}
 			baseType := p.curr().Lit
 			p.next()
-			
+
 			return &ast.TypeAliasStmt{
 				Name:      aliasName,
 				BaseType:  baseType,
@@ -701,7 +701,7 @@ func (p *Parser) parseVarLike() (ast.Stmt, error) {
 	default:
 		return nil, p.errf("expected declaration keyword after modifiers")
 	}
-	
+
 	// For non-type-alias declarations, we need to handle the token that was already consumed
 	// If we consumed 'final' and it's not a type alias, we're already past the keyword
 	// But for other keywords, we still need to consume them
@@ -713,11 +713,11 @@ func (p *Parser) parseVarLike() (ast.Stmt, error) {
 	if id.Tok != lexer.IDENT {
 		return nil, p.errf("expected identifier after %s", kind)
 	}
-	
+
 	// Parse first identifier
 	names := []string{id.Lit}
 	p.next()
-	
+
 	// Check for comma-separated additional identifiers (destructuring)
 	for p.accept(lexer.COMMA) {
 		if p.curr().Tok != lexer.IDENT {
@@ -726,7 +726,7 @@ func (p *Parser) parseVarLike() (ast.Stmt, error) {
 		names = append(names, p.curr().Lit)
 		p.next()
 	}
-	
+
 	// For backward compatibility, use first name as Name field
 	name := names[0]
 
@@ -1886,15 +1886,51 @@ func (p *Parser) parseExpr(minPrec int) (ast.Expr, error) {
 		p.next()
 	case lexer.INT:
 		// Parse as integer
+		//check if it have 1_000 style underscores and remove them
+		tok.Lit = strings.ReplaceAll(tok.Lit, "_", "")
 		i, err := strconv.ParseInt(tok.Lit, 10, 64)
 		if err != nil {
 			return nil, err
 		}
 		left = &ast.NumberLit{Value: int(i)}
 		p.next()
+	case lexer.HEX:
+		// Parse as hexadecimal integer
+		//check if it have 1_000 style underscores and remove them
+		tok.Lit = strings.ReplaceAll(tok.Lit, "_", "")
+		//now we need to parse as ahex what starts with 0x
+		i, err := strconv.ParseInt(tok.Lit[2:], 16, 64)
+		if err != nil {
+			return nil, err
+		}
+		left = &ast.NumberLit{Value: int(i)}
+		p.next()
+	case lexer.BYTES:
+		// Parse as byte array from 0b binary literal
+		//check if it have 1_000 style underscores and remove them
+		tok.Lit = strings.ReplaceAll(tok.Lit, "_", "")
+		//we would return type BytesLit struct{ Value []byte }
+		binStr := tok.Lit[2:] // remove 0b prefix
+		// Pad with leading zeros to make length a multiple of 8
+		for len(binStr)%8 != 0 {
+			binStr = "0" + binStr
+		}
+		var bytes []byte
+		for i := 0; i < len(binStr); i += 8 {
+			byteStr := binStr[i : i+8]
+			b, err := strconv.ParseUint(byteStr, 2, 8)
+			if err != nil {
+				return nil, err
+			}
+			bytes = append(bytes, byte(b))
+		}
+		left = &ast.BytesLit{Value: bytes}
+		p.next()
 	case lexer.FLOAT:
 		// Parse float literals with explicit suffix as float64 to keep runtime consistent
 		litStr := strings.TrimSuffix(tok.Lit, "f")
+		//check if it have 1_000 style underscores and remove them
+		litStr = strings.ReplaceAll(litStr, "_", "")
 		f, err := strconv.ParseFloat(litStr, 64)
 		if err != nil {
 			return nil, err
