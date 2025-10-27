@@ -28,16 +28,16 @@ func GetTypeName(val any) string {
 		}
 		return fmt.Sprintf("Enum %s@%s", v.Definition.Name, pkg)
 	case *common.ClassInstance:
-		// Return lowercase for primitive wrapper classes to match type system
+		// Return canonical class name for wrapper classes
 		switch v.ClassName {
 		case "String":
-			return "string"
-		case "Int":
-			return "int"
+			return "String"
+		case "Integer", "Int":
+			return "Integer"
 		case "Float":
-			return "float"
+			return "Float"
 		case "Bool":
-			return "bool"
+			return "Bool"
 		default:
 			var typeArgs []string
 			typeArgsGeneric := v.GenericTypes
@@ -74,13 +74,13 @@ func GetTypeName(val any) string {
 							param := ""
 							
 							// Check if this is a wildcard type (Name is "?")
-							// Note: For wildcards, Variance contains WildcardKind ("extends", "super", "unbounded")
+							// Note: For wildcards, Variance contains WildcardKind ("extends", "super", "unbounded", "implements")
 							if bound.Name.Name == "?" {
 								// This is a wildcard
 								param = "?"
 								
 								// Add bound constraint if present
-								// For wildcards, Variance contains the wildcard kind
+								// Use the Variance field to determine the keyword (extends/super/implements)
 								if bound.Extends != nil {
 									// Use Type.Name if available to preserve original alias name (e.g., "Number" instead of "Int")
 									boundName := bound.Extends.Name
@@ -93,7 +93,16 @@ func GetTypeName(val any) string {
 										param += " super " + boundName
 									}
 								} else if bound.Implements != nil {
-									param += " implements " + bound.Implements.Name
+									// For implements, or for extends/super where the bound is an interface
+									if bound.Variance == "extends" {
+										// If user wrote "? extends InterfaceName", keep "extends" keyword
+										param += " extends " + bound.Implements.Name
+									} else if bound.Variance == "super" {
+										param += " super " + bound.Implements.Name
+									} else {
+										// If user wrote "? implements InterfaceName", use "implements"
+										param += " implements " + bound.Implements.Name
+									}
 								}
 							} else {
 								// Regular type parameter or variance-annotated type
@@ -145,6 +154,8 @@ func GetTypeName(val any) string {
 			return v.Definition.Name
 		}
 		return "record"
+	case *common.InterfaceDefinition:
+		return fmt.Sprintf("Interface %s@%s", v.Name, v.PackageName)
 	case int, int32, int64, float32, float64, string, bool, []any, map[string]any:
 		// Native Go types should be wrapped in Generic builtin
 		return "Generic"

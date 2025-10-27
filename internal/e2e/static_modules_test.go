@@ -108,17 +108,17 @@ func TestSys_StaticMethods(t *testing.T) {
 		{
 			name:     "Sys.type",
 			code:     "let x = 42\nprintln(Sys.type(x))",
-			expected: "int\n",
+			expected: "Integer\n",
 		},
 		{
 			name:     "Sys.type_string",
 			code:     "let x = \"hello\"\nprintln(Sys.type(x))",
-			expected: "string\n",
+			expected: "String\n",
 		},
 		{
 			name:     "Sys.type_float",
 			code:     "let x = 3.14\nprintln(Sys.type(x))",
-			expected: "float\n",
+			expected: "Float\n",
 		},
 		{
 			name:     "Sys.format",

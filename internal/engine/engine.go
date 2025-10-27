@@ -2392,7 +2392,7 @@ func extractPrimitiveValue(v any) any {
 			if val, ok := instance.Fields["_value"].(string); ok {
 				return val
 			}
-		case "Int":
+		case "Integer", "Int":
 			if val, ok := instance.Fields["_value"].(int); ok {
 				return val
 			}
@@ -2583,27 +2583,23 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 	for _, tp := range expr.TypeParams {
 		if tp.IsWildcard {
 			// For wildcards, Name should be "?" and bounds should be resolved
-			// Note: For wildcards, we store the WildcardKind in Variance field
-			// (e.g., "extends", "super", "unbounded") rather than the variance annotation
-			// This is because GenericBound.Variance serves dual purpose based on context
+			// WildcardKind can be: "unbounded", "extends", "super", or "implements"
 			bound := common.GenericBound{
 				Name:       ast.Type{Name: "?"},
-				Variance:   tp.WildcardKind, // "extends", "super", or "unbounded"
+				Variance:   tp.WildcardKind, // Store wildcard kind for display purposes
 				IsVariadic: tp.IsVariadic,
 			}
 
-			// Resolve the bound type to ClassDefinition if present
+			// Resolve the bound type if present
 			if len(tp.Bounds) > 0 && tp.Bounds[0] != "" {
 				boundTypeName := tp.Bounds[0]
 				
-				// Try to resolve the bound type for type checking
-				resolved := false
+				// Try to resolve the bound type
 				if boundTypeVal, ok := env.Get(boundTypeName); ok {
-					if classConst, ok := boundTypeVal.(*common.ClassConstructor); ok {
-						if tp.WildcardKind == "extends" || tp.WildcardKind == "super" {
-							// Use the resolved ClassDefinition for type checking
-							bound.Extends = classConst.Definition
-							// But override the Type to preserve the original name for display
+					switch tp.WildcardKind {
+					case "extends", "super":
+						// For extends/super, the bound should be a class
+						if classConst, ok := boundTypeVal.(*common.ClassConstructor); ok {
 							bound.Extends = &ClassDefinition{
 								Name:        classConst.Definition.Name,
 								Type:        &ast.Type{Name: boundTypeName}, // Preserve original name
@@ -2618,10 +2614,7 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 								IsGeneric:   classConst.Definition.IsGeneric,
 								Aliases:     classConst.Definition.Aliases,
 							}
-							resolved = true
-						}
-					} else if classDef, ok := boundTypeVal.(*ClassDefinition); ok {
-						if tp.WildcardKind == "extends" || tp.WildcardKind == "super" {
+						} else if classDef, ok := boundTypeVal.(*ClassDefinition); ok {
 							bound.Extends = &ClassDefinition{
 								Name:        classDef.Name,
 								Type:        &ast.Type{Name: boundTypeName}, // Preserve original name
@@ -2636,17 +2629,40 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 								IsGeneric:   classDef.IsGeneric,
 								Aliases:     classDef.Aliases,
 							}
-							resolved = true
+						} else if interfaceDef, ok := boundTypeVal.(*common.InterfaceDefinition); ok {
+							// If bound is an interface for extends/super, store in Implements field
+							bound.Implements = interfaceDef
+						} else {
+							// Create placeholder for unresolved type
+							bound.Extends = &ClassDefinition{
+								Name: boundTypeName,
+								Type: &ast.Type{Name: boundTypeName},
+							}
+						}
+					case "implements":
+						// For implements, the bound must be an interface
+						if interfaceDef, ok := boundTypeVal.(*common.InterfaceDefinition); ok {
+							bound.Implements = interfaceDef
+						} else {
+							// If not an interface, create a placeholder (error will be caught during type checking)
+							bound.Implements = &common.InterfaceDefinition{
+								Name: boundTypeName,
+								Type: &ast.Type{Name: boundTypeName},
+							}
 						}
 					}
-				}
-				
-				if !resolved {
-					// If we can't resolve the type, create a placeholder ClassDefinition
-					// This allows us to display the bound type name even if it doesn't exist yet
-					bound.Extends = &ClassDefinition{
-						Name: boundTypeName,
-						Type: &ast.Type{Name: boundTypeName},
+				} else {
+					// Type not found - create placeholder
+					if tp.WildcardKind == "implements" {
+						bound.Implements = &common.InterfaceDefinition{
+							Name: boundTypeName,
+							Type: &ast.Type{Name: boundTypeName},
+						}
+					} else {
+						bound.Extends = &ClassDefinition{
+							Name: boundTypeName,
+							Type: &ast.Type{Name: boundTypeName},
+						}
 					}
 				}
 			}
@@ -2655,15 +2671,28 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 				Bounds: []common.GenericBound{bound},
 			})
 		} else {
-			// Regular type parameter without variance
-			// Don't add to allArgs - type parameters are NOT constructor arguments
-
+			// Regular type parameter without wildcard
 			// Create a GenericType for regular type parameters
 			bound := common.GenericBound{
 				Name:       ast.Type{Name: tp.Name},
 				Variance:   tp.Variance, // Variance annotation: "in", "out", or ""
 				IsVariadic: tp.IsVariadic,
 			}
+			
+			// For non-wildcard types, also resolve bounds if specified
+			if len(tp.Bounds) > 0 && tp.Bounds[0] != "" {
+				boundTypeName := tp.Bounds[0]
+				if boundTypeVal, ok := env.Get(boundTypeName); ok {
+					if classConst, ok := boundTypeVal.(*common.ClassConstructor); ok {
+						bound.Extends = classConst.Definition
+					} else if classDef, ok := boundTypeVal.(*ClassDefinition); ok {
+						bound.Extends = classDef
+					} else if interfaceDef, ok := boundTypeVal.(*common.InterfaceDefinition); ok {
+						bound.Implements = interfaceDef
+					}
+				}
+			}
+			
 			gtypes = append(gtypes, GenericType{
 				Bounds: []common.GenericBound{bound},
 			})

@@ -55,7 +55,7 @@ func ToString(v any) string {
 			if val, ok := t.Fields["_value"].(string); ok {
 				return val
 			}
-		case "Int":
+		case "Integer", "Int":
 			if val, ok := t.Fields["_value"].(int); ok {
 				return fmt.Sprintf("%d", val)
 			}
@@ -170,7 +170,7 @@ func AsFloat(v any) (float64, bool) {
 	case int64:
 		return float64(t), true
 	case *common.ClassInstance:
-		// Handle Float and Int class instances
+		// Handle Float and Integer/Int class instances
 		if t.ClassName == "Float" {
 			if val, ok := t.Fields["_value"].(float64); ok {
 				return val, true
@@ -179,7 +179,7 @@ func AsFloat(v any) (float64, bool) {
 			if val, ok := t.Fields["_value"].(int); ok {
 				return float64(val), true
 			}
-		} else if t.ClassName == "Int" {
+		} else if t.ClassName == "Integer" || t.ClassName == "Int" {
 			if val, ok := t.Fields["_value"].(int); ok {
 				return float64(val), true
 			}
@@ -212,8 +212,8 @@ func AsInt(v any) (int, bool) {
 	case int64:
 		return int(t), true
 	case *common.ClassInstance:
-		// Handle Int and Float class instances
-		if t.ClassName == "Int" {
+		// Handle Integer (canonical) and Int (legacy) and Float class instances
+		if t.ClassName == "Integer" || t.ClassName == "Int" {
 			if val, ok := t.Fields["_value"].(int); ok {
 				return val, true
 			}
