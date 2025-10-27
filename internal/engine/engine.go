@@ -2593,42 +2593,16 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 			// Resolve the bound type if present
 			if len(tp.Bounds) > 0 && tp.Bounds[0] != "" {
 				boundTypeName := tp.Bounds[0]
-				
+
 				// Try to resolve the bound type
 				if boundTypeVal, ok := env.Get(boundTypeName); ok {
 					switch tp.WildcardKind {
 					case "extends", "super":
 						// For extends/super, the bound should be a class
 						if classConst, ok := boundTypeVal.(*common.ClassConstructor); ok {
-							bound.Extends = &ClassDefinition{
-								Name:        classConst.Definition.Name,
-								Type:        &ast.Type{Name: boundTypeName}, // Preserve original name
-								Parent:      classConst.Definition.Parent,
-								Implements:  classConst.Definition.Implements,
-								IsAbstract:  classConst.Definition.IsAbstract,
-								AccessLevel: classConst.Definition.AccessLevel,
-								IsSealed:    classConst.Definition.IsSealed,
-								Fields:      classConst.Definition.Fields,
-								Methods:     classConst.Definition.Methods,
-								TypeParams:  classConst.Definition.TypeParams,
-								IsGeneric:   classConst.Definition.IsGeneric,
-								Aliases:     classConst.Definition.Aliases,
-							}
+							bound.Extends = classConst.Definition
 						} else if classDef, ok := boundTypeVal.(*ClassDefinition); ok {
-							bound.Extends = &ClassDefinition{
-								Name:        classDef.Name,
-								Type:        &ast.Type{Name: boundTypeName}, // Preserve original name
-								Parent:      classDef.Parent,
-								Implements:  classDef.Implements,
-								IsAbstract:  classDef.IsAbstract,
-								AccessLevel: classDef.AccessLevel,
-								IsSealed:    classDef.IsSealed,
-								Fields:      classDef.Fields,
-								Methods:     classDef.Methods,
-								TypeParams:  classDef.TypeParams,
-								IsGeneric:   classDef.IsGeneric,
-								Aliases:     classDef.Aliases,
-							}
+							bound.Extends = classDef
 						} else if interfaceDef, ok := boundTypeVal.(*common.InterfaceDefinition); ok {
 							// If bound is an interface for extends/super, store in Implements field
 							bound.Implements = interfaceDef
@@ -2678,7 +2652,7 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 				Variance:   tp.Variance, // Variance annotation: "in", "out", or ""
 				IsVariadic: tp.IsVariadic,
 			}
-			
+
 			// For non-wildcard types, also resolve bounds if specified
 			if len(tp.Bounds) > 0 && tp.Bounds[0] != "" {
 				boundTypeName := tp.Bounds[0]
@@ -2692,7 +2666,7 @@ func evalGenericCallExpr(env *common.Env, expr *ast.GenericCallExpr) (any, error
 					}
 				}
 			}
-			
+
 			gtypes = append(gtypes, GenericType{
 				Bounds: []common.GenericBound{bound},
 			})

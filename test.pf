@@ -1,4 +1,4 @@
 
-let lista = List<? extends integer>()
+let lista = List<? extends int>()
 println(lista.toString())
 println(Sys.type(lista))
