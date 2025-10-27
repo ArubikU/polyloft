@@ -2815,5 +2815,7 @@ func evaluateInterpolationExpr(env *Env, exprStr string) (any, error) {
 		return val, nil
 	}
 
+	//handle fun
+
 	return nil, ThrowRuntimeError(env, fmt.Sprintf("unsupported interpolation expression: %s", exprStr))
 }
