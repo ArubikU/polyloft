@@ -495,7 +495,22 @@ type ForInStmt struct {
 	Where    Expr // optional where clause for filtering
 	Body     []Stmt
 }
-type LoopStmt struct{ Body []Stmt }
+
+// LoopStmt represents a loop statement with optional condition
+// loop ... end (infinite loop)
+// loop condition ... end (while-like loop)
+type LoopStmt struct {
+	Condition Expr   // optional: if nil, infinite loop
+	Body      []Stmt
+}
+
+// DoLoopStmt represents a do-loop statement (do-while)
+// do ... loop condition
+type DoLoopStmt struct {
+	Condition Expr   // required: loop condition
+	Body      []Stmt
+}
+
 type BreakStmt struct{}
 type ContinueStmt struct{}
 
@@ -548,6 +563,8 @@ func (*ForInStmt) node()     {}
 func (*ForInStmt) stmt()     {}
 func (*LoopStmt) node()      {}
 func (*LoopStmt) stmt()      {}
+func (*DoLoopStmt) node()    {}
+func (*DoLoopStmt) stmt()    {}
 func (*BreakStmt) node()     {}
 func (*BreakStmt) stmt()     {}
 func (*ContinueStmt) node()  {}

@@ -399,6 +399,8 @@ func (p *Parser) parseStmt() (ast.Stmt, error) {
 		return p.parseForIn()
 	case lexer.KW_LOOP:
 		return p.parseLoop()
+	case lexer.KW_DO:
+		return p.parseDo()
 	case lexer.KW_INTERFACE:
 		return p.parseInterfaceWithModifiers("public", false)
 	case lexer.KW_CLASS:
@@ -893,8 +895,45 @@ func (p *Parser) parseForIn() (ast.Stmt, error) {
 }
 
 func (p *Parser) parseLoop() (ast.Stmt, error) {
-	// loop <block> end
-	p.next()
+	// loop <condition>? <:>? <block> end
+	// Syntax:
+	//   loop ... end               (infinite loop, old style - backward compatible)
+	//   loop: ... end              (infinite loop, new style with explicit colon)
+	//   loop condition: ... end    (while-like loop with condition)
+	//   loop condition ... end     (while-like loop, colon optional if condition present)
+	p.next() // consume 'loop'
+	
+	// Check if next token is a colon (immediate block start for infinite loop)
+	var condition ast.Expr
+	if p.curr().Tok != lexer.COLON {
+		// Try to parse a condition - if this fails or is not present, it's an infinite loop
+		// We need to detect if we're at a statement start (backward compatibility)
+		// If current token looks like a statement keyword or identifier that could start a statement,
+		// then no condition was provided
+		if p.curr().Tok != lexer.KW_SELECT && 
+		   p.curr().Tok != lexer.KW_IF && 
+		   p.curr().Tok != lexer.KW_FOR &&
+		   p.curr().Tok != lexer.KW_RETURN &&
+		   p.curr().Tok != lexer.KW_BREAK &&
+		   p.curr().Tok != lexer.KW_CONTINUE &&
+		   p.curr().Tok != lexer.KW_THROW &&
+		   p.curr().Tok != lexer.KW_VAR &&
+		   p.curr().Tok != lexer.KW_LET &&
+		   p.curr().Tok != lexer.KW_CONST {
+			// Try to parse condition
+			var err error
+			condition, err = p.parseExpr(0)
+			if err != nil {
+				// If parsing expression fails, assume no condition (infinite loop)
+				// Reset to no condition
+				condition = nil
+			}
+		}
+	}
+	
+	// Colon is optional (for backward compatibility)
+	p.accept(lexer.COLON)
+	
 	body, err := p.parseBlock()
 	if err != nil {
 		return nil, err
@@ -902,7 +941,37 @@ func (p *Parser) parseLoop() (ast.Stmt, error) {
 	if !p.accept(lexer.KW_END) {
 		return nil, p.errf("expected 'end' to close loop")
 	}
-	return &ast.LoopStmt{Body: body}, nil
+	return &ast.LoopStmt{Condition: condition, Body: body}, nil
+}
+
+// parseDo parses a do-loop statement: do: ... loop condition
+func (p *Parser) parseDo() (ast.Stmt, error) {
+	// do: <block> loop condition
+	p.next() // consume 'do'
+	
+	// Expect colon before block
+	if !p.accept(lexer.COLON) {
+		return nil, p.errf("expected ':' after 'do'")
+	}
+	
+	// Parse block until we hit 'loop' keyword
+	body, err := p.parseBlockUntilKeywords([]lexer.Token{lexer.KW_LOOP})
+	if err != nil {
+		return nil, err
+	}
+	
+	// Expect 'loop' keyword
+	if !p.accept(lexer.KW_LOOP) {
+		return nil, p.errf("expected 'loop' after do block")
+	}
+	
+	// Parse the condition
+	condition, err := p.parseExpr(0)
+	if err != nil {
+		return nil, err
+	}
+	
+	return &ast.DoLoopStmt{Condition: condition, Body: body}, nil
 }
 
 // parseInterfaceWithModifiers parses: [sealed] interface Name[<TypeParams>] [(permits)] NEWLINE? (method signatures... | static fields... ) end
