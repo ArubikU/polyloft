@@ -81,6 +81,12 @@ func InitializeBuiltinTypeConverters() {
 			return []byte{byte(v)}, true
 		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 			intVal, _ := utils.AsInt(v)
+			// Clamp to valid byte range (0-255)
+			if intVal < 0 {
+				intVal = 0
+			} else if intVal > 255 {
+				intVal = 255
+			}
 			return []byte{byte(intVal)}, true
 		case bool:
 			if v {
@@ -304,11 +310,25 @@ func convertClassInstanceToBytes(env *common.Env, v *ClassInstance) ([]byte, boo
 		buf := []byte{}
 		if step > 0 {
 			for i := start; i < end; i += step {
-				buf = append(buf, byte(i))
+				// Clamp to valid byte range
+				val := i
+				if val < 0 {
+					val = 0
+				} else if val > 255 {
+					val = 255
+				}
+				buf = append(buf, byte(val))
 			}
 		} else if step < 0 {
 			for i := start; i > end; i += step {
-				buf = append(buf, byte(i))
+				// Clamp to valid byte range
+				val := i
+				if val < 0 {
+					val = 0
+				} else if val > 255 {
+					val = 255
+				}
+				buf = append(buf, byte(val))
 			}
 		}
 		return buf, true
@@ -316,14 +336,29 @@ func convertClassInstanceToBytes(env *common.Env, v *ClassInstance) ([]byte, boo
 		data := v.Fields["_data"].([]byte)
 		return data, true
 	} else if v.ParentClass.IsSubclassOf(intDef) {
-		return []byte{byte(v.Fields["_value"].(int))}, true
+		intVal := v.Fields["_value"].(int)
+		// Clamp to valid byte range
+		if intVal < 0 {
+			intVal = 0
+		} else if intVal > 255 {
+			intVal = 255
+		}
+		return []byte{byte(intVal)}, true
 	} else if v.ParentClass.IsSubclassOf(boolDef) {
 		if v.Fields["_value"].(bool) {
 			return []byte{1}, true
 		}
 		return []byte{0}, true
 	} else if v.ParentClass.IsSubclassOf(floatDef) {
-		return []byte{byte(v.Fields["_value"].(float64))}, true
+		floatVal := v.Fields["_value"].(float64)
+		// Clamp to valid byte range
+		intVal := int(floatVal)
+		if intVal < 0 {
+			intVal = 0
+		} else if intVal > 255 {
+			intVal = 255
+		}
+		return []byte{byte(intVal)}, true
 	}
 
 	return []byte{}, false
