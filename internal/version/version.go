@@ -5,7 +5,7 @@ import "runtime/debug"
 // These variables can be overridden at build time via -ldflags.
 var (
 	// Version is the semantic version or commit hash.
-	Version = "v1.1.0"
+	Version = "v1.1.1"
 	// Commit is the VCS commit identifier.
 	Commit = "3f7168123970ca1e309c1d2fb20362b4685f4dd1"
 	// Date is the build date.
