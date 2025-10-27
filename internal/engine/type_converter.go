@@ -348,3 +348,96 @@ func NewTypeConversionError(fromType, toType string, value any) *TypeConversionE
 		Value:    value,
 	}
 }
+
+// InstanceCreator is a function that creates a ClassInstance from a native value
+type InstanceCreator func(env *common.Env, value any) (*ClassInstance, error)
+
+// InstanceCreatorRegistry holds all registered instance creators
+type InstanceCreatorRegistry struct {
+	creators map[string]InstanceCreator
+}
+
+var globalInstanceCreatorRegistry = &InstanceCreatorRegistry{
+	creators: make(map[string]InstanceCreator),
+}
+
+// RegisterInstanceCreator registers a creator for a specific type
+func RegisterInstanceCreator(typeName string, creator InstanceCreator) {
+	globalInstanceCreatorRegistry.creators[typeName] = creator
+}
+
+// CreateInstanceFor attempts to create a ClassInstance for the specified type
+func CreateInstanceFor(env *common.Env, typeName string, value any) (*ClassInstance, error) {
+	if creator, ok := globalInstanceCreatorRegistry.creators[typeName]; ok {
+		return creator(env, value)
+	}
+	return nil, fmt.Errorf("no instance creator registered for type: %s", typeName)
+}
+
+// GetInstanceCreator returns the creator for a specific type
+func GetInstanceCreator(typeName string) (InstanceCreator, bool) {
+	creator, ok := globalInstanceCreatorRegistry.creators[typeName]
+	return creator, ok
+}
+
+// InitializeBuiltinInstanceCreators registers all builtin instance creators
+func InitializeBuiltinInstanceCreators() {
+	// Register String instance creator
+	RegisterInstanceCreator("String", func(env *common.Env, value any) (*ClassInstance, error) {
+		strVal, ok := ConvertTo(env, "String", value)
+		if !ok {
+			return nil, fmt.Errorf("cannot convert value to String")
+		}
+		return CreateStringInstance(env, strVal.(string))
+	})
+
+	// Register Int instance creator
+	RegisterInstanceCreator("Int", func(env *common.Env, value any) (*ClassInstance, error) {
+		intVal, ok := ConvertTo(env, "Int", value)
+		if !ok {
+			return nil, fmt.Errorf("cannot convert value to Int")
+		}
+		return CreateIntInstance(env, intVal.(int))
+	})
+
+	// Register Float instance creator
+	RegisterInstanceCreator("Float", func(env *common.Env, value any) (*ClassInstance, error) {
+		floatVal, ok := ConvertTo(env, "Float", value)
+		if !ok {
+			return nil, fmt.Errorf("cannot convert value to Float")
+		}
+		return CreateFloatInstance(env, floatVal.(float64))
+	})
+
+	// Register Bool instance creator
+	RegisterInstanceCreator("Bool", func(env *common.Env, value any) (*ClassInstance, error) {
+		boolVal, ok := ConvertTo(env, "Bool", value)
+		if !ok {
+			return nil, fmt.Errorf("cannot convert value to Bool")
+		}
+		return CreateBoolInstance(env, boolVal.(bool))
+	})
+
+	// Register Bytes instance creator
+	RegisterInstanceCreator("Bytes", func(env *common.Env, value any) (*ClassInstance, error) {
+		return CreateBytesInstance(env, value)
+	})
+
+	// Register Array instance creator
+	RegisterInstanceCreator("Array", func(env *common.Env, value any) (*ClassInstance, error) {
+		arrVal, ok := ConvertTo(env, "Array", value)
+		if !ok {
+			return nil, fmt.Errorf("cannot convert value to Array")
+		}
+		if slice, ok := arrVal.([]any); ok {
+			return CreateArrayInstance(env, slice)
+		}
+		return nil, fmt.Errorf("array conversion did not return []any")
+	})
+
+	// Register Map instance creator
+	RegisterInstanceCreator("Map", func(env *common.Env, value any) (*ClassInstance, error) {
+		return CreateMapInstance(env, value)
+	})
+}
+

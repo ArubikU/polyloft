@@ -1096,9 +1096,6 @@ func installBuiltins(env *common.Env, opts Options) {
 		fmt.Printf("Warning: Failed to install Sockets module: %v\n", err)
 	}
 
-	// Initialize the unified type converter registry
-	InitializeBuiltinTypeConverters()
-
 	// Install Iterable interface (base for all collections)
 	if err := InstallIterableInterface((*Env)(env)); err != nil {
 		fmt.Printf("Warning: Failed to install Iterable interface: %v\n", err)
@@ -1190,6 +1187,11 @@ func installBuiltins(env *common.Env, opts Options) {
 	if err := InstallCryptoModule(env, opts); err != nil {
 		fmt.Printf("Warning: Failed to install Crypto module: %v\n", err)
 	}
+
+	// Initialize the unified type converter registry (after all types are installed)
+	InitializeBuiltinTypeConverters()
+	// Initialize instance creators (after types are installed)
+	InitializeBuiltinInstanceCreators()
 
 	// Install legacy generic types system (Lambda - legacy support)
 	InstallGenerics(env)
