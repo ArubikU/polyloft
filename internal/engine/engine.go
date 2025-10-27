@@ -580,7 +580,22 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 		}
 		return nil, false, nil
 	case *ast.LoopStmt:
+		// Support both infinite loop and conditional loop
+		// loop ... end          -> infinite loop
+		// loop condition ... end -> while-like loop
 		for {
+			// If there's a condition, evaluate it
+			if s.Condition != nil {
+				condVal, err := evalExpr(env, s.Condition)
+				if err != nil {
+					return nil, false, err
+				}
+				// Check if condition is false
+				if !utils.AsBool(condVal) {
+					break // Exit loop if condition is false
+				}
+			}
+			
 			brk, cont, ret, val, err := runBlock(env, s.Body)
 			if err != nil {
 				return nil, false, err
@@ -593,6 +608,35 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 			}
 			if cont {
 				continue
+			}
+		}
+		return nil, false, nil
+	case *ast.DoLoopStmt:
+		// Do-loop: execute body at least once, then check condition
+		// do: ... loop condition
+		for {
+			brk, cont, ret, val, err := runBlock(env, s.Body)
+			if err != nil {
+				return nil, false, err
+			}
+			if ret {
+				return val, true, nil
+			}
+			if brk {
+				break
+			}
+			// Continue should proceed to condition check
+			// (already handled by not returning early)
+			_ = cont // Mark as used
+			
+			// Evaluate the condition after body execution
+			condVal, err := evalExpr(env, s.Condition)
+			if err != nil {
+				return nil, false, err
+			}
+			// Continue looping while condition is true
+			if !utils.AsBool(condVal) {
+				break
 			}
 		}
 		return nil, false, nil
@@ -1187,6 +1231,11 @@ func installBuiltins(env *common.Env, opts Options) {
 	if err := InstallCryptoModule(env, opts); err != nil {
 		fmt.Printf("Warning: Failed to install Crypto module: %v\n", err)
 	}
+
+	// Initialize the unified type converter registry (after all types are installed)
+	InitializeBuiltinTypeConverters()
+	// Initialize instance creators (after types are installed)
+	InitializeBuiltinInstanceCreators()
 
 	// Install legacy generic types system (Lambda - legacy support)
 	InstallGenerics(env)
