@@ -76,7 +76,7 @@ func installIntClass(env *Env) error {
 
 	// utils.ToString() -> String
 	intClass.AddBuiltinMethod("toString", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(int)
 		return CreateStringInstance((*Env)(callEnv), strconv.Itoa(num))
@@ -84,7 +84,7 @@ func installIntClass(env *Env) error {
 
 	// abs() -> Int
 	intClass.AddBuiltinMethod("abs", &ast.Type{Name: "int", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(int)
 		if num < 0 {
@@ -95,7 +95,7 @@ func installIntClass(env *Env) error {
 
 	// toFloat() -> Float
 	intClass.AddBuiltinMethod("toFloat", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(int)
 		return CreateFloatInstance((*Env)(callEnv), float64(num))
@@ -103,7 +103,7 @@ func installIntClass(env *Env) error {
 
 	// serialize() -> String
 	intClass.AddBuiltinMethod("serialize", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(int)
 		return CreateStringInstance((*Env)(callEnv), strconv.Itoa(num))
@@ -111,7 +111,7 @@ func installIntClass(env *Env) error {
 
 	// Constructor: Integer() - no args, initialize to 0
 	intClass.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_value"] = 0
 		return nil, nil
@@ -121,7 +121,7 @@ func installIntClass(env *Env) error {
 	intClass.AddBuiltinConstructor([]ast.Parameter{
 		{Name: "value", Type: &ast.Type{Name: "int", IsBuiltin: true}},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		// Get int value from argument
 		intVal, ok := utils.AsInt(args[0])
@@ -152,7 +152,7 @@ func installFloatClass(env *Env) error {
 
 	// utils.ToString() -> String
 	floatClass.AddBuiltinMethod("toString", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(float64)
 		return CreateStringInstance((*Env)(callEnv), strconv.FormatFloat(num, 'f', -1, 64))
@@ -160,7 +160,7 @@ func installFloatClass(env *Env) error {
 
 	// abs() -> Float
 	floatClass.AddBuiltinMethod("abs", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(float64)
 		return CreateFloatInstance((*Env)(callEnv), math.Abs(num))
@@ -168,7 +168,7 @@ func installFloatClass(env *Env) error {
 
 	// toInt() -> Int
 	floatClass.AddBuiltinMethod("toInt", &ast.Type{Name: "int", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(float64)
 		return CreateIntInstance((*Env)(callEnv), int(num))
@@ -176,13 +176,13 @@ func installFloatClass(env *Env) error {
 
 	// toFloat() -> Float (required by Number interface)
 	floatClass.AddBuiltinMethod("toFloat", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		return thisVal, nil // Float already is a float
 	}, []string{})
 
 	// floor() -> Float
 	floatClass.AddBuiltinMethod("floor", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(float64)
 		return CreateFloatInstance((*Env)(callEnv), math.Floor(num))
@@ -190,7 +190,7 @@ func installFloatClass(env *Env) error {
 
 	// ceil() -> Float
 	floatClass.AddBuiltinMethod("ceil", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(float64)
 		return CreateFloatInstance((*Env)(callEnv), math.Ceil(num))
@@ -198,7 +198,7 @@ func installFloatClass(env *Env) error {
 
 	// round() -> Float
 	floatClass.AddBuiltinMethod("round", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(float64)
 		return CreateFloatInstance((*Env)(callEnv), math.Round(num))
@@ -206,7 +206,7 @@ func installFloatClass(env *Env) error {
 
 	// sqrt() -> Float
 	floatClass.AddBuiltinMethod("sqrt", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(float64)
 		return CreateFloatInstance((*Env)(callEnv), math.Sqrt(num))
@@ -214,7 +214,7 @@ func installFloatClass(env *Env) error {
 
 	// serialize() -> String
 	floatClass.AddBuiltinMethod("serialize", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		num := instance.Fields["_value"].(float64)
 		return CreateStringInstance((*Env)(callEnv), strconv.FormatFloat(num, 'f', -1, 64))
@@ -222,7 +222,7 @@ func installFloatClass(env *Env) error {
 
 	// Constructor: Float() - no args, initialize to 0.0
 	floatClass.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_value"] = 0.0
 		return nil, nil
@@ -232,7 +232,7 @@ func installFloatClass(env *Env) error {
 	floatClass.AddBuiltinConstructor([]ast.Parameter{
 		{Name: "value", Type: &ast.Type{Name: "float", IsBuiltin: true}},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		// Get float value from argument
 		floatVal, ok := utils.AsFloat(args[0])
@@ -251,12 +251,10 @@ func installFloatClass(env *Env) error {
 // CreateIntInstance creates an Integer instance from a Go int
 // This is used when evaluating integer literals
 func CreateIntInstance(env *Env, value int) (*ClassInstance, error) {
-	intClassVal, ok := env.Get("__IntegerClass__")
-	if !ok {
+	intClass := common.BuiltinTypeInt.GetClassDefinition(env)
+	if intClass == nil {
 		return nil, ThrowInitializationError(env, "Integer class")
 	}
-
-	intClass := intClassVal.(*ClassDefinition)
 
 	// Create instance
 	instance, err := createClassInstance(intClass, env, []any{})
@@ -273,12 +271,10 @@ func CreateIntInstance(env *Env, value int) (*ClassInstance, error) {
 // CreateFloatInstance creates a Float instance from a Go float64
 // This is used when evaluating float literals
 func CreateFloatInstance(env *Env, value float64) (*ClassInstance, error) {
-	floatClassVal, ok := env.Get("__FloatClass__")
-	if !ok {
+	floatClass := common.BuiltinTypeFloat.GetClassDefinition(env)
+	if floatClass == nil {
 		return nil, ThrowInitializationError(env, "Float class")
 	}
-
-	floatClass := floatClassVal.(*ClassDefinition)
 
 	// Create instance
 	instance, err := createClassInstance(floatClass, env, []any{})

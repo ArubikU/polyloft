@@ -36,7 +36,7 @@ func InstallSetBuiltin(env *Env) error {
 
 	// Constructor: Set() - empty set
 	setClass.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := make(map[string]bool)
 		keys := make([]any, 0)
@@ -50,7 +50,7 @@ func InstallSetBuiltin(env *Env) error {
 	setClass.AddBuiltinConstructor([]ast.Parameter{
 		{Name: "items", Type: nil, IsVariadic: true},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := make(map[string]bool)
 		keys := make([]any, 0)
@@ -71,7 +71,7 @@ func InstallSetBuiltin(env *Env) error {
 
 	// size() -> Int
 	setClass.AddBuiltinMethod("size", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*map[string]bool)
 		return CreateIntInstance(callEnv, len(*itemsPtr))
@@ -79,7 +79,7 @@ func InstallSetBuiltin(env *Env) error {
 
 	// isEmpty() -> Bool
 	setClass.AddBuiltinMethod("isEmpty", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*map[string]bool)
 		return CreateBoolInstance(callEnv, len(*itemsPtr) == 0)
@@ -89,7 +89,7 @@ func InstallSetBuiltin(env *Env) error {
 	setClass.AddBuiltinMethod("add", boolType, []ast.Parameter{
 		{Name: "item", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*map[string]bool)
 		keysPtr := instance.Fields["_keys"].(*[]any)
@@ -108,7 +108,7 @@ func InstallSetBuiltin(env *Env) error {
 	setClass.AddBuiltinMethod("contains", boolType, []ast.Parameter{
 		{Name: "item", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*map[string]bool)
 
@@ -120,7 +120,7 @@ func InstallSetBuiltin(env *Env) error {
 	setClass.AddBuiltinMethod("remove", boolType, []ast.Parameter{
 		{Name: "item", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*map[string]bool)
 		keysPtr := instance.Fields["_keys"].(*[]any)
@@ -145,7 +145,7 @@ func InstallSetBuiltin(env *Env) error {
 
 	// clear() -> Void
 	setClass.AddBuiltinMethod("clear", voidType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := make(map[string]bool)
 		keys := make([]any, 0)
@@ -157,7 +157,7 @@ func InstallSetBuiltin(env *Env) error {
 
 	// toArray() -> Array
 	setClass.AddBuiltinMethod("toArray", &ast.Type{Name: "Array", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		keysPtr := instance.Fields["_keys"].(*[]any)
 		return createArrayFromKeys(keysPtr, callEnv)
@@ -165,7 +165,7 @@ func InstallSetBuiltin(env *Env) error {
 
 	// asArray() -> Array - alias for toArray
 	setClass.AddBuiltinMethod("asArray", &ast.Type{Name: "Array", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		keysPtr := instance.Fields["_keys"].(*[]any)
 		return createArrayFromKeys(keysPtr, callEnv)
@@ -173,7 +173,7 @@ func InstallSetBuiltin(env *Env) error {
 	// toString() -> String
 	stringType := &ast.Type{Name: "string", IsBuiltin: true}
 	setClass.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		keysPtr := instance.Fields["_keys"].(*[]any)
 

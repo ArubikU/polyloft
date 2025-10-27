@@ -20,7 +20,7 @@ func InstallBoolBuiltin(env *Env) error {
 
 	// utils.ToString() -> String
 	boolClass.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		val := instance.Fields["_value"].(bool)
 		if val {
@@ -31,7 +31,7 @@ func InstallBoolBuiltin(env *Env) error {
 
 	// not() -> Bool
 	boolClass.AddBuiltinMethod("not", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		val := instance.Fields["_value"].(bool)
 		return CreateBoolInstance((*Env)(callEnv), !val)
@@ -39,7 +39,7 @@ func InstallBoolBuiltin(env *Env) error {
 
 	// serialize() -> String
 	boolClass.AddBuiltinMethod("serialize", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		val := instance.Fields["_value"].(bool)
 		if val {
@@ -56,12 +56,10 @@ func InstallBoolBuiltin(env *Env) error {
 // CreateBoolInstance creates a Bool instance from a Go bool
 // This is used when evaluating boolean literals
 func CreateBoolInstance(env *Env, value bool) (*ClassInstance, error) {
-	boolClassVal, ok := env.Get("__BoolClass__")
-	if !ok {
+	boolClass := common.BuiltinTypeBool.GetClassDefinition(env)
+	if boolClass == nil {
 		return nil, ThrowInitializationError(env, "Bool class")
 	}
-
-	boolClass := boolClassVal.(*ClassDefinition)
 
 	// Create instance
 	instance, err := createClassInstance(boolClass, env, []any{})

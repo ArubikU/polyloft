@@ -18,17 +18,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 	intType := common.BuiltinTypeInt.GetTypeDefinition(env)
 	boolType := common.BuiltinTypeBool.GetTypeDefinition(env)
 	voidType := &ast.Type{Name: "void", IsBuiltin: true}
-
-	// Get Bytes type if it exists
-	var bytesType *ast.Type
-	if bytesClass, ok := env.Get("Bytes"); ok {
-		if ctor, ok := bytesClass.(*common.ClassConstructor); ok {
-			bytesType = ctor.Definition.Type
-		}
-	}
-	if bytesType == nil {
-		bytesType = &ast.Type{Name: "Bytes", IsBuiltin: true}
-	}
+	bytesType := common.BuiltinTypeBytes.GetTypeDefinition(env)
 
 	// ========================================
 	// Socket class - TCP socket
@@ -44,7 +34,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 
 	// Constructor: Socket() - not connected
 	socketBuilder.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_conn"] = nil
 		instance.Fields["_reader"] = nil
@@ -79,7 +69,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 			return false, nil
 		}
 
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_conn"] = conn
 		instance.Fields["_reader"] = bufio.NewReader(conn)
@@ -93,7 +83,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 	socketBuilder.AddBuiltinMethod("send", intType, []ast.Parameter{
 		{Name: "data", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		conn, ok := instance.Fields["_conn"].(net.Conn)
@@ -113,7 +103,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 	socketBuilder.AddBuiltinMethod("sendBytes", intType, []ast.Parameter{
 		{Name: "data", Type: bytesType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		conn, ok := instance.Fields["_conn"].(net.Conn)
@@ -137,7 +127,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 		{Name: "size", Type: intType, IsVariadic: false},
 		{Name: "timeout", Type: intType, IsVariadic: false},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		conn, ok := instance.Fields["_conn"].(net.Conn)
@@ -175,7 +165,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 		{Name: "size", Type: intType, IsVariadic: false},
 		{Name: "timeout", Type: intType, IsVariadic: false},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		conn, ok := instance.Fields["_conn"].(net.Conn)
@@ -207,23 +197,24 @@ func InstallSocketsModule(env *Env, opts Options) error {
 		}
 
 		// Create Bytes instance
-		bytesClass, _ := (*Env)(callEnv).Get("Bytes")
-		if ctor, ok := bytesClass.(*common.ClassConstructor); ok {
-			inst, err := ctor.Func(callEnv, []any{})
-			if err != nil {
-				return nil, err
-			}
-			if bytesInst, ok := inst.(*ClassInstance); ok {
-				bytesInst.Fields["_data"] = buf[:n]
-				return bytesInst, nil
-			}
+		bytesClassDef := common.BuiltinTypeBytes.GetClassDefinition(callEnv)
+		if bytesClassDef == nil {
+			return nil, ThrowRuntimeError((*Env)(callEnv), "Bytes class not found")
 		}
-		return nil, ThrowRuntimeError((*Env)(callEnv), "failed to create Bytes instance")
+
+		bytesInst := &ClassInstance{
+			ClassName:   "Bytes",
+			Fields:      make(map[string]any),
+			Methods:     make(map[string]common.Func),
+			ParentClass: bytesClassDef,
+		}
+		bytesInst.Fields["_data"] = buf[:n]
+		return bytesInst, nil
 	}, []string{})
 
 	// close() -> Void
 	socketBuilder.AddBuiltinMethod("close", voidType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		conn, ok := instance.Fields["_conn"].(net.Conn)
@@ -240,7 +231,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 	socketBuilder.AddBuiltinMethod("setReadTimeout", voidType, []ast.Parameter{
 		{Name: "timeout", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		conn, ok := instance.Fields["_conn"].(net.Conn)
@@ -261,7 +252,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 	socketBuilder.AddBuiltinMethod("setWriteTimeout", voidType, []ast.Parameter{
 		{Name: "timeout", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		conn, ok := instance.Fields["_conn"].(net.Conn)
@@ -293,7 +284,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 
 	// Constructor: ServerSocket() - not listening
 	serverSocketBuilder.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_listener"] = nil
 		instance.Fields["listening"] = false
@@ -318,7 +309,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 			return false, nil
 		}
 
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_listener"] = listener
 		instance.Fields["listening"] = true
@@ -328,7 +319,7 @@ func InstallSocketsModule(env *Env, opts Options) error {
 
 	// accept() -> Socket
 	serverSocketBuilder.AddBuiltinMethod("accept", socketType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		listener, ok := instance.Fields["_listener"].(net.Listener)
@@ -342,27 +333,28 @@ func InstallSocketsModule(env *Env, opts Options) error {
 		}
 
 		// Create Socket instance
-		socketClass, _ := (*Env)(callEnv).Get("Socket")
-		if ctor, ok := socketClass.(*common.ClassConstructor); ok {
-			inst, err := ctor.Func(callEnv, []any{})
-			if err != nil {
-				return nil, err
-			}
-			if socketInst, ok := inst.(*ClassInstance); ok {
-				socketInst.Fields["_conn"] = conn
-				socketInst.Fields["_reader"] = bufio.NewReader(conn)
-				socketInst.Fields["connected"] = true
-				socketInst.Fields["remoteAddr"] = conn.RemoteAddr().String()
-				socketInst.Fields["localAddr"] = conn.LocalAddr().String()
-				return socketInst, nil
-			}
+		socketClassDef := common.BuiltinTypeSocket.GetClassDefinition(callEnv)
+		if socketClassDef == nil {
+			return nil, ThrowRuntimeError((*Env)(callEnv), "Socket class not found")
 		}
-		return nil, ThrowRuntimeError((*Env)(callEnv), "failed to create Socket instance")
+
+		socketInst := &ClassInstance{
+			ClassName:   "Socket",
+			Fields:      make(map[string]any),
+			Methods:     make(map[string]common.Func),
+			ParentClass: socketClassDef,
+		}
+		socketInst.Fields["_conn"] = conn
+		socketInst.Fields["_reader"] = bufio.NewReader(conn)
+		socketInst.Fields["connected"] = true
+		socketInst.Fields["remoteAddr"] = conn.RemoteAddr().String()
+		socketInst.Fields["localAddr"] = conn.LocalAddr().String()
+		return socketInst, nil
 	}, []string{})
 
 	// close() -> Void
 	serverSocketBuilder.AddBuiltinMethod("close", voidType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		listener, ok := instance.Fields["_listener"].(net.Listener)

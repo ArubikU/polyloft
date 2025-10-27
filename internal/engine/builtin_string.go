@@ -33,13 +33,13 @@ func InstallStringBuiltin(env *Env) error {
 
 	//hasNext() -> Bool
 	stringClass.AddBuiltinMethod("hasNext", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		return instance.Fields["_currentIndex"].(int) < utf8.RuneCountInString(instance.Fields["_value"].(string)), nil
 	}, []string{})
 	//next() -> String
 	stringClass.AddBuiltinMethod("next", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		currentIndex := instance.Fields["_currentIndex"].(int)
@@ -53,7 +53,7 @@ func InstallStringBuiltin(env *Env) error {
 
 	//Iterable interface methods , __length, __get, __get_step
 	stringClass.AddBuiltinMethod("__length", ast.ANY, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		return utf8.RuneCountInString(str), nil
@@ -61,7 +61,7 @@ func InstallStringBuiltin(env *Env) error {
 	stringClass.AddBuiltinMethod("__get", ast.ANY, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 
@@ -83,7 +83,7 @@ func InstallStringBuiltin(env *Env) error {
 		{Name: "index", Type: intType},
 		{Name: "value", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		//modify string
@@ -103,7 +103,7 @@ func InstallStringBuiltin(env *Env) error {
 	stringClass.AddBuiltinMethod("__contains", boolType, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 
@@ -121,7 +121,7 @@ func InstallStringBuiltin(env *Env) error {
 		{Name: "start", Type: ast.ANY},
 		{Name: "end", Type: ast.ANY},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 
@@ -142,7 +142,7 @@ func InstallStringBuiltin(env *Env) error {
 
 	// isEmpty() -> Bool
 	stringClass.AddBuiltinMethod("isEmpty", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		return len(str) == 0, nil
@@ -150,7 +150,7 @@ func InstallStringBuiltin(env *Env) error {
 
 	// length() -> Int (public method)
 	stringClass.AddBuiltinMethod("length", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		return utf8.RuneCountInString(str), nil
@@ -160,7 +160,7 @@ func InstallStringBuiltin(env *Env) error {
 	stringClass.AddBuiltinMethod("charAt", stringType, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 
@@ -181,7 +181,7 @@ func InstallStringBuiltin(env *Env) error {
 	stringClass.AddBuiltinMethod("indexOf", intType, []ast.Parameter{
 		{Name: "substr", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 
@@ -195,7 +195,7 @@ func InstallStringBuiltin(env *Env) error {
 		{Name: "start", Type: intType},
 		{Name: "end", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 
@@ -236,7 +236,7 @@ func InstallStringBuiltin(env *Env) error {
 
 	// toUpperCase() -> String
 	stringClass.AddBuiltinMethod("toUpperCase", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		return CreateStringInstance((*Env)(callEnv), strings.ToUpper(str))
@@ -244,7 +244,7 @@ func InstallStringBuiltin(env *Env) error {
 
 	// toLowerCase() -> String
 	stringClass.AddBuiltinMethod("toLowerCase", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		return CreateStringInstance((*Env)(callEnv), strings.ToLower(str))
@@ -252,7 +252,7 @@ func InstallStringBuiltin(env *Env) error {
 
 	// trim() -> String
 	stringClass.AddBuiltinMethod("trim", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		return CreateStringInstance((*Env)(callEnv), strings.TrimSpace(str))
@@ -262,7 +262,7 @@ func InstallStringBuiltin(env *Env) error {
 	stringClass.AddBuiltinMethod("startsWith", boolType, []ast.Parameter{
 		{Name: "prefix", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		prefix := StringValue(args[0])
@@ -273,7 +273,7 @@ func InstallStringBuiltin(env *Env) error {
 	stringClass.AddBuiltinMethod("endsWith", boolType, []ast.Parameter{
 		{Name: "suffix", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		suffix := StringValue(args[0])
@@ -284,7 +284,7 @@ func InstallStringBuiltin(env *Env) error {
 	stringClass.AddBuiltinMethod("contains", boolType, []ast.Parameter{
 		{Name: "substr", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		substr := StringValue(args[0])
@@ -296,7 +296,7 @@ func InstallStringBuiltin(env *Env) error {
 		{Name: "old", Type: stringType},
 		{Name: "new", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		old := StringValue(args[0])
@@ -308,7 +308,7 @@ func InstallStringBuiltin(env *Env) error {
 	stringClass.AddBuiltinMethod("split", &ast.Type{Name: "array", IsBuiltin: true}, []ast.Parameter{
 		{Name: "sep", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		sep := StringValue(args[0])
@@ -326,7 +326,7 @@ func InstallStringBuiltin(env *Env) error {
 
 	// utils.ToString() -> String
 	stringClass.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		return CreateStringInstance((*Env)(callEnv), str)
@@ -336,7 +336,7 @@ func InstallStringBuiltin(env *Env) error {
 	stringClass.AddBuiltinMethod("repeat", intType, []ast.Parameter{
 		{Name: "count", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		count, ok := utils.AsInt(args[0])
@@ -351,7 +351,7 @@ func InstallStringBuiltin(env *Env) error {
 		{Name: "length", Type: intType},
 		{Name: "pad", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		length, ok := utils.AsInt(args[0])
@@ -372,7 +372,7 @@ func InstallStringBuiltin(env *Env) error {
 		{Name: "length", Type: intType},
 		{Name: "pad", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		length, ok := utils.AsInt(args[0])
@@ -390,7 +390,7 @@ func InstallStringBuiltin(env *Env) error {
 
 	// serialize() -> String
 	stringClass.AddBuiltinMethod("serialize", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := instance.Fields["_value"].(string)
 		return CreateStringInstance((*Env)(callEnv), strconv.Quote(str))
@@ -404,13 +404,7 @@ func InstallStringBuiltin(env *Env) error {
 // CreateStringInstance creates a String instance from a Go string
 // This is used when evaluating string literals
 func CreateStringInstance(env *Env, value string) (*ClassInstance, error) {
-	stringClassVal, ok := env.Get("__StringClass__")
-	if !ok {
-		return nil, ThrowInitializationError(env, "String class")
-	}
-
-	stringClass := stringClassVal.(*ClassDefinition)
-
+	stringClass := common.BuiltinTypeString.GetClassDefinition(env)
 	// Create instance
 	instance, err := createClassInstance(stringClass, env, []any{})
 	if err != nil {

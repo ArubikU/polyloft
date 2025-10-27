@@ -26,7 +26,7 @@ func InstallBytesBuiltin(env *Env) error {
 
 	// Constructor: Bytes() - empty bytes
 	bytesBuilder.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_data"] = []byte{}
 		return nil, nil
@@ -36,7 +36,7 @@ func InstallBytesBuiltin(env *Env) error {
 	bytesBuilder.AddBuiltinConstructor([]ast.Parameter{
 		{Name: "size", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		size, ok := utils.AsInt(args[0])
 		if !ok {
@@ -50,7 +50,7 @@ func InstallBytesBuiltin(env *Env) error {
 	bytesBuilder.AddBuiltinConstructor([]ast.Parameter{
 		{Name: "data", Type: arrayType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		byteData, _ := AsBytes((*common.Env)(callEnv), args[0])
@@ -61,7 +61,7 @@ func InstallBytesBuiltin(env *Env) error {
 
 	// size() -> Int
 	bytesBuilder.AddBuiltinMethod("size", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].([]byte)
 		return len(data), nil
@@ -75,7 +75,7 @@ func InstallBytesBuiltin(env *Env) error {
 		if !ok {
 			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
 		}
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].([]byte)
 		if idx < 0 || idx >= len(data) {
@@ -97,7 +97,7 @@ func InstallBytesBuiltin(env *Env) error {
 		if !ok || val < 0 || val > 255 {
 			return nil, ThrowValueError((*Env)(callEnv), "byte value must be 0-255")
 		}
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].([]byte)
 		if idx < 0 || idx >= len(data) {
@@ -109,7 +109,7 @@ func InstallBytesBuiltin(env *Env) error {
 
 	// toString() -> String
 	bytesBuilder.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].([]byte)
 		binStr := ""
@@ -119,17 +119,80 @@ func InstallBytesBuiltin(env *Env) error {
 		return CreateStringInstance(env, "0b"+binStr)
 	}, []string{})
 
-	// toHex() -> String
-	bytesBuilder.AddBuiltinMethod("toHex", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+	// asHex() -> String
+	bytesBuilder.AddBuiltinMethod("asHex", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].([]byte)
 		return hex.EncodeToString(data), nil
 	}, []string{})
 
-	// toArray() -> Array
-	bytesBuilder.AddBuiltinMethod("toArray", arrayType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+	// asString() -> String - converts bytes to UTF-8 string
+	bytesBuilder.AddBuiltinMethod("asString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
+		instance := thisVal.(*ClassInstance)
+		data := instance.Fields["_data"].([]byte)
+		return CreateStringInstance(env, string(data))
+	}, []string{})
+
+	// asInt() -> Int - converts first byte to int (error if empty)
+	bytesBuilder.AddBuiltinMethod("asInt", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
+		instance := thisVal.(*ClassInstance)
+		data := instance.Fields["_data"].([]byte)
+		if len(data) == 0 {
+			return nil, ThrowValueError((*Env)(callEnv), "cannot convert empty Bytes to Int")
+		}
+		return int(data[0]), nil
+	}, []string{})
+
+	// asFloat() -> Float - converts first byte to float (error if empty)
+	bytesBuilder.AddBuiltinMethod("asFloat", floatType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
+		instance := thisVal.(*ClassInstance)
+		data := instance.Fields["_data"].([]byte)
+		if len(data) == 0 {
+			return nil, ThrowValueError((*Env)(callEnv), "cannot convert empty Bytes to Float")
+		}
+		return float64(data[0]), nil
+	}, []string{})
+
+	// asBool() -> Bool - returns true if any byte is non-zero
+	bytesBuilder.AddBuiltinMethod("asBool", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
+		instance := thisVal.(*ClassInstance)
+		data := instance.Fields["_data"].([]byte)
+		for _, b := range data {
+			if b != 0 {
+				return true, nil
+			}
+		}
+		return false, nil
+	}, []string{})
+
+	// asHex() -> String - converts bytes to hexadecimal string with 0x prefix
+	bytesBuilder.AddBuiltinMethod("asHex", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
+		instance := thisVal.(*ClassInstance)
+		data := instance.Fields["_data"].([]byte)
+		return CreateStringInstance(env, "0x"+hex.EncodeToString(data))
+	}, []string{})
+
+	// asBinary() -> String - converts bytes to binary string with 0b prefix
+	bytesBuilder.AddBuiltinMethod("asBinary", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
+		instance := thisVal.(*ClassInstance)
+		data := instance.Fields["_data"].([]byte)
+		binStr := ""
+		for _, b := range data {
+			binStr += fmt.Sprintf("%08b", b)
+		}
+		return CreateStringInstance(env, "0b"+binStr)
+	}, []string{})
+
+	// asArray() -> Array - same as toArray() but for naming consistency
+	bytesBuilder.AddBuiltinMethod("asArray", arrayType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].([]byte)
 		result := make([]any, len(data))
@@ -152,7 +215,7 @@ func InstallBytesBuiltin(env *Env) error {
 		if !ok {
 			return nil, ThrowTypeError((*Env)(callEnv), "int", args[1])
 		}
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].([]byte)
 
@@ -172,7 +235,7 @@ func InstallBytesBuiltin(env *Env) error {
 	bytesBuilder.AddBuiltinMethod("equals", boolType, []ast.Parameter{
 		{Name: "other", Type: bytesType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].([]byte)
 
@@ -337,7 +400,7 @@ func AsBytes(env *common.Env, value any) ([]byte, bool) {
 
 			return []byte(utils.ToString(v)), true
 		} else if v.ParentClass.IsSubclassOf(arrayDef) {
-			items := v.Fields["items"].([]any)
+			items := v.Fields["_items"].([]any)
 			buf := []byte{}
 			for _, item := range items {
 				b, ok := AsBytes(env, item)
@@ -449,13 +512,12 @@ func AsBytes(env *common.Env, value any) ([]byte, bool) {
 }
 
 func CreateBytesInstance(env *common.Env, data any) (*ClassInstance, error) {
-	bytesClass, ok := env.Get("__BytesClass__")
-	if !ok {
+	bytesClassDef := common.BuiltinTypeBytes.GetClassDefinition(env)
+	if bytesClassDef == nil {
 		return nil, ThrowInitializationError(env, "Bytes class not found")
 	}
 
-	arrayClassDef := bytesClass.(*common.ClassDefinition)
-	instance, err := createClassInstance(arrayClassDef, env, []any{})
+	instance, err := createClassInstance(bytesClassDef, env, []any{})
 	if err != nil {
 		return nil, err
 	}

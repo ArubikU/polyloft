@@ -41,7 +41,7 @@ func InstallIOModule(env *Env, opts Options) {
 
 	// Constructor: Buffer() - empty buffer
 	bufferBuilder.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_buffer"] = &bytes.Buffer{}
 		return nil, nil
@@ -51,7 +51,7 @@ func InstallIOModule(env *Env, opts Options) {
 	bufferBuilder.AddBuiltinConstructor([]ast.Parameter{
 		{Name: "data", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		str := utils.ToString(args[0])
 		instance.Fields["_buffer"] = bytes.NewBufferString(str)
@@ -62,7 +62,7 @@ func InstallIOModule(env *Env, opts Options) {
 	bufferBuilder.AddBuiltinMethod("write", intType, []ast.Parameter{
 		{Name: "data", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		buf := instance.Fields["_buffer"].(*bytes.Buffer)
 		data := utils.ToString(args[0])
@@ -77,7 +77,7 @@ func InstallIOModule(env *Env, opts Options) {
 	bufferBuilder.AddBuiltinMethod("writeBytes", intType, []ast.Parameter{
 		{Name: "data", Type: bytesType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		buf := instance.Fields["_buffer"].(*bytes.Buffer)
 
@@ -100,7 +100,7 @@ func InstallIOModule(env *Env, opts Options) {
 		if !ok {
 			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
 		}
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		buf := instance.Fields["_buffer"].(*bytes.Buffer)
 
@@ -114,7 +114,7 @@ func InstallIOModule(env *Env, opts Options) {
 
 	// readAll() -> String
 	bufferBuilder.AddBuiltinMethod("readAll", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		buf := instance.Fields["_buffer"].(*bytes.Buffer)
 		return buf.String(), nil
@@ -122,7 +122,7 @@ func InstallIOModule(env *Env, opts Options) {
 
 	// size() -> Int
 	bufferBuilder.AddBuiltinMethod("size", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		buf := instance.Fields["_buffer"].(*bytes.Buffer)
 		return buf.Len(), nil
@@ -130,7 +130,7 @@ func InstallIOModule(env *Env, opts Options) {
 
 	// clear() -> Void
 	bufferBuilder.AddBuiltinMethod("clear", voidType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		buf := instance.Fields["_buffer"].(*bytes.Buffer)
 		buf.Reset()
@@ -139,7 +139,7 @@ func InstallIOModule(env *Env, opts Options) {
 
 	// toString() -> String
 	bufferBuilder.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		buf := instance.Fields["_buffer"].(*bytes.Buffer)
 		return buf.String(), nil

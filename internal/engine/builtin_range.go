@@ -26,7 +26,7 @@ func InstallRangeBuiltin(env *Env) error {
 
 		// __length() -> Int - Get the length of the range
 		AddBuiltinMethod("__length", ast.ANY, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-			thisVal, _ := callEnv.Get("this")
+			thisVal, _ := callEnv.This()
 			instance := thisVal.(*ClassInstance)
 			start, _ := utils.AsInt(instance.Fields["_start"])
 			end, _ := utils.AsInt(instance.Fields["_end"])
@@ -45,7 +45,7 @@ func InstallRangeBuiltin(env *Env) error {
 	rangeClass.AddBuiltinMethod("__get", ast.ANY, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		index, _ := utils.AsInt(args[0])
@@ -72,7 +72,7 @@ func InstallRangeBuiltin(env *Env) error {
 
 	// toArray() -> Array - Convert range to array
 	rangeClass.AddBuiltinMethod("toArray", &ast.Type{Name: "Array", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		start, _ := utils.AsInt(instance.Fields["_start"])
 		end, _ := utils.AsInt(instance.Fields["_end"])
@@ -111,7 +111,7 @@ func InstallRangeBuiltin(env *Env) error {
 
 	// size() -> Int - Get the number of elements in the range
 	rangeClass.AddBuiltinMethod("size", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		start, _ := utils.AsInt(instance.Fields["_start"])
 		end, _ := utils.AsInt(instance.Fields["_end"])
@@ -137,7 +137,7 @@ func InstallRangeBuiltin(env *Env) error {
 
 	// toString() -> String
 	rangeClass.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		start, _ := utils.AsInt(instance.Fields["_start"])
 		end, _ := utils.AsInt(instance.Fields["_end"])
@@ -163,12 +163,10 @@ func InstallRangeBuiltin(env *Env) error {
 
 // CreateRangeInstance creates a Range instance from start, end, and optional step
 func CreateRangeInstance(env *Env, start, end int, step ...int) (*ClassInstance, error) {
-	rangeClassVal, ok := env.Get("__RangeClass__")
-	if !ok {
+	rangeClass := common.BuiltinTypeRange.GetClassDefinition(env)
+	if rangeClass == nil {
 		return nil, ThrowInitializationError(env, "Range class")
 	}
-
-	rangeClass := rangeClassVal.(*common.ClassDefinition)
 
 	// Default step is 1 if not provided
 	stepValue := 1

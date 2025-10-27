@@ -66,9 +66,9 @@ func ToString(v any) string {
 		case "Bool":
 			if val, ok := t.Fields["_value"].(bool); ok {
 				if val {
-					return "true"
+					return "True"
 				}
-				return "false"
+				return "False"
 			}
 		}
 		// Try to call the toString method if it exists

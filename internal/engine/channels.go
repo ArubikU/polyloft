@@ -21,7 +21,7 @@ func InstallChannelBuiltin(env *Env) error {
 		if len(args) < 1 {
 			return nil, ThrowArityError((*Env)(callEnv), 1, len(args))
 		}
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		ch := instance.Fields["_channel"].(*common.Channel)
 		return nil, ch.Send(args[0])
@@ -30,7 +30,7 @@ func InstallChannelBuiltin(env *Env) error {
 	// recv() -> T
 	channelClass.AddBuiltinMethod("recv", ast.ANY, []ast.Parameter{},
 		func(callEnv *common.Env, args []any) (any, error) {
-			thisVal, _ := callEnv.Get("this")
+			thisVal, _ := callEnv.This()
 			instance := thisVal.(*ClassInstance)
 			ch := instance.Fields["_channel"].(*common.Channel)
 			val, ok := ch.Recv()
@@ -43,7 +43,7 @@ func InstallChannelBuiltin(env *Env) error {
 	// close() -> Void
 	channelClass.AddBuiltinMethod("close", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{},
 		func(callEnv *common.Env, args []any) (any, error) {
-			thisVal, _ := callEnv.Get("this")
+			thisVal, _ := callEnv.This()
 			instance := thisVal.(*ClassInstance)
 			ch := instance.Fields["_channel"].(*common.Channel)
 			ch.Close()
@@ -61,23 +61,17 @@ func InstallChannelBuiltin(env *Env) error {
 
 // evalChannelExpr creates a new channel
 func evalChannelExpr(env *Env, expr *ast.ChannelExpr) (any, error) {
-	// Get the Channel class definition
-	channelClass, ok := env.Get("Channel")
-	if !ok {
+	// Get the Channel class constructor
+	ctor := common.BuiltinTypeChannel.GetConstructor(env)
+	if ctor == nil {
 		return nil, ThrowInitializationError(env, "Channel class")
 	}
 
 	// Create a new channel with buffer size 0 (unbuffered by default)
 	ch := common.NewChannel(0)
 
-	// Create a Channel instance
-	classCtor, ok := channelClass.(*common.ClassConstructor)
-	if !ok {
-		return nil, ThrowRuntimeError(env, "Channel is not a class constructor")
-	}
-
 	// Create instance using the constructor
-	instance, err := createClassInstance(classCtor.Definition, env, []any{})
+	instance, err := createClassInstance(ctor.Definition, env, []any{})
 	if err != nil {
 		return nil, err
 	}

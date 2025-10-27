@@ -320,20 +320,18 @@ func httpRequest(e *common.Env, args []any) (any, error) {
 // createHttpServer creates a new HTTP server instance
 func createHttpServer(e *common.Env, args []any) (any, error) {
 	// Create a new HttpServer instance
-	env := (*Env)(e)
-	serverConstructor, _ := env.Get("HttpServer")
-
-	if ctor, ok := serverConstructor.(*common.ClassConstructor); ok {
-		return ctor.Func(e, []any{})
+	ctor := common.BuiltinTypeHttpServer.GetConstructor(e)
+	if ctor == nil {
+		return nil, ThrowInitializationError((*Env)(e), "HttpServer class")
 	}
 
-	return nil, ThrowInitializationError((*Env)(e), "HttpServer class")
+	return ctor.Func(e, []any{})
 }
 
 // newHttpServer creates a new HttpServer instance
 func newHttpServer(e *common.Env, args []any) (any, error) {
 	// Get the instance from the environment (created by createClassInstance)
-	thisVal, exists := e.Get("this")
+	thisVal, exists := e.This()
 	if !exists {
 		return nil, ThrowRuntimeError((*Env)(e), "no instance context found")
 	}
@@ -356,7 +354,7 @@ func newHttpServer(e *common.Env, args []any) (any, error) {
 
 // httpServerGet registers a GET route handler
 func httpServerGet(e *common.Env, args []any) (any, error) {
-	thisVal, _ := e.Get("this")
+	thisVal, _ := e.This()
 	instance, ok := thisVal.(*ClassInstance)
 	if !ok {
 		return nil, ThrowTypeError((*Env)(e), "HttpServer", thisVal)
@@ -374,7 +372,7 @@ func httpServerGet(e *common.Env, args []any) (any, error) {
 
 // httpServerPost registers a POST route handler
 func httpServerPost(e *common.Env, args []any) (any, error) {
-	thisVal, _ := e.Get("this")
+	thisVal, _ := e.This()
 	instance, ok := thisVal.(*ClassInstance)
 	if !ok {
 		return nil, ThrowTypeError((*Env)(e), "HttpServer", thisVal)
@@ -393,7 +391,7 @@ func httpServerPost(e *common.Env, args []any) (any, error) {
 
 // httpServerPut registers a PUT route handler
 func httpServerPut(e *common.Env, args []any) (any, error) {
-	thisVal, _ := e.Get("this")
+	thisVal, _ := e.This()
 	instance, ok := thisVal.(*ClassInstance)
 	if !ok {
 		return nil, ThrowTypeError((*Env)(e), "HttpServer", thisVal)
@@ -412,7 +410,7 @@ func httpServerPut(e *common.Env, args []any) (any, error) {
 
 // httpServerDelete registers a DELETE route handler
 func httpServerDelete(e *common.Env, args []any) (any, error) {
-	thisVal, _ := e.Get("this")
+	thisVal, _ := e.This()
 	instance, ok := thisVal.(*ClassInstance)
 	if !ok {
 		return nil, ThrowTypeError((*Env)(e), "HttpServer", thisVal)
@@ -431,7 +429,7 @@ func httpServerDelete(e *common.Env, args []any) (any, error) {
 
 // httpServerListen starts the HTTP server
 func httpServerListen(e *common.Env, args []any) (any, error) {
-	thisVal, _ := e.Get("this")
+	thisVal, _ := e.This()
 	instance, ok := thisVal.(*ClassInstance)
 	if !ok {
 		return nil, ThrowTypeError((*Env)(e), "HttpServer", thisVal)
@@ -464,7 +462,7 @@ func httpServerListen(e *common.Env, args []any) (any, error) {
 
 // httpResponseStatus sets the HTTP status code
 func httpResponseStatus(e *common.Env, args []any) (any, error) {
-	thisVal, _ := e.Get("this")
+	thisVal, _ := e.This()
 	instance, ok := thisVal.(*ClassInstance)
 	if !ok {
 		return nil, ThrowTypeError((*Env)(e), "HttpResponse", thisVal)
@@ -481,7 +479,7 @@ func httpResponseStatus(e *common.Env, args []any) (any, error) {
 
 // httpResponseHeader sets an HTTP header
 func httpResponseHeader(e *common.Env, args []any) (any, error) {
-	thisVal, _ := e.Get("this")
+	thisVal, _ := e.This()
 	instance, ok := thisVal.(*ClassInstance)
 	if !ok {
 		return nil, ThrowTypeError((*Env)(e), "HttpResponse", thisVal)
@@ -498,7 +496,7 @@ func httpResponseHeader(e *common.Env, args []any) (any, error) {
 
 // httpResponseJson sends a JSON response
 func httpResponseJson(e *common.Env, args []any) (any, error) {
-	thisVal, _ := e.Get("this")
+	thisVal, _ := e.This()
 	instance, ok := thisVal.(*ClassInstance)
 	if !ok {
 		return nil, ThrowTypeError((*Env)(e), "HttpResponse", thisVal)
@@ -512,7 +510,7 @@ func httpResponseJson(e *common.Env, args []any) (any, error) {
 
 // httpResponseSend sends a text response
 func httpResponseSend(e *common.Env, args []any) (any, error) {
-	thisVal, _ := e.Get("this")
+	thisVal, _ := e.This()
 	instance, ok := thisVal.(*ClassInstance)
 	if !ok {
 		return nil, ThrowTypeError((*Env)(e), "HttpResponse", thisVal)
@@ -526,7 +524,7 @@ func httpResponseSend(e *common.Env, args []any) (any, error) {
 
 // httpResponseHtml sends an HTML response
 func httpResponseHtml(e *common.Env, args []any) (any, error) {
-	thisVal, _ := e.Get("this")
+	thisVal, _ := e.This()
 	instance, ok := thisVal.(*ClassInstance)
 	if !ok {
 		return nil, ThrowTypeError((*Env)(e), "HttpResponse", thisVal)
@@ -642,13 +640,10 @@ func (r *httpRouter) handleRequest(env *common.Env, w http.ResponseWriter, req *
 		}
 	}
 
-	// Get class definitions to create proper instances
-	envTyped := (*Env)(env)
-
 	// Create HttpRequest instance using the class constructor
-	requestClassVal, _ := envTyped.Get("HttpRequest")
+	requestCtor := common.BuiltinTypeHttpRequest.GetConstructor(env)
 	var requestInstance *ClassInstance
-	if requestCtor, ok := requestClassVal.(*common.ClassConstructor); ok {
+	if requestCtor != nil {
 		inst, err := requestCtor.Func(env, []any{})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -658,12 +653,12 @@ func (r *httpRouter) handleRequest(env *common.Env, w http.ResponseWriter, req *
 		if ri, ok := inst.(*ClassInstance); ok {
 			requestInstance = ri
 			// Set the fields
-			requestInstance.Fields["method"] = req.Method
-			requestInstance.Fields["path"] = req.URL.Path
-			requestInstance.Fields["url"] = req.URL.String()
-			requestInstance.Fields["headers"] = convertHeaders(req.Header)
-			requestInstance.Fields["query"] = queryParams
-			requestInstance.Fields["body"] = bodyData
+			requestInstance.Fields["method"], _ = CreateStringInstance(env, req.Method)
+			requestInstance.Fields["path"], _ = CreateStringInstance(env, req.URL.Path)
+			requestInstance.Fields["url"], _ = CreateStringInstance(env, req.URL.String())
+			requestInstance.Fields["headers"], _ = CreateMapInstance(env, convertHeaders(req.Header))
+			requestInstance.Fields["query"], _ = CreateMapInstance(env, queryParams)
+			requestInstance.Fields["body"], _ = CreateGenericInstance(env, bodyData)
 		}
 	}
 
@@ -681,9 +676,9 @@ func (r *httpRouter) handleRequest(env *common.Env, w http.ResponseWriter, req *
 	}
 
 	// Create HttpResponse instance using the class constructor
-	responseClassVal, _ := envTyped.Get("HttpResponse")
+	responseCtor := common.BuiltinTypeHttpResponse.GetConstructor(env)
 	var responseInstance *ClassInstance
-	if responseCtor, ok := responseClassVal.(*common.ClassConstructor); ok {
+	if responseCtor != nil {
 		inst, err := responseCtor.Func(env, []any{})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

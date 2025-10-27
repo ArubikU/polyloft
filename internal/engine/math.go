@@ -18,78 +18,96 @@ func InstallMathModule(env *Env) {
 		AddStaticField("E", math.E).
 		AddStaticMethod("abs", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{
 			{Name: "x", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			x, _ := env.Get("x")
-			a, _ := utils.AsFloat(x)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			a, _ := utils.AsFloat(args[0])
 			return math.Abs(a), nil
 		})).
 		AddStaticMethod("floor", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{
 			{Name: "x", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			x, _ := env.Get("x")
-			a, _ := utils.AsFloat(x)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			a, _ := utils.AsFloat(args[0])
 			return math.Floor(a), nil
 		})).
 		AddStaticMethod("ceil", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{
 			{Name: "x", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			x, _ := env.Get("x")
-			a, _ := utils.AsFloat(x)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			a, _ := utils.AsFloat(args[0])
 			return math.Ceil(a), nil
 		})).
 		AddStaticMethod("round", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{
 			{Name: "x", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			x, _ := env.Get("x")
-			a, _ := utils.AsFloat(x)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			a, _ := utils.AsFloat(args[0])
 			return math.Round(a), nil
 		})).
 		AddStaticMethod("sqrt", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{
 			{Name: "x", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			x, _ := env.Get("x")
-			a, _ := utils.AsFloat(x)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			a, _ := utils.AsFloat(args[0])
 			return math.Sqrt(a), nil
 		})).
 		AddStaticMethod("sin", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{
 			{Name: "x", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			x, _ := env.Get("x")
-			a, _ := utils.AsFloat(x)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			a, _ := utils.AsFloat(args[0])
 			return math.Sin(a), nil
 		})).
 		AddStaticMethod("cos", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{
 			{Name: "x", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			x, _ := env.Get("x")
-			a, _ := utils.AsFloat(x)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			a, _ := utils.AsFloat(args[0])
 			return math.Cos(a), nil
 		})).
 		AddStaticMethod("tan", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{
 			{Name: "x", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			x, _ := env.Get("x")
-			a, _ := utils.AsFloat(x)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			a, _ := utils.AsFloat(args[0])
 			return math.Tan(a), nil
 		})).
 		AddStaticMethod("pow", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{
 			{Name: "base", Type: ast.TypeFromString("Number")},
 			{Name: "exponent", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			base, _ := env.Get("base")
-			exponent, _ := env.Get("exponent")
-			a, _ := utils.AsFloat(base)
-			b, _ := utils.AsFloat(exponent)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 2 {
+				return nil, ThrowArityError(env, 2, len(args))
+			}
+			a, _ := utils.AsFloat(args[0])
+			b, _ := utils.AsFloat(args[1])
 			return math.Pow(a, b), nil
 		})).
 		AddStaticMethod("min", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{
 			{Name: "a", Type: ast.TypeFromString("Number")},
 			{Name: "b", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			aVal, _ := env.Get("a")
-			bVal, _ := env.Get("b")
-			a, _ := utils.AsFloat(aVal)
-			b, _ := utils.AsFloat(bVal)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 2 {
+				return nil, ThrowArityError(env, 2, len(args))
+			}
+			a, _ := utils.AsFloat(args[0])
+			b, _ := utils.AsFloat(args[1])
 			if a < b {
 				return a, nil
 			}
@@ -98,11 +116,12 @@ func InstallMathModule(env *Env) {
 		AddStaticMethod("max", &ast.Type{Name: "float", IsBuiltin: true}, []ast.Parameter{
 			{Name: "a", Type: ast.TypeFromString("Number")},
 			{Name: "b", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			aVal, _ := env.Get("a")
-			bVal, _ := env.Get("b")
-			a, _ := utils.AsFloat(aVal)
-			b, _ := utils.AsFloat(bVal)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 2 {
+				return nil, ThrowArityError(env, 2, len(args))
+			}
+			a, _ := utils.AsFloat(args[0])
+			b, _ := utils.AsFloat(args[1])
 			if a > b {
 				return a, nil
 			}
@@ -112,13 +131,13 @@ func InstallMathModule(env *Env) {
 			{Name: "x", Type: ast.TypeFromString("Number")},
 			{Name: "min", Type: ast.TypeFromString("Number")},
 			{Name: "max", Type: ast.TypeFromString("Number")},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			xVal, _ := env.Get("x")
-			minVal, _ := env.Get("min")
-			maxVal, _ := env.Get("max")
-			x, _ := utils.AsFloat(xVal)
-			lo, _ := utils.AsFloat(minVal)
-			hi, _ := utils.AsFloat(maxVal)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 3 {
+				return nil, ThrowArityError(env, 3, len(args))
+			}
+			x, _ := utils.AsFloat(args[0])
+			lo, _ := utils.AsFloat(args[1])
+			hi, _ := utils.AsFloat(args[2])
 			if x < lo {
 				x = lo
 			}

@@ -25,7 +25,6 @@ func InstallTupleClass(env *Env) error {
 	// Step 2: Get type references for method signatures
 	intType := common.BuiltinTypeInt.GetTypeDefinition(env)
 	anyType := ast.ANY
-	tupleType := tupleBuilder.GetType()
 
 	// Add constructor - Tuple accepts variadic arguments
 	// No formal constructor needed as we'll handle it in Build
@@ -33,7 +32,7 @@ func InstallTupleClass(env *Env) error {
 	// size() -> Int - returns number of elements
 	tupleBuilder.AddBuiltinMethod("size", intType, []ast.Parameter{},
 		common.Func(func(env *common.Env, args []any) (any, error) {
-			thisVal, _ := env.Get("this")
+			thisVal, _ := env.This()
 			inst := thisVal.(*common.ClassInstance)
 			elements := inst.Fields["_elements"].([]any)
 			return len(elements), nil
@@ -43,7 +42,7 @@ func InstallTupleClass(env *Env) error {
 	tupleBuilder.AddBuiltinMethod("get", anyType, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, common.Func(func(env *common.Env, args []any) (any, error) {
-		thisVal, _ := env.Get("this")
+		thisVal, _ := env.This()
 		inst := thisVal.(*common.ClassInstance)
 		elements := inst.Fields["_elements"].([]any)
 
@@ -58,7 +57,7 @@ func InstallTupleClass(env *Env) error {
 	// pieces() -> Int - Unstructured interface method
 	tupleBuilder.AddBuiltinMethod("__pieces", intType, []ast.Parameter{},
 		common.Func(func(env *common.Env, args []any) (any, error) {
-			thisVal, _ := env.Get("this")
+			thisVal, _ := env.This()
 			inst := thisVal.(*common.ClassInstance)
 			elements := inst.Fields["_elements"].([]any)
 			return len(elements), nil
@@ -68,7 +67,7 @@ func InstallTupleClass(env *Env) error {
 	tupleBuilder.AddBuiltinMethod("__get_piece", anyType, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, common.Func(func(env *common.Env, args []any) (any, error) {
-		thisVal, _ := env.Get("this")
+		thisVal, _ := env.This()
 		inst := thisVal.(*common.ClassInstance)
 		elements := inst.Fields["_elements"].([]any)
 
@@ -84,7 +83,7 @@ func InstallTupleClass(env *Env) error {
 	arrayType := common.BuiltinTypeArray.GetTypeDefinition(env)
 	tupleBuilder.AddBuiltinMethod("toArray", arrayType, []ast.Parameter{},
 		common.Func(func(env *common.Env, args []any) (any, error) {
-			thisVal, _ := env.Get("this")
+			thisVal, _ := env.This()
 			inst := thisVal.(*common.ClassInstance)
 			elements := inst.Fields["_elements"].([]any)
 
@@ -98,7 +97,7 @@ func InstallTupleClass(env *Env) error {
 	stringType := common.BuiltinTypeString.GetTypeDefinition(env)
 	tupleBuilder.AddBuiltinMethod("toString", stringType, []ast.Parameter{},
 		common.Func(func(env *common.Env, args []any) (any, error) {
-			thisVal, _ := env.Get("this")
+			thisVal, _ := env.This()
 			inst := thisVal.(*common.ClassInstance)
 			elements := inst.Fields["_elements"].([]any)
 
@@ -111,9 +110,6 @@ func InstallTupleClass(env *Env) error {
 
 	// Build and install the class
 	tupleBuilder.Build(env)
-
-	// Store class reference
-	env.Define("__TupleClass__", tupleType, "final")
 
 	return nil
 }

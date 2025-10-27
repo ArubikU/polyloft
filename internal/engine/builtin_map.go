@@ -109,7 +109,7 @@ func InstallMapBuiltin(env *Env) error {
 	mapClass.AddBuiltinMethod("get", &common.VBound.Name, []ast.Parameter{
 		{Name: "key", Type: &common.KBound.Name},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -129,7 +129,7 @@ func InstallMapBuiltin(env *Env) error {
 		{Name: "key", Type: &common.KBound.Name},
 		{Name: "value", Type: &common.VBound.Name},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -150,7 +150,7 @@ func InstallMapBuiltin(env *Env) error {
 	}, []string{})
 
 	mapClass.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_data"] = make(map[uint64][]*mapEntry)
 		instance.Fields["_entries"] = make([]*mapEntry, 0)
@@ -162,7 +162,7 @@ func InstallMapBuiltin(env *Env) error {
 		{Name: "key", Type: nil},
 		{Name: "value", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -186,7 +186,7 @@ func InstallMapBuiltin(env *Env) error {
 	mapClass.AddBuiltinMethod("has", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
 		{Name: "key", Type: &common.KBound.Name},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -205,7 +205,7 @@ func InstallMapBuiltin(env *Env) error {
 	mapClass.AddBuiltinMethod("hasKey", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
 		{Name: "key", Type: &common.KBound.Name},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -225,7 +225,7 @@ func InstallMapBuiltin(env *Env) error {
 	mapClass.AddBuiltinMethod("__get", &common.VBound.Name, []ast.Parameter{
 		{Name: "key", Type: &common.KBound.Name},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -241,7 +241,7 @@ func InstallMapBuiltin(env *Env) error {
 					// Fallback to array if Pair not available
 					return []any{entry.Key, entry.Value}, nil
 				}
-				
+
 				// Construct Pair
 				pairInstance, err := constructPairInstance(pairClass, entry.Key, entry.Value, (*Env)(callEnv))
 				if err != nil {
@@ -270,7 +270,7 @@ func InstallMapBuiltin(env *Env) error {
 		{Name: "key", Type: &common.KBound.Name},
 		{Name: "value", Type: &common.VBound.Name},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 		entries, hasEntries := instance.Fields["_entries"].([]*mapEntry)
@@ -315,7 +315,7 @@ func InstallMapBuiltin(env *Env) error {
 	mapClass.AddBuiltinMethod("__contains", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
 		{Name: "key", Type: &common.KBound.Name},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -333,14 +333,14 @@ func InstallMapBuiltin(env *Env) error {
 	// __length() -> Int (Iterable interface)
 	// Returns the number of key-value pairs in the map
 	mapClass.AddBuiltinMethod("__length", &ast.Type{Name: "int", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
-		
+
 		// Use _entries if available for accurate count
 		if entries, ok := instance.Fields["_entries"].([]*mapEntry); ok {
 			return len(entries), nil
 		}
-		
+
 		// Fallback to counting from hash map
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 		size := 0
@@ -354,7 +354,7 @@ func InstallMapBuiltin(env *Env) error {
 	mapClass.AddBuiltinMethod("remove", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{
 		{Name: "key", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -379,7 +379,7 @@ func InstallMapBuiltin(env *Env) error {
 	mapClass.AddBuiltinMethod("delete", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{
 		{Name: "key", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -402,7 +402,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// clear() -> Void
 	mapClass.AddBuiltinMethod("clear", &ast.Type{Name: "void", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_data"] = make(map[uint64][]*mapEntry)
 		return nil, nil
@@ -410,7 +410,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// keys() -> Array
 	mapClass.AddBuiltinMethod("keys", &ast.Type{Name: "array", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -425,7 +425,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// values() -> Array
 	mapClass.AddBuiltinMethod("values", &ast.Type{Name: "array", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -440,7 +440,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// entries() -> Array
 	mapClass.AddBuiltinMethod("entries", &ast.Type{Name: "array", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -456,7 +456,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// size() -> Int
 	mapClass.AddBuiltinMethod("size", &ast.Type{Name: "int", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -469,7 +469,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// length() -> Int (alias for size)
 	mapClass.AddBuiltinMethod("length", &ast.Type{Name: "int", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -482,7 +482,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// isEmpty() -> Bool
 	mapClass.AddBuiltinMethod("isEmpty", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -496,7 +496,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// utils.ToString() -> String
 	mapClass.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -526,7 +526,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// serialize() -> String (convert to JSON string)
 	mapClass.AddBuiltinMethod("serialize", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		// Convert to Go map for JSON encoding
@@ -580,7 +580,7 @@ func InstallMapBuiltin(env *Env) error {
 
 	// getEntries() -> List<MapEntry<K,V>>
 	mapClass.AddBuiltinMethod("getEntries", &ast.Type{Name: "List", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		data := instance.Fields["_data"].(map[uint64][]*mapEntry)
 
@@ -614,12 +614,12 @@ func InstallMapBuiltin(env *Env) error {
 		}
 
 		// Create List instance containing the entries
-		listClass, exists := callEnv.Get("List")
-		if !exists {
+		listCtor := common.BuiltinTypeList.GetConstructor(callEnv)
+		if listCtor == nil {
 			return nil, ThrowRuntimeError((*Env)(callEnv), "List class not found")
 		}
 
-		if listCtor, ok := listClass.(*common.ClassConstructor); ok {
+		if listCtor != nil {
 			// Create Array instance for the entries
 			arrayInstance, err := CreateArrayInstance((*Env)(callEnv), entries)
 			if err != nil {
@@ -642,15 +642,11 @@ func InstallMapBuiltin(env *Env) error {
 	return err
 }
 
-// CreateMapInstance creates a Map instance from a map[string]any
-// This is used when evaluating {} literals
-func CreateMapInstance(env *Env, data map[string]any) (*ClassInstance, error) {
-	mapClassVal, ok := env.Get("__MapClass__")
-	if !ok {
+func CreateMapInstance(env *Env, data any) (*ClassInstance, error) {
+	mapClass := common.BuiltinTypeMap.GetClassDefinition(env)
+	if mapClass == nil {
 		return nil, ThrowInitializationError(env, "Map class")
 	}
-
-	mapClass := mapClassVal.(*ClassDefinition)
 
 	// Create instance
 	instance, err := createClassInstance(mapClass, env, []any{})
@@ -663,19 +659,217 @@ func CreateMapInstance(env *Env, data map[string]any) (*ClassInstance, error) {
 	// Convert to hash-based storage for fast lookups
 	hashData := make(map[uint64][]*mapEntry)
 	// Also maintain insertion order for stable iteration
-	entries := make([]*mapEntry, 0, len(data))
-	
-	for k, v := range data {
-		entry := &mapEntry{Key: k, Value: v}
-		hash := hashValue(env, k)
+	entries := make([]*mapEntry, 0)
+
+	// Convert data to map entries with automatic type conversion
+	convertedData, ok := MapToData(env, data)
+	if !ok {
+		return nil, ThrowTypeError(env, "map-compatible type", data)
+	}
+
+	for k, v := range convertedData {
+		// Convert key and value to appropriate types
+		convertedKey := ConvertMapKey(env, k)
+		convertedValue := ConvertMapValue(env, v)
+
+		entry := &mapEntry{Key: convertedKey, Value: convertedValue}
+		hash := hashValue(env, convertedKey)
 		hashData[hash] = append(hashData[hash], entry)
 		entries = append(entries, entry)
 	}
-	
+
 	classInstance.Fields["_data"] = hashData
 	classInstance.Fields["_entries"] = entries
 
 	return classInstance, nil
+}
+
+// MapToData converts various types to a map[string]any representation
+func MapToData(env *Env, value any) (map[string]any, bool) {
+	if value == nil {
+		return make(map[string]any), true
+	}
+
+	switch v := value.(type) {
+	case map[string]any:
+		return v, true
+	case map[any]any:
+		// Convert map[any]any to map[string]any
+		result := make(map[string]any)
+		for key, val := range v {
+			result[utils.ToString(key)] = val
+		}
+		return result, true
+	case *ClassInstance:
+		mapDef := common.BuiltinTypeMap.GetClassDefinition(env)
+		if v.ParentClass.IsSubclassOf(mapDef) {
+			// It's already a Map instance, extract the data
+			obj, err := MapToObject(v)
+			if err != nil {
+				return nil, false
+			}
+			return obj, true
+		}
+	}
+
+	return nil, false
+}
+
+// ConvertMapKey converts a key to the appropriate type for use in a Map
+func ConvertMapKey(env *Env, key any) any {
+	if key == nil {
+		return "null"
+	}
+
+	switch v := key.(type) {
+	case string:
+		// Convert native string to String ClassInstance
+		if strInst, err := CreateStringInstance(env, v); err == nil {
+			return strInst
+		}
+		return v
+	case int:
+		// Convert native int to Int ClassInstance
+		if intInst, err := CreateIntInstance(env, v); err == nil {
+			return intInst
+		}
+		return v
+	case int8, int16, int32, int64:
+		// Convert to int first, then to Int ClassInstance
+		intVal, _ := utils.AsInt(v)
+		if intInst, err := CreateIntInstance(env, intVal); err == nil {
+			return intInst
+		}
+		return v
+	case uint, uint8, uint16, uint32, uint64:
+		// Convert to int first, then to Int ClassInstance
+		intVal, _ := utils.AsInt(v)
+		if intInst, err := CreateIntInstance(env, intVal); err == nil {
+			return intInst
+		}
+		return v
+	case float32:
+		// Convert to Float ClassInstance
+		if floatInst, err := CreateFloatInstance(env, float64(v)); err == nil {
+			return floatInst
+		}
+		return v
+	case float64:
+		// Convert to Float ClassInstance
+		if floatInst, err := CreateFloatInstance(env, v); err == nil {
+			return floatInst
+		}
+		return v
+	case bool:
+		// Convert to Bool ClassInstance
+		if boolInst, err := CreateBoolInstance(env, v); err == nil {
+			return boolInst
+		}
+		return v
+	case []byte:
+		// Convert to Bytes ClassInstance for use as key
+		if bytesInst, err := CreateBytesInstance(env, v); err == nil {
+			return bytesInst
+		}
+		return v
+	case *ClassInstance:
+		// ClassInstances (including Bytes) can be used as keys directly
+		// No need to extract primitive values, keep as ClassInstance
+		return v
+	default:
+		// For any other type, convert to string as key
+		if strInst, err := CreateStringInstance(env, utils.ToString(key)); err == nil {
+			return strInst
+		}
+		return utils.ToString(key)
+	}
+}
+
+// ConvertMapValue converts a value to the appropriate type for storage in a Map
+func ConvertMapValue(env *Env, value any) any {
+	if value == nil {
+		return nil
+	}
+
+	switch v := value.(type) {
+	case string:
+		// Convert native string to String ClassInstance
+		if strInst, err := CreateStringInstance(env, v); err == nil {
+			return strInst
+		}
+		return v
+	case int:
+		// Convert native int to Int ClassInstance
+		if intInst, err := CreateIntInstance(env, v); err == nil {
+			return intInst
+		}
+		return v
+	case int8, int16, int32, int64:
+		// Convert to int first, then to Int ClassInstance
+		intVal, _ := utils.AsInt(v)
+		if intInst, err := CreateIntInstance(env, intVal); err == nil {
+			return intInst
+		}
+		return v
+	case uint, uint8, uint16, uint32, uint64:
+		// Convert to int first, then to Int ClassInstance
+		intVal, _ := utils.AsInt(v)
+		if intInst, err := CreateIntInstance(env, intVal); err == nil {
+			return intInst
+		}
+		return v
+	case float32:
+		// Convert to Float ClassInstance
+		if floatInst, err := CreateFloatInstance(env, float64(v)); err == nil {
+			return floatInst
+		}
+		return v
+	case float64:
+		// Convert to Float ClassInstance
+		if floatInst, err := CreateFloatInstance(env, v); err == nil {
+			return floatInst
+		}
+		return v
+	case bool:
+		// Convert to Bool ClassInstance
+		if boolInst, err := CreateBoolInstance(env, v); err == nil {
+			return boolInst
+		}
+		return v
+	case []byte:
+		// Convert to Bytes ClassInstance
+		if bytesInst, err := CreateBytesInstance(env, v); err == nil {
+			return bytesInst
+		}
+		return v
+	case []any:
+		// Convert slice to Array instance with recursive conversion
+		arrayInst, err := CreateArrayInstance(env, v)
+		if err == nil {
+			return arrayInst
+		}
+		return v
+	case map[string]any:
+		// Convert nested map to Map instance (recursively)
+		mapInst, err := CreateMapInstance(env, v)
+		if err == nil {
+			return mapInst
+		}
+		return v
+	case map[any]any:
+		// Convert nested map to Map instance (recursively)
+		mapInst, err := CreateMapInstance(env, v)
+		if err == nil {
+			return mapInst
+		}
+		return v
+	case *ClassInstance:
+		// ClassInstances are stored as is
+		return v
+	default:
+		// For other types, try to keep as is
+		return v
+	}
 }
 
 // MapToObject converts a Map instance back to a Go map[string]any for JSON serialization
@@ -695,22 +889,102 @@ func MapToObject(mapInstance *ClassInstance) (map[string]any, error) {
 	for _, entries := range hashData {
 		for _, entry := range entries {
 			// Convert key to string for JSON
-			keyStr := utils.ToString(entry.Key)
+			var keyStr string
+			if keyInst, ok := entry.Key.(*ClassInstance); ok {
+				// Extract primitive value from key wrapper classes
+				stringDef := common.BuiltinTypeString.GetClassDefinition(nil)
+				intDef := common.BuiltinTypeInt.GetClassDefinition(nil)
+				floatDef := common.BuiltinTypeFloat.GetClassDefinition(nil)
+				boolDef := common.BuiltinTypeBool.GetClassDefinition(nil)
 
-			// Recursively convert nested ClassInstance objects
+				if keyInst.ParentClass.IsSubclassOf(stringDef) {
+					if val, ok := keyInst.Fields["_value"].(string); ok {
+						keyStr = val
+					} else {
+						keyStr = utils.ToString(keyInst)
+					}
+				} else if keyInst.ParentClass.IsSubclassOf(intDef) {
+					if val, ok := keyInst.Fields["_value"].(int); ok {
+						keyStr = utils.ToString(val)
+					} else {
+						keyStr = utils.ToString(keyInst)
+					}
+				} else if keyInst.ParentClass.IsSubclassOf(floatDef) {
+					if val, ok := keyInst.Fields["_value"].(float64); ok {
+						keyStr = utils.ToString(val)
+					} else {
+						keyStr = utils.ToString(keyInst)
+					}
+				} else if keyInst.ParentClass.IsSubclassOf(boolDef) {
+					if val, ok := keyInst.Fields["_value"].(bool); ok {
+						keyStr = utils.ToString(val)
+					} else {
+						keyStr = utils.ToString(keyInst)
+					}
+				} else {
+					keyStr = utils.ToString(keyInst)
+				}
+			} else {
+				keyStr = utils.ToString(entry.Key)
+			}
+
+			// Recursively convert nested ClassInstance objects and extract primitives
 			if nestedInstance, ok := entry.Value.(*ClassInstance); ok {
-				if nestedInstance.ClassName == "Map" {
+				mapDef := common.BuiltinTypeMap.GetClassDefinition(nil)
+				arrayDef := common.BuiltinTypeArray.GetClassDefinition(nil)
+				listDef := common.BuiltinTypeList.GetClassDefinition(nil)
+				stringDef := common.BuiltinTypeString.GetClassDefinition(nil)
+				intDef := common.BuiltinTypeInt.GetClassDefinition(nil)
+				floatDef := common.BuiltinTypeFloat.GetClassDefinition(nil)
+				boolDef := common.BuiltinTypeBool.GetClassDefinition(nil)
+
+				if nestedInstance.ParentClass.IsSubclassOf(mapDef) {
 					nestedObj, err := MapToObject(nestedInstance)
 					if err != nil {
 						return nil, err
 					}
 					result[keyStr] = nestedObj
-				} else if nestedInstance.ClassName == "Array" {
+				} else if nestedInstance.ParentClass.IsSubclassOf(arrayDef) {
 					nestedSlice, err := ArrayToSlice(nestedInstance)
 					if err != nil {
 						return nil, err
 					}
 					result[keyStr] = nestedSlice
+				} else if nestedInstance.ParentClass.IsSubclassOf(listDef) {
+					// List uses _items which is a pointer to []any
+					if itemsPtr, ok := nestedInstance.Fields["_items"].(*[]any); ok {
+						result[keyStr] = *itemsPtr
+					} else {
+						result[keyStr] = nestedInstance
+					}
+				} else if nestedInstance.ParentClass.IsSubclassOf(stringDef) {
+					// Extract primitive string value
+					if val, ok := nestedInstance.Fields["_value"].(string); ok {
+						result[keyStr] = val
+					} else {
+						result[keyStr] = utils.ToString(nestedInstance)
+					}
+				} else if nestedInstance.ParentClass.IsSubclassOf(intDef) {
+					// Extract primitive int value
+					if val, ok := nestedInstance.Fields["_value"].(int); ok {
+						result[keyStr] = val
+					} else {
+						result[keyStr] = nestedInstance
+					}
+				} else if nestedInstance.ParentClass.IsSubclassOf(floatDef) {
+					// Extract primitive float value
+					if val, ok := nestedInstance.Fields["_value"].(float64); ok {
+						result[keyStr] = val
+					} else {
+						result[keyStr] = nestedInstance
+					}
+				} else if nestedInstance.ParentClass.IsSubclassOf(boolDef) {
+					// Extract primitive bool value
+					if val, ok := nestedInstance.Fields["_value"].(bool); ok {
+						result[keyStr] = val
+					} else {
+						result[keyStr] = nestedInstance
+					}
 				} else {
 					result[keyStr] = entry.Value
 				}
@@ -761,13 +1035,12 @@ func constructPairInstance(pairClass *ClassDefinition, key, value any, env *Env)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	classInstance := instance.(*ClassInstance)
-	
+
 	// Initialize fields (Pair uses "key" and "value")
 	classInstance.Fields["key"] = key
 	classInstance.Fields["value"] = value
-	
+
 	return classInstance, nil
 }
-

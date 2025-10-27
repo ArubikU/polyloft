@@ -47,7 +47,7 @@ func InstallListBuiltin(env *Env) error {
 
 	// Constructor: List() - empty list
 	listClass.AddBuiltinConstructor([]ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := make([]any, 0)
 		instance.Fields["_items"] = &items
@@ -59,7 +59,7 @@ func InstallListBuiltin(env *Env) error {
 	listClass.AddBuiltinConstructor([]ast.Parameter{
 		{Name: "array", Type: arrayType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		if arr, ok := args[0].([]any); ok {
 			items := make([]any, len(arr))
@@ -77,7 +77,7 @@ func InstallListBuiltin(env *Env) error {
 	listClass.AddBuiltinConstructor([]ast.Parameter{
 		{Name: "items", Type: ast.ANY, IsVariadic: true},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := make([]any, len(args))
 		copy(items, args)
@@ -88,7 +88,7 @@ func InstallListBuiltin(env *Env) error {
 
 	// size() -> Int
 	listClass.AddBuiltinMethod("size", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		return len(*itemsPtr), nil
@@ -96,7 +96,7 @@ func InstallListBuiltin(env *Env) error {
 
 	// isEmpty() -> Bool
 	listClass.AddBuiltinMethod("isEmpty", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		return len(*itemsPtr) == 0, nil
@@ -106,7 +106,7 @@ func InstallListBuiltin(env *Env) error {
 	listClass.AddBuiltinMethod("contains", boolType, []ast.Parameter{
 		{Name: "item", Type: tType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		for _, item := range *itemsPtr {
@@ -121,7 +121,7 @@ func InstallListBuiltin(env *Env) error {
 	listClass.AddBuiltinMethod("add", ast.ANY, []ast.Parameter{
 		{Name: "item", Type: tType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		*itemsPtr = append(*itemsPtr, args[0])
@@ -136,7 +136,7 @@ func InstallListBuiltin(env *Env) error {
 		if !ok {
 			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
 		}
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		if idx < 0 || idx >= len(*itemsPtr) {
@@ -154,7 +154,7 @@ func InstallListBuiltin(env *Env) error {
 		if !ok {
 			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
 		}
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		if idx < 0 || idx >= len(*itemsPtr) {
@@ -172,7 +172,7 @@ func InstallListBuiltin(env *Env) error {
 		if !ok {
 			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
 		}
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		if idx < 0 || idx >= len(*itemsPtr) {
@@ -185,7 +185,7 @@ func InstallListBuiltin(env *Env) error {
 
 	// clear() -> Void
 	listClass.AddBuiltinMethod("clear", ast.ANY, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := make([]any, 0)
 		instance.Fields["_items"] = &items
@@ -195,7 +195,7 @@ func InstallListBuiltin(env *Env) error {
 
 	// toArray() -> Array
 	listClass.AddBuiltinMethod("toArray", arrayType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		return createArrayFromItems(itemsPtr, callEnv)
@@ -203,7 +203,7 @@ func InstallListBuiltin(env *Env) error {
 
 	// asArray() -> Array - alias for toArray
 	listClass.AddBuiltinMethod("asArray", arrayType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		return createArrayFromItems(itemsPtr, callEnv)
@@ -212,7 +212,7 @@ func InstallListBuiltin(env *Env) error {
 	// Iterable interface methods
 	// hasNext() -> Bool
 	listClass.AddBuiltinMethod("hasNext", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		currentIndex := instance.Fields["_currentIndex"].(int)
 		itemsPtr := instance.Fields["_items"].(*[]any)
@@ -221,7 +221,7 @@ func InstallListBuiltin(env *Env) error {
 
 	// next() -> T
 	listClass.AddBuiltinMethod("next", tType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		currentIndex := instance.Fields["_currentIndex"].(int)
 		itemsPtr := instance.Fields["_items"].(*[]any)
@@ -236,7 +236,7 @@ func InstallListBuiltin(env *Env) error {
 	// Unstructured interface methods
 	// pieces() -> Int - returns number of elements
 	listClass.AddBuiltinMethod("__pieces", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		return len(*itemsPtr), nil
@@ -250,7 +250,7 @@ func InstallListBuiltin(env *Env) error {
 		if !ok {
 			return nil, ThrowTypeError((*Env)(callEnv), "int", args[0])
 		}
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 		if idx < 0 || idx >= len(*itemsPtr) {
@@ -263,7 +263,7 @@ func InstallListBuiltin(env *Env) error {
 	listClass.AddBuiltinMethod("forEach", ast.TypeFromString("Void"), []ast.Parameter{
 		{Name: "callback", Type: ast.TypeFromString("Function")},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 
@@ -286,7 +286,7 @@ func InstallListBuiltin(env *Env) error {
 
 	// toString() -> String
 	listClass.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		itemsPtr := instance.Fields["_items"].(*[]any)
 

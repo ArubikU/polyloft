@@ -74,7 +74,7 @@ func bindParametersWithVariadic(env *common.Env, params []ast.Parameter, args []
 	// Get generic type mappings from 'this' if available (for method calls on generic class instances)
 	var genericTypes map[string]string
 	var varianceMap map[string]string // Maps type parameter name to variance ("in", "out", or "")
-	if thisVal, ok := env.Get("this"); ok {
+	if thisVal, ok := env.This(); ok {
 		if classInst, ok := thisVal.(*common.ClassInstance); ok {
 			// First try to get from __generic_types__ and __variance__ fields (old path)
 			if typeMap, ok := classInst.Fields["__generic_types__"].(map[string]string); ok {
@@ -1182,6 +1182,10 @@ func installBuiltins(env *common.Env, opts Options) {
 	// Install Deque<T> builtin as a class
 	if err := InstallDequeBuiltin((*Env)(env)); err != nil {
 		fmt.Printf("Warning: Failed to install Deque builtin: %v\n", err)
+	}
+	//install crypt
+	if err := InstallCryptoModule(env, opts); err != nil {
+		fmt.Printf("Warning: Failed to install Crypto module: %v\n", err)
 	}
 
 	// Install legacy generic types system (Lambda - legacy support)
@@ -2736,7 +2740,7 @@ func evaluateInterpolationExpr(env *Env, exprStr string) (any, error) {
 		fieldName := exprStr[5:] // Remove "this."
 
 		// Get "this" from environment
-		thisVal, ok := env.Get("this")
+		thisVal, ok := env.This()
 		if !ok {
 			return nil, ThrowNameError(env, "this")
 		}

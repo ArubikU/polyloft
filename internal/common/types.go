@@ -404,6 +404,13 @@ var (
 	BuiltinTypePair              = Builtin{Name: "__PairClass__", IsPrimitive: false}
 	BuiltinTypeTuple             = Builtin{Name: "__TupleClass__", IsPrimitive: false}
 	BuiltinTypeBytes             = Builtin{Name: "__BytesClass__", IsPrimitive: true}
+	BuiltinTypePromise           = Builtin{Name: "__PromiseClass__", IsPrimitive: false}
+	BuiltinTypeCompletableFuture = Builtin{Name: "__CompletableFutureClass__", IsPrimitive: false}
+	BuiltinTypeHttpServer        = Builtin{Name: "__HttpServerClass__", IsPrimitive: false}
+	BuiltinTypeHttpRequest       = Builtin{Name: "__HttpRequestClass__", IsPrimitive: false}
+	BuiltinTypeHttpResponse      = Builtin{Name: "__HttpResponseClass__", IsPrimitive: false}
+	BuiltinTypeChannel           = Builtin{Name: "__ChannelClass__", IsPrimitive: false}
+	BuiltinTypeSocket            = Builtin{Name: "__SocketClass__", IsPrimitive: false}
 	BuiltinInterfaceIterable     = Builtin{Name: "__IterableInterface__", IsInterface: true}
 	BuiltinInterfaceCollection   = Builtin{Name: "__CollectionInterface__", IsInterface: true}
 	BuiltinSliceableInterface    = Builtin{Name: "__SliceableInterface__", IsInterface: true}
@@ -429,6 +436,13 @@ func ClearBuiltinClassCache() {
 	BuiltinTypePair.ClassDef = nil
 	BuiltinTypeTuple.ClassDef = nil
 	BuiltinTypeBytes.ClassDef = nil
+	BuiltinTypePromise.ClassDef = nil
+	BuiltinTypeCompletableFuture.ClassDef = nil
+	BuiltinTypeHttpServer.ClassDef = nil
+	BuiltinTypeHttpRequest.ClassDef = nil
+	BuiltinTypeHttpResponse.ClassDef = nil
+	BuiltinTypeChannel.ClassDef = nil
+	BuiltinTypeSocket.ClassDef = nil
 	BuiltinInterfaceIterable.InterfaceDef = nil
 	BuiltinInterfaceCollection.InterfaceDef = nil
 	BuiltinSliceableInterface.InterfaceDef = nil
@@ -447,6 +461,34 @@ func (bt *Builtin) GetClassDefinition(env *Env) *ClassDefinition {
 	bt.ClassDef = val.(*ClassDefinition)
 	return bt.ClassDef
 }
+
+func (bt *Builtin) GetConstructor(env *Env) *ClassConstructor {
+	// Convert internal name to public name
+	// __IntegerClass__ -> Integer
+	// __HttpServerClass__ -> HttpServer
+	publicName := bt.Name
+	if len(publicName) > 2 && publicName[:2] == "__" && publicName[len(publicName)-2:] == "__" {
+		// Remove __ prefix and __ suffix
+		publicName = publicName[2 : len(publicName)-2]
+		// Remove "Class" suffix if present
+		if len(publicName) > 5 && publicName[len(publicName)-5:] == "Class" {
+			publicName = publicName[:len(publicName)-5]
+		}
+	}
+
+	val, ok := env.Get(publicName)
+	if !ok {
+		return nil
+	}
+
+	ctor, ok := val.(*ClassConstructor)
+	if !ok {
+		return nil
+	}
+
+	return ctor
+}
+
 func (bt *Builtin) GetTypeDefinition(env *Env) *ast.Type {
 	if bt.TypeDef != nil {
 		return bt.TypeDef
@@ -492,6 +534,7 @@ func (bt *Builtin) GetRecordDefinition(env *Env) *RecordDefinition {
 	bt.RecordDef = val.(*RecordDefinition)
 	return bt.RecordDef
 }
+
 func (bt *Builtin) GetFunctionDefinition(env *Env) *FunctionDefinition {
 	if bt.FunctionDef != nil {
 		return bt.FunctionDef
@@ -653,6 +696,10 @@ func (e *Env) Get(k string) (any, bool) {
 		}
 	}
 	return nil, false
+}
+
+func (e *Env) This() (any, bool) {
+	return e.Get("this")
 }
 
 // Define defines a new variable, optionally as a constant

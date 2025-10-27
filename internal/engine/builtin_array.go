@@ -39,7 +39,7 @@ func InstallArrayBuiltin(env *Env) error {
 
 	//Iterable interface methods , __length, __get, __get_step
 	arrayClass.AddBuiltinMethod("__length", ast.ANY, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 		return len(items), nil
@@ -47,7 +47,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("__get", ast.ANY, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 		idx, ok := utils.AsInt(args[0])
@@ -65,7 +65,7 @@ func InstallArrayBuiltin(env *Env) error {
 		{Name: "index", Type: intType},
 		{Name: "value", Type: &ast.Type{Name: "T"}},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -85,7 +85,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("__contains", boolType, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -99,7 +99,7 @@ func InstallArrayBuiltin(env *Env) error {
 
 	// length() -> Int
 	arrayClass.AddBuiltinMethod("length", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 		return len(items), nil
@@ -110,7 +110,7 @@ func InstallArrayBuiltin(env *Env) error {
 		{Name: "start", Type: ast.ANY},
 		{Name: "end", Type: ast.ANY},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -130,7 +130,7 @@ func InstallArrayBuiltin(env *Env) error {
 
 	// isEmpty() -> Bool
 	arrayClass.AddBuiltinMethod("isEmpty", boolType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 		return len(items) == 0, nil
@@ -140,7 +140,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("add", ast.NIL, []ast.Parameter{
 		{Name: "item", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 		instance.Fields["_items"] = append(items, args[0])
@@ -151,7 +151,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("push", ast.NIL, []ast.Parameter{
 		{Name: "item", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 		instance.Fields["_items"] = append(items, args[0])
@@ -160,7 +160,7 @@ func InstallArrayBuiltin(env *Env) error {
 
 	// pop() -> any
 	arrayClass.AddBuiltinMethod("pop", ast.ANY, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 		if len(items) == 0 {
@@ -173,7 +173,7 @@ func InstallArrayBuiltin(env *Env) error {
 
 	// shift() -> any
 	arrayClass.AddBuiltinMethod("shift", ast.ANY, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 		if len(items) == 0 {
@@ -188,7 +188,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("unshift", ast.NIL, []ast.Parameter{
 		{Name: "item", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 		instance.Fields["_items"] = append([]any{args[0]}, items...)
@@ -199,7 +199,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("get", ast.ANY, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -219,7 +219,7 @@ func InstallArrayBuiltin(env *Env) error {
 		{Name: "index", Type: intType},
 		{Name: "value", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -239,7 +239,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("indexOf", intType, []ast.Parameter{
 		{Name: "item", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -255,7 +255,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("contains", boolType, []ast.Parameter{
 		{Name: "item", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -272,7 +272,7 @@ func InstallArrayBuiltin(env *Env) error {
 		{Name: "start", Type: intType},
 		{Name: "end", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -303,7 +303,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("join", stringType, []ast.Parameter{
 		{Name: "separator", Type: stringType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -317,7 +317,7 @@ func InstallArrayBuiltin(env *Env) error {
 
 	// reverse() -> Void
 	arrayClass.AddBuiltinMethod("reverse", ast.NIL, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -329,7 +329,7 @@ func InstallArrayBuiltin(env *Env) error {
 
 	// sort() -> Void
 	arrayClass.AddBuiltinMethod("sort", ast.NIL, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -343,7 +343,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("filter", arrayClass.GetType(), []ast.Parameter{
 		{Name: "fn", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -369,7 +369,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("map", arrayClass.GetType(), []ast.Parameter{
 		{Name: "fn", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -393,7 +393,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("forEach", ast.NIL, []ast.Parameter{
 		{Name: "fn", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -416,7 +416,7 @@ func InstallArrayBuiltin(env *Env) error {
 		{Name: "fn", Type: nil},
 		{Name: "initial", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -440,7 +440,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("find", ast.ANY, []ast.Parameter{
 		{Name: "fn", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -465,7 +465,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("findIndex", intType, []ast.Parameter{
 		{Name: "fn", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -490,7 +490,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("every", boolType, []ast.Parameter{
 		{Name: "fn", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -515,7 +515,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("some", boolType, []ast.Parameter{
 		{Name: "fn", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -540,7 +540,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("concat", arrayClass.GetType(), []ast.Parameter{
 		{Name: "other", Type: nil},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -561,7 +561,7 @@ func InstallArrayBuiltin(env *Env) error {
 
 	// clear() -> Void
 	arrayClass.AddBuiltinMethod("clear", ast.NIL, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		instance.Fields["_items"] = []any{}
 		return nil, nil
@@ -569,7 +569,7 @@ func InstallArrayBuiltin(env *Env) error {
 
 	// utils.ToString() -> String
 	arrayClass.AddBuiltinMethod("toString", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -582,7 +582,7 @@ func InstallArrayBuiltin(env *Env) error {
 
 	// serialize() -> String
 	arrayClass.AddBuiltinMethod("serialize", stringType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
 		arr, err := ArrayToSlice(instance)
@@ -600,7 +600,7 @@ func InstallArrayBuiltin(env *Env) error {
 
 	// pieces() -> Int (Unstructured interface method)
 	arrayClass.AddBuiltinMethod("__pieces", intType, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 		return len(items), nil
@@ -610,7 +610,7 @@ func InstallArrayBuiltin(env *Env) error {
 	arrayClass.AddBuiltinMethod("__get_piece", ast.ANY, []ast.Parameter{
 		{Name: "index", Type: intType},
 	}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		items := instance.Fields["_items"].([]any)
 
@@ -653,15 +653,105 @@ func InstallArrayBuiltin(env *Env) error {
 }
 
 // CreateArrayInstance creates an Array instance from a []any
-func CreateArrayInstance(env *Env, items []any) (*ClassInstance, error) {
-	arrayClassVal, ok := env.Get("__ArrayClass__")
-	if !ok {
+// ConvertToClassInstance converts native Go types to their ClassInstance equivalents recursively
+func ConvertToClassInstance(env *Env, value any) any {
+	if value == nil {
+		return nil
+	}
+
+	switch v := value.(type) {
+	case string:
+		// Convert native string to String ClassInstance
+		if strInst, err := CreateStringInstance(env, v); err == nil {
+			return strInst
+		}
+		return v
+	case int:
+		// Convert native int to Int ClassInstance
+		if intInst, err := CreateIntInstance(env, v); err == nil {
+			return intInst
+		}
+		return v
+	case int8, int16, int32, int64:
+		// Convert to int first, then to Int ClassInstance
+		intVal, _ := utils.AsInt(v)
+		if intInst, err := CreateIntInstance(env, intVal); err == nil {
+			return intInst
+		}
+		return v
+	case uint, uint8, uint16, uint32, uint64:
+		// Convert to int first, then to Int ClassInstance
+		intVal, _ := utils.AsInt(v)
+		if intInst, err := CreateIntInstance(env, intVal); err == nil {
+			return intInst
+		}
+		return v
+	case float32:
+		// Convert to Float ClassInstance
+		if floatInst, err := CreateFloatInstance(env, float64(v)); err == nil {
+			return floatInst
+		}
+		return v
+	case float64:
+		// Convert to Float ClassInstance
+		if floatInst, err := CreateFloatInstance(env, v); err == nil {
+			return floatInst
+		}
+		return v
+	case bool:
+		// Convert to Bool ClassInstance
+		if boolInst, err := CreateBoolInstance(env, v); err == nil {
+			return boolInst
+		}
+		return v
+	case []byte:
+		// Convert to Bytes ClassInstance
+		if bytesInst, err := CreateBytesInstance(env, v); err == nil {
+			return bytesInst
+		}
+		return v
+	case []any:
+		// Convert slice to Array instance (which will convert items recursively)
+		// To avoid infinite recursion, we convert items manually here
+		convertedSlice := make([]any, len(v))
+		for i, item := range v {
+			convertedSlice[i] = ConvertToClassInstance(env, item)
+		}
+		arrayInst, err := createArrayInstanceDirect(env, convertedSlice)
+		if err == nil {
+			return arrayInst
+		}
+		return v
+	case map[string]any:
+		// Convert nested map to Map instance
+		mapInst, err := CreateMapInstance(env, v)
+		if err == nil {
+			return mapInst
+		}
+		return v
+	case map[any]any:
+		// Convert nested map to Map instance
+		mapInst, err := CreateMapInstance(env, v)
+		if err == nil {
+			return mapInst
+		}
+		return v
+	case *ClassInstance:
+		// Already a ClassInstance, return as is
+		return v
+	default:
+		// For other types, keep as is
+		return v
+	}
+}
+
+// createArrayInstanceDirect creates an Array instance without recursive conversion (used internally)
+func createArrayInstanceDirect(env *Env, items []any) (*ClassInstance, error) {
+	arrayClass := common.BuiltinTypeArray.GetClassDefinition(env)
+	if arrayClass == nil {
 		return nil, ThrowInitializationError(env, "Array class")
 	}
 
-	arrayClass := arrayClassVal.(*ClassDefinition)
-
-	// Create instance
 	instance, err := createClassInstance(arrayClass, env, []any{})
 	if err != nil {
 		return nil, err
@@ -669,6 +759,30 @@ func CreateArrayInstance(env *Env, items []any) (*ClassInstance, error) {
 
 	classInstance := instance.(*ClassInstance)
 	classInstance.Fields["_items"] = items
+
+	return classInstance, nil
+}
+
+func CreateArrayInstance(env *Env, items []any) (*ClassInstance, error) {
+	arrayClass := common.BuiltinTypeArray.GetClassDefinition(env)
+	if arrayClass == nil {
+		return nil, ThrowInitializationError(env, "Array class")
+	}
+
+	// Create instance
+	instance, err := createClassInstance(arrayClass, env, []any{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert all items recursively to ClassInstance if they are native types
+	convertedItems := make([]any, len(items))
+	for i, item := range items {
+		convertedItems[i] = ConvertToClassInstance(env, item)
+	}
+
+	classInstance := instance.(*ClassInstance)
+	classInstance.Fields["_items"] = convertedItems
 
 	return classInstance, nil
 }

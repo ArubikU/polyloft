@@ -75,7 +75,7 @@ func createExceptionClassesProgrammatically(env *Env) error {
 			[]ast.Parameter{{Name: "message", Type: ast.TypeFromString("string")}},
 			func(callEnv *common.Env, args []any) (any, error) {
 				// Get the instance from "this"
-				thisVal, _ := callEnv.Get("this")
+				thisVal, _ := callEnv.This()
 				if instance, ok := thisVal.(*common.ClassInstance); ok {
 					message := "Error"
 					if len(args) > 0 {
@@ -92,7 +92,7 @@ func createExceptionClassesProgrammatically(env *Env) error {
 		).
 		AddBuiltinMethod("toString", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{},
 			func(callEnv *common.Env, args []any) (any, error) {
-				thisVal, _ := callEnv.Get("this")
+				thisVal, _ := callEnv.This()
 				if instance, ok := thisVal.(*common.ClassInstance); ok {
 					msgType, _ := instance.Fields["type"].(string)
 					message, _ := instance.Fields["message"].(string)
@@ -108,7 +108,7 @@ func createExceptionClassesProgrammatically(env *Env) error {
 			}, []string{}).
 		AddBuiltinMethod("getMessage", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{},
 			func(callEnv *common.Env, args []any) (any, error) {
-				thisVal, _ := callEnv.Get("this")
+				thisVal, _ := callEnv.This()
 				if instance, ok := thisVal.(*common.ClassInstance); ok {
 					return instance.Fields["message"], nil
 				}
@@ -116,7 +116,7 @@ func createExceptionClassesProgrammatically(env *Env) error {
 			}, []string{}).
 		AddBuiltinMethod("getType", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{},
 			func(callEnv *common.Env, args []any) (any, error) {
-				thisVal, _ := callEnv.Get("this")
+				thisVal, _ := callEnv.This()
 				if instance, ok := thisVal.(*common.ClassInstance); ok {
 					return instance.Fields["type"], nil
 				}
@@ -137,7 +137,7 @@ func createExceptionClassesProgrammatically(env *Env) error {
 			func(callEnv *common.Env, args []any) (any, error) {
 				// Call parent constructor through super()
 				if classDef, exists := builtinClasses["Throwable"]; exists {
-					thisVal, _ := callEnv.Get("this")
+					thisVal, _ := callEnv.This()
 					if instance, ok := thisVal.(*common.ClassInstance); ok {
 						_, err := callParentConstructor(instance, classDef, callEnv, args)
 						if err != nil {
@@ -165,7 +165,7 @@ func createExceptionClassesProgrammatically(env *Env) error {
 			func(callEnv *common.Env, args []any) (any, error) {
 				// Call parent constructor through super()
 				if classDef, exists := builtinClasses["RuntimeError"]; exists {
-					thisVal, _ := callEnv.Get("this")
+					thisVal, _ := callEnv.This()
 					if instance, ok := thisVal.(*common.ClassInstance); ok {
 						_, err := callParentConstructor(instance, classDef, callEnv, args)
 						if err != nil {
@@ -213,7 +213,7 @@ func createExceptionClassesProgrammatically(env *Env) error {
 
 				// Call parent constructor through super()
 				if classDef, exists := builtinClasses["RuntimeError"]; exists {
-					thisVal, _ := callEnv.Get("this")
+					thisVal, _ := callEnv.This()
 					if instance, ok := thisVal.(*common.ClassInstance); ok {
 						_, err := callParentConstructor(instance, classDef, callEnv, []any{message})
 						if err != nil {

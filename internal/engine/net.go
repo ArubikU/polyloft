@@ -23,9 +23,11 @@ func InstallNetModule(env *Env, opts Options) {
 	netClass := NewClassBuilder("Net").
 		AddStaticMethod("listen", mapType, []ast.Parameter{
 			{Name: "addr", Type: stringType},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			addr, _ := env.Get("addr")
-			addrStr := utils.ToString(addr)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			addrStr := utils.ToString(args[0])
 			ln, err := net.Listen("tcp", addrStr)
 			if err != nil {
 				return nil, err
@@ -75,13 +77,15 @@ func InstallNetModule(env *Env, opts Options) {
 		AddStaticMethod("connect", mapType, []ast.Parameter{
 			{Name: "addr", Type: stringType},
 			{Name: "timeout", Type: intType, IsVariadic: false},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			addr, _ := env.Get("addr")
-			addrStr := utils.ToString(addr)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			addrStr := utils.ToString(args[0])
 
 			timeout := 10 * time.Second
-			if timeoutVal, ok := env.Get("timeout"); ok {
-				if t, ok := utils.AsInt(timeoutVal); ok {
+			if len(args) > 1 {
+				if t, ok := utils.AsInt(args[1]); ok {
 					timeout = time.Duration(t) * time.Second
 				}
 			}
@@ -138,9 +142,11 @@ func InstallNetModule(env *Env, opts Options) {
 		})).
 		AddStaticMethod("listenUdp", mapType, []ast.Parameter{
 			{Name: "addr", Type: stringType},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			addr, _ := env.Get("addr")
-			addrStr := utils.ToString(addr)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			addrStr := utils.ToString(args[0])
 
 			udpAddr, err := net.ResolveUDPAddr("udp", addrStr)
 			if err != nil {
@@ -207,9 +213,11 @@ func InstallNetModule(env *Env, opts Options) {
 		})).
 		AddStaticMethod("dialUdp", mapType, []ast.Parameter{
 			{Name: "addr", Type: stringType},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			addr, _ := env.Get("addr")
-			addrStr := utils.ToString(addr)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			addrStr := utils.ToString(args[0])
 
 			udpAddr, err := net.ResolveUDPAddr("udp", addrStr)
 			if err != nil {
@@ -266,9 +274,11 @@ func InstallNetModule(env *Env, opts Options) {
 		})).
 		AddStaticMethod("resolveIp", arrayType, []ast.Parameter{
 			{Name: "hostname", Type: stringType},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			hostname, _ := env.Get("hostname")
-			hostnameStr := utils.ToString(hostname)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			hostnameStr := utils.ToString(args[0])
 
 			ips, err := net.LookupIP(hostnameStr)
 			if err != nil {
@@ -283,9 +293,11 @@ func InstallNetModule(env *Env, opts Options) {
 		})).
 		AddStaticMethod("resolveHost", arrayType, []ast.Parameter{
 			{Name: "ip", Type: stringType},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			ip, _ := env.Get("ip")
-			ipStr := utils.ToString(ip)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 1 {
+				return nil, ThrowArityError(env, 1, len(args))
+			}
+			ipStr := utils.ToString(args[0])
 
 			names, err := net.LookupAddr(ipStr)
 			if err != nil {
@@ -318,18 +330,19 @@ func InstallNetModule(env *Env, opts Options) {
 			{Name: "host", Type: stringType},
 			{Name: "port", Type: intType},
 			{Name: "timeout", Type: intType, IsVariadic: false},
-		}, Func(func(env *Env, _ []any) (any, error) {
-			host, _ := env.Get("host")
-			portVal, _ := env.Get("port")
-			hostStr := utils.ToString(host)
-			port, ok := utils.AsInt(portVal)
+		}, Func(func(env *Env, args []any) (any, error) {
+			if len(args) < 2 {
+				return nil, ThrowArityError(env, 2, len(args))
+			}
+			hostStr := utils.ToString(args[0])
+			port, ok := utils.AsInt(args[1])
 			if !ok {
 				return nil, fmt.Errorf("port must be a number")
 			}
 
 			timeout := 3 * time.Second
-			if timeoutVal, ok := env.Get("timeout"); ok {
-				if t, ok := utils.AsInt(timeoutVal); ok {
+			if len(args) > 2 {
+				if t, ok := utils.AsInt(args[2]); ok {
 					timeout = time.Duration(t) * time.Second
 				}
 			}

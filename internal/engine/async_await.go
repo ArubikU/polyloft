@@ -35,27 +35,21 @@ type CompletableFuture struct {
 func InstallAsyncAwait(env *common.Env) {
 	envTyped := (*Env)(env)
 
-	// Get common type references
-	promiseTypeRef := &ast.Type{Name: "Promise", IsBuiltin: true}
-	futureTypeRef := &ast.Type{Name: "CompletableFuture", IsBuiltin: true}
+	genericType := common.BuiltinTypeGeneric.GetTypeDefinition(env)
 
-	// Pre-register the class definitions so they're available in constructors
-	// Build Promise class first, then store definition
+	// Build Promise class - the builder will register it automatically
 	promiseClass := NewClassBuilder("Promise").
 		AddTypeParameters(common.TBound.AsGenericType().AsArray()).
-		AddField("_promise", promiseTypeRef, []string{"private"})
+		AddField("_promise", genericType, []string{"private"})
 
-	promiseDef, _ := buildPromiseClass(promiseClass, envTyped)
-	envTyped.Set("__PromiseClass__", promiseDef)
+	buildPromiseClass(promiseClass, envTyped)
 
-	// Build CompletableFuture class, then store definition
+	// Build CompletableFuture class - the builder will register it automatically
 	futureClass := NewClassBuilder("CompletableFuture").
 		AddTypeParameters(common.TBound.AsGenericType().AsArray()).
-		AddField("_future", futureTypeRef, []string{"private"})
+		AddField("_future", genericType, []string{"private"})
 
-	futureDef, _ := buildCompletableFutureClass(futureClass, envTyped)
-	envTyped.Set("__CompletableFutureClass__", futureDef)
-
+	buildCompletableFutureClass(futureClass, envTyped)
 	// Install async helper function
 	installAsyncFunction(env)
 }
@@ -63,17 +57,13 @@ func InstallAsyncAwait(env *common.Env) {
 // buildPromiseClass builds the Promise class with all its methods
 func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, error) {
 
-	// Default constructor: Promise() - for internal use
 	promiseClass.AddBuiltinConstructor(
 		[]ast.Parameter{},
 		func(callEnv *common.Env, args []any) (any, error) {
-			// This constructor is not meant to be called directly
-			// It's used when creating Promise instances internally
 			return nil, ThrowRuntimeError((*Env)(callEnv), "Promise() cannot be called directly. Use Promise(executor) or async()")
 		},
 	)
 
-	// Main constructor: Promise(executor: Function)
 	promiseClass.AddBuiltinConstructor(
 		[]ast.Parameter{{Name: "executor", Type: nil}},
 		func(callEnv *common.Env, args []any) (any, error) {
@@ -132,7 +122,7 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 			}()
 
 			// Get 'this' instance from constructor environment
-			thisVal, ok := callEnv.Get("this")
+			thisVal, ok := callEnv.This()
 			if !ok {
 				return nil, ThrowRuntimeError((*Env)(callEnv), "constructor called without 'this'")
 			}
@@ -153,7 +143,7 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 			return nil, ThrowArityError((*Env)(callEnv), 1, len(args))
 		}
 
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		promise := instance.Fields["_promise"].(*Promise)
 
@@ -202,11 +192,10 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 		}
 
 		// Return new Promise instance
-		promiseClassVal, ok := (*Env)(callEnv).Get("__PromiseClass__")
-		if !ok {
+		promiseClassDef := common.BuiltinTypePromise.GetClassDefinition(callEnv)
+		if promiseClassDef == nil {
 			return nil, ThrowInitializationError((*Env)(callEnv), "Promise class")
 		}
-		promiseClassDef := promiseClassVal.(*ClassDefinition)
 
 		newInstance, err := createClassInstanceDirect(promiseClassDef, (*Env)(callEnv))
 		if err != nil {
@@ -227,7 +216,7 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 			return nil, ThrowArityError((*Env)(callEnv), 1, len(args))
 		}
 
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		promise := instance.Fields["_promise"].(*Promise)
 
@@ -260,7 +249,7 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 			return nil, ThrowArityError((*Env)(callEnv), 1, len(args))
 		}
 
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		promise := instance.Fields["_promise"].(*Promise)
 
@@ -289,7 +278,7 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 			return nil, ThrowArityError((*Env)(callEnv), 0, len(args))
 		}
 
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		promise := instance.Fields["_promise"].(*Promise)
 
@@ -306,8 +295,8 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 	}, []string{})
 
 	// getState() -> String
-	promiseClass.AddBuiltinMethod("getState", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+	promiseClass.AddBuiltinMethod("getState", common.BuiltinTypeString.GetTypeDefinition(env), []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		promise := instance.Fields["_promise"].(*Promise)
 
@@ -317,8 +306,8 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 	}, []string{})
 
 	// toString() -> String
-	promiseClass.AddBuiltinMethod("toString", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+	promiseClass.AddBuiltinMethod("toString", common.BuiltinTypeString.GetTypeDefinition(env), []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		promise := instance.Fields["_promise"].(*Promise)
 
@@ -332,13 +321,13 @@ func buildPromiseClass(promiseClass *ClassBuilder, env *Env) (*ClassDefinition, 
 		return nil, err
 	}
 
-	// Get the class definition from the registered constructor
-	promiseClassVal, _ := env.Get("Promise")
-	if promiseConstructor, ok := promiseClassVal.(*common.ClassConstructor); ok {
-		return promiseConstructor.Definition, nil
+	// Get the class definition from the builtin type
+	promiseClassDef := common.BuiltinTypePromise.GetClassDefinition(env)
+	if promiseClassDef == nil {
+		return nil, fmt.Errorf("failed to get Promise class definition")
 	}
 
-	return nil, fmt.Errorf("failed to get Promise class definition")
+	return promiseClassDef, nil
 }
 
 // buildCompletableFutureClass builds the CompletableFuture class with all its methods
@@ -357,7 +346,7 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 			}
 
 			// Get 'this' instance from constructor environment
-			thisVal, ok := callEnv.Get("this")
+			thisVal, ok := callEnv.This()
 			if !ok {
 				return nil, ThrowRuntimeError((*Env)(callEnv), "constructor called without 'this'")
 			}
@@ -371,14 +360,14 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 	)
 
 	// complete(value: T) -> Bool
-	futureClass.AddBuiltinMethod("complete", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
+	futureClass.AddBuiltinMethod("complete", common.BuiltinTypeBool.GetTypeDefinition(env), []ast.Parameter{
 		{Name: "value", Type: ast.TypeFromString("Any")},
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		if len(args) != 1 {
 			return nil, ThrowArityError((*Env)(callEnv), 1, len(args))
 		}
 
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		future := instance.Fields["_future"].(*CompletableFuture)
 
@@ -397,14 +386,14 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 	}, []string{})
 
 	// completeExceptionally(error: Any) -> Bool
-	futureClass.AddBuiltinMethod("completeExceptionally", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{
+	futureClass.AddBuiltinMethod("completeExceptionally", common.BuiltinTypeBool.GetTypeDefinition(env), []ast.Parameter{
 		{Name: "error", Type: ast.TypeFromString("Any")},
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		if len(args) != 1 {
 			return nil, ThrowArityError((*Env)(callEnv), 1, len(args))
 		}
 
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		future := instance.Fields["_future"].(*CompletableFuture)
 
@@ -432,7 +421,7 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 			return nil, ThrowArityError((*Env)(callEnv), 0, len(args))
 		}
 
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		future := instance.Fields["_future"].(*CompletableFuture)
 
@@ -450,13 +439,13 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 
 	// getTimeout(timeout: Int) -> T
 	futureClass.AddBuiltinMethod("getTimeout", ast.ANY, []ast.Parameter{
-		{Name: "timeout", Type: ast.TypeFromString("Int")},
+		{Name: "timeout", Type: common.BuiltinTypeInt.GetTypeDefinition(env)},
 	}, func(callEnv *common.Env, args []any) (any, error) {
 		if len(args) != 1 {
 			return nil, ThrowArityError((*Env)(callEnv), 1, len(args))
 		}
 
-		thisVal, _ := callEnv.Get("this")
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		future := instance.Fields["_future"].(*CompletableFuture)
 
@@ -481,8 +470,8 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 	}, []string{})
 
 	// isDone() -> Bool
-	futureClass.AddBuiltinMethod("isDone", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+	futureClass.AddBuiltinMethod("isDone", common.BuiltinTypeBool.GetTypeDefinition(env), []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		future := instance.Fields["_future"].(*CompletableFuture)
 
@@ -492,8 +481,8 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 	}, []string{})
 
 	// isCancelled() -> Bool
-	futureClass.AddBuiltinMethod("isCancelled", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+	futureClass.AddBuiltinMethod("isCancelled", common.BuiltinTypeBool.GetTypeDefinition(env), []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		future := instance.Fields["_future"].(*CompletableFuture)
 
@@ -503,8 +492,8 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 	}, []string{})
 
 	// cancel() -> Bool
-	futureClass.AddBuiltinMethod("cancel", &ast.Type{Name: "bool", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+	futureClass.AddBuiltinMethod("cancel", common.BuiltinTypeBool.GetTypeDefinition(env), []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		future := instance.Fields["_future"].(*CompletableFuture)
 
@@ -524,8 +513,8 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 	}, []string{})
 
 	// toString() -> String
-	futureClass.AddBuiltinMethod("toString", &ast.Type{Name: "string", IsBuiltin: true}, []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
-		thisVal, _ := callEnv.Get("this")
+	futureClass.AddBuiltinMethod("toString", common.BuiltinTypeString.GetTypeDefinition(env), []ast.Parameter{}, func(callEnv *common.Env, args []any) (any, error) {
+		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 		future := instance.Fields["_future"].(*CompletableFuture)
 
@@ -548,12 +537,13 @@ func buildCompletableFutureClass(futureClass *ClassBuilder, env *Env) (*ClassDef
 	}
 
 	// Get the class definition from the registered constructor
-	futureClassVal, _ := env.Get("CompletableFuture")
-	if futureConstructor, ok := futureClassVal.(*common.ClassConstructor); ok {
-		return futureConstructor.Definition, nil
+
+	futureClassDef := common.BuiltinTypeCompletableFuture.GetClassDefinition(env)
+	if futureClassDef == nil {
+		return nil, fmt.Errorf("failed to get CompletableFuture class definition")
 	}
 
-	return nil, fmt.Errorf("failed to get CompletableFuture class definition")
+	return futureClassDef, nil
 }
 
 // installAsyncFunction installs the async helper function
@@ -592,11 +582,10 @@ func installAsyncFunction(env *common.Env) {
 		}()
 
 		// Get the Promise class definition
-		promiseClassVal, ok := (*Env)(callEnv).Get("__PromiseClass__")
-		if !ok {
+		promiseClassDef := common.BuiltinTypePromise.GetClassDefinition(callEnv)
+		if promiseClassDef == nil {
 			return nil, ThrowInitializationError((*Env)(callEnv), "Promise class")
 		}
-		promiseClassDef := promiseClassVal.(*ClassDefinition)
 
 		// Create instance directly without calling constructor
 		instance, err := createClassInstanceDirect(promiseClassDef, (*Env)(callEnv))
