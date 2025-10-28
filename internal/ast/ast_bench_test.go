@@ -376,3 +376,140 @@ func BenchmarkCompositeOperations(b *testing.B) {
 		}
 	})
 }
+
+// Benchmark real-world patterns similar to Python execution
+func BenchmarkRealWorldPatterns(b *testing.B) {
+	b.Run("ForLoopWithAssignment", func(b *testing.B) {
+		// Simulates: for a in range: b = a * a
+		for i := 0; i < b.N; i++ {
+			prog := &Program{
+				Stmts: []Stmt{
+					&ForInStmt{
+						Name: "a",
+						Iterable: &RangeExpr{
+							Start:     &NumberLit{Value: 1},
+							End:       &NumberLit{Value: 100},
+							Inclusive: true,
+						},
+						Body: []Stmt{
+							&AssignStmt{
+								Target: &Ident{Name: "b"},
+								Value: &BinaryExpr{
+									Op:  OpMul,
+									Lhs: &Ident{Name: "a"},
+									Rhs: &Ident{Name: "a"},
+								},
+							},
+						},
+					},
+				},
+			}
+			_ = prog
+		}
+	})
+
+	b.Run("FieldAccessPattern", func(b *testing.B) {
+		// Simulates: obj.field
+		for i := 0; i < b.N; i++ {
+			expr := &FieldExpr{
+				X:    &Ident{Name: "obj"},
+				Name: "field",
+			}
+			_ = expr
+		}
+	})
+
+	b.Run("FunctionCallPattern", func(b *testing.B) {
+		// Simulates: func(arg1, arg2)
+		for i := 0; i < b.N; i++ {
+			call := &CallExpr{
+				Callee: &Ident{Name: "func"},
+				Args: []Expr{
+					&Ident{Name: "arg1"},
+					&Ident{Name: "arg2"},
+				},
+			}
+			_ = call
+		}
+	})
+
+	b.Run("ComplexExpression", func(b *testing.B) {
+		// Simulates: (a + b) * (c - d)
+		for i := 0; i < b.N; i++ {
+			expr := &BinaryExpr{
+				Op: OpMul,
+				Lhs: &BinaryExpr{
+					Op:  OpPlus,
+					Lhs: &Ident{Name: "a"},
+					Rhs: &Ident{Name: "b"},
+				},
+				Rhs: &BinaryExpr{
+					Op:  OpMinus,
+					Lhs: &Ident{Name: "c"},
+					Rhs: &Ident{Name: "d"},
+				},
+			}
+			_ = expr
+		}
+	})
+
+	b.Run("IfStatementPattern", func(b *testing.B) {
+		// Simulates: if condition: body
+		for i := 0; i < b.N; i++ {
+			stmt := &IfStmt{
+				Clauses: []IfClause{
+					{
+						Cond: &BinaryExpr{
+							Op:  OpGt,
+							Lhs: &Ident{Name: "x"},
+							Rhs: &NumberLit{Value: 0},
+						},
+						Body: []Stmt{
+							&ExprStmt{X: &Ident{Name: "x"}},
+						},
+					},
+				},
+			}
+			_ = stmt
+		}
+	})
+}
+
+// Benchmark constant usage
+func BenchmarkConstantUsage(b *testing.B) {
+b.Run("CommonNumberLit_Allocated", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+_ = &NumberLit{Value: 1}
+}
+})
+
+b.Run("CommonNumberLit_PreAllocated", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+_ = GetCommonNumberLit(1)
+}
+})
+
+b.Run("BoolLit_Allocated", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+_ = &BoolLit{Value: true}
+}
+})
+
+b.Run("BoolLit_PreAllocated", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+_ = GetCommonBoolLit(true)
+}
+})
+
+b.Run("NilLit_Allocated", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+_ = &NilLit{}
+}
+})
+
+b.Run("NilLit_PreAllocated", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+_ = NilValue
+}
+})
+}

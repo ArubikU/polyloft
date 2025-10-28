@@ -41,6 +41,47 @@ var (
 	NIL = &Type{Name: "nil", Aliases: []string{"null", "Nil", "Null"}, GoParallel: false, IsBuiltin: true}
 )
 
+// Commonly used constants to reduce allocations
+var (
+	// Pre-allocated common number literals
+	NumberZero  = &NumberLit{Value: 0}
+	NumberOne   = &NumberLit{Value: 1}
+	NumberTwo   = &NumberLit{Value: 2}
+	NumberTen   = &NumberLit{Value: 10}
+	
+	// Pre-allocated boolean literals
+	BoolTrue  = &BoolLit{Value: true}
+	BoolFalse = &BoolLit{Value: false}
+	
+	// Pre-allocated nil literal
+	NilValue = &NilLit{}
+)
+
+// GetCommonNumberLit returns a pre-allocated NumberLit for common values
+// This reduces allocations for frequently used numbers
+func GetCommonNumberLit(value int) *NumberLit {
+	switch value {
+	case 0:
+		return NumberZero
+	case 1:
+		return NumberOne
+	case 2:
+		return NumberTwo
+	case 10:
+		return NumberTen
+	default:
+		return &NumberLit{Value: value}
+	}
+}
+
+// GetCommonBoolLit returns a pre-allocated BoolLit
+func GetCommonBoolLit(value bool) *BoolLit {
+	if value {
+		return BoolTrue
+	}
+	return BoolFalse
+}
+
 // Type cache for frequently used types to reduce allocations
 var (
 	typeCacheMu     sync.RWMutex
