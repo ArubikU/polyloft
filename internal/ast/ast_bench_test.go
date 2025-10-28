@@ -513,3 +513,118 @@ _ = NilValue
 }
 })
 }
+
+// Benchmark iteration patterns
+func BenchmarkIterationPatterns(b *testing.B) {
+b.Run("RangeCreation", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+_ = &RangeExpr{
+Start:     &NumberLit{Value: 1},
+End:       &NumberLit{Value: 100},
+Inclusive: true,
+}
+}
+})
+
+b.Run("ArrayCreation", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+elems := []Expr{
+&NumberLit{Value: 1},
+&NumberLit{Value: 2},
+&NumberLit{Value: 3},
+}
+_ = &ArrayLit{Elems: elems}
+}
+})
+
+b.Run("ForInRangeStatement", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+_ = &ForInStmt{
+Name: "i",
+Iterable: &RangeExpr{
+Start:     &NumberLit{Value: 1},
+End:       &NumberLit{Value: 10},
+Inclusive: true,
+},
+Body: []Stmt{
+&AssignStmt{
+Target: &Ident{Name: "x"},
+Value:  &Ident{Name: "i"},
+},
+},
+}
+}
+})
+}
+
+// Benchmark arithmetic operations
+func BenchmarkArithmeticOperations(b *testing.B) {
+b.Run("Addition", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+_ = &BinaryExpr{
+Op:  OpPlus,
+Lhs: &NumberLit{Value: 5},
+Rhs: &NumberLit{Value: 3},
+}
+}
+})
+
+b.Run("Multiplication", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+_ = &BinaryExpr{
+Op:  OpMul,
+Lhs: &NumberLit{Value: 5},
+Rhs: &NumberLit{Value: 3},
+}
+}
+})
+
+b.Run("ChainedOperations", func(b *testing.B) {
+for i := 0; i < b.N; i++ {
+// (a + b) * (c + d)
+_ = &BinaryExpr{
+Op: OpMul,
+Lhs: &BinaryExpr{
+Op:  OpPlus,
+Lhs: &Ident{Name: "a"},
+Rhs: &Ident{Name: "b"},
+},
+Rhs: &BinaryExpr{
+				Op:  OpPlus,
+				Lhs: &Ident{Name: "c"},
+				Rhs: &Ident{Name: "d"},
+			},
+		}
+	}
+	})
+}
+
+// Benchmark string operations
+func BenchmarkStringOperations(b *testing.B) {
+	b.Run("StringLiteral", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = &StringLit{Value: "hello world"}
+		}
+	})
+
+	b.Run("StringConcatenation", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = &BinaryExpr{
+				Op:  OpPlus,
+				Lhs: &StringLit{Value: "hello "},
+				Rhs: &StringLit{Value: "world"},
+			}
+		}
+	})
+
+	b.Run("InterpolatedString", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = &InterpolatedStringLit{
+				Parts: []Expr{
+					&StringLit{Value: "Value: "},
+					&Ident{Name: "x"},
+				},
+			}
+		}
+	})
+}
