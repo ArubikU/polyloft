@@ -49,6 +49,25 @@ var (
 	typeNameCache   = make(map[*Type]string, 64) // Cache for GetTypeNameString results
 )
 
+// fastTrimSpace trims leading and trailing whitespace without allocation
+// Returns the trimmed substring indices
+func fastTrimSpace(s string) (start, end int) {
+	start = 0
+	end = len(s)
+	
+	// Trim leading spaces
+	for start < end && (s[start] == ' ' || s[start] == '\t' || s[start] == '\n' || s[start] == '\r') {
+		start++
+	}
+	
+	// Trim trailing spaces
+	for start < end && (s[end-1] == ' ' || s[end-1] == '\t' || s[end-1] == '\n' || s[end-1] == '\r') {
+		end--
+	}
+	
+	return start, end
+}
+
 // ClearTypeCache clears the type cache. Useful for testing or memory management.
 func ClearTypeCache() {
 	typeCacheMu.Lock()
@@ -168,7 +187,10 @@ func parseGenericType(typeName string) *Type {
 		return TypeFromString(typeName)
 	}
 
-	baseName := strings.TrimSpace(typeName[:openBracket])
+	// Fast trim without allocation
+	start, end := fastTrimSpace(typeName[:openBracket])
+	baseName := typeName[start:end]
+	
 	closeBracket := strings.LastIndex(typeName, ">")
 	if closeBracket == -1 || closeBracket <= openBracket {
 		// Invalid syntax, return as simple type
@@ -225,9 +247,10 @@ func parseUnionType(typeName string) *Type {
 		case '|':
 			if depth == 0 {
 				// End of current union member
-				typeStr := strings.TrimSpace(currentType.String())
-				if typeStr != "" {
-					unionTypes = append(unionTypes, TypeFromString(typeStr))
+				typeStr := currentType.String()
+				start, end := fastTrimSpace(typeStr)
+				if start < end {
+					unionTypes = append(unionTypes, TypeFromString(typeStr[start:end]))
 				}
 				currentType.Reset()
 				currentType.Grow(32) // Reset with preallocated buffer
@@ -240,9 +263,10 @@ func parseUnionType(typeName string) *Type {
 	}
 
 	// Add the last type
-	typeStr := strings.TrimSpace(currentType.String())
-	if typeStr != "" {
-		unionTypes = append(unionTypes, TypeFromString(typeStr))
+	typeStr := currentType.String()
+	start, end := fastTrimSpace(typeStr)
+	if start < end {
+		unionTypes = append(unionTypes, TypeFromString(typeStr[start:end]))
 	}
 
 	if len(unionTypes) == 0 {
@@ -294,9 +318,10 @@ func parseTypeParams(paramsStr string) []*Type {
 		case ',':
 			if depth == 0 {
 				// End of current parameter
-				paramStr := strings.TrimSpace(currentParam.String())
-				if paramStr != "" {
-					params = append(params, TypeFromString(paramStr))
+				paramStr := currentParam.String()
+				start, end := fastTrimSpace(paramStr)
+				if start < end {
+					params = append(params, TypeFromString(paramStr[start:end]))
 				}
 				currentParam.Reset()
 				currentParam.Grow(32) // Reset with preallocated buffer
@@ -309,9 +334,10 @@ func parseTypeParams(paramsStr string) []*Type {
 	}
 
 	// Add the last parameter
-	paramStr := strings.TrimSpace(currentParam.String())
-	if paramStr != "" {
-		params = append(params, TypeFromString(paramStr))
+	paramStr := currentParam.String()
+	start, end := fastTrimSpace(paramStr)
+	if start < end {
+		params = append(params, TypeFromString(paramStr[start:end]))
 	}
 
 	return params
