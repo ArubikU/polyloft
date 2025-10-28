@@ -160,8 +160,10 @@ func parseGenericType(typeName string) *Type {
 // parseUnionType parses a union type string like "string | int" or "string | int | null"
 func parseUnionType(typeName string) *Type {
 	// Split by | but respect generic type brackets
-	var unionTypes []*Type
+	// Preallocate for common case (2-3 union members)
+	unionTypes := make([]*Type, 0, 2)
 	var currentType strings.Builder
+	currentType.Grow(32) // Preallocate reasonable buffer size
 	depth := 0
 
 	for _, ch := range typeName {
@@ -180,6 +182,7 @@ func parseUnionType(typeName string) *Type {
 					unionTypes = append(unionTypes, TypeFromString(typeStr))
 				}
 				currentType.Reset()
+				currentType.Grow(32) // Reset with preallocated buffer
 			} else {
 				currentType.WriteRune(ch)
 			}
@@ -204,9 +207,9 @@ func parseUnionType(typeName string) *Type {
 	}
 
 	// Create union type name by joining all type names
-	var typeNames []string
-	for _, t := range unionTypes {
-		typeNames = append(typeNames, t.Name)
+	typeNames := make([]string, len(unionTypes))
+	for i, t := range unionTypes {
+		typeNames[i] = t.Name
 	}
 	unionName := strings.Join(typeNames, " | ")
 
@@ -224,8 +227,10 @@ func parseTypeParams(paramsStr string) []*Type {
 		return nil
 	}
 
-	var params []*Type
+	// Preallocate for common case (1-2 parameters)
+	params := make([]*Type, 0, 2)
 	var currentParam strings.Builder
+	currentParam.Grow(32) // Preallocate reasonable buffer size
 	depth := 0
 
 	for _, ch := range paramsStr {
@@ -244,6 +249,7 @@ func parseTypeParams(paramsStr string) []*Type {
 					params = append(params, TypeFromString(paramStr))
 				}
 				currentParam.Reset()
+				currentParam.Grow(32) // Reset with preallocated buffer
 			} else {
 				currentParam.WriteRune(ch)
 			}
@@ -296,13 +302,22 @@ func GetTypeNameString(t *Type) string {
 		return t.Name
 	}
 
-	// Format with type parameters
-	var paramNames []string
-	for _, param := range t.TypeParams {
-		paramNames = append(paramNames, GetTypeNameString(param))
+	// Format with type parameters - preallocate builder
+	var buf strings.Builder
+	// Estimate size: base name + brackets + params (rough estimate)
+	buf.Grow(len(t.Name) + len(t.TypeParams)*10 + 10)
+	buf.WriteString(t.Name)
+	buf.WriteByte('<')
+	
+	for i, param := range t.TypeParams {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(GetTypeNameString(param))
 	}
-
-	return t.Name + "<" + strings.Join(paramNames, ", ") + ">"
+	
+	buf.WriteByte('>')
+	return buf.String()
 }
 
 // Position describes a location in a source file.
