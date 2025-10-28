@@ -43,8 +43,10 @@ var (
 
 // Type cache for frequently used types to reduce allocations
 var (
-	typeCacheMu sync.RWMutex
-	typeCache   = make(map[string]*Type, 64) // Preallocate for common types
+	typeCacheMu     sync.RWMutex
+	typeCache       = make(map[string]*Type, 64) // Preallocate for common types
+	typeNameCacheMu sync.RWMutex
+	typeNameCache   = make(map[*Type]string, 64) // Cache for GetTypeNameString results
 )
 
 // ClearTypeCache clears the type cache. Useful for testing or memory management.
@@ -52,6 +54,10 @@ func ClearTypeCache() {
 	typeCacheMu.Lock()
 	typeCache = make(map[string]*Type, 64)
 	typeCacheMu.Unlock()
+	
+	typeNameCacheMu.Lock()
+	typeNameCache = make(map[*Type]string, 64)
+	typeNameCacheMu.Unlock()
 }
 
 // GetBuiltinTypes returns all built-in types
@@ -336,7 +342,7 @@ func GenericType(baseType *Type, typeParams ...*Type) *Type {
 
 // GetTypeName returns the string name of a type
 // This is a compatibility helper for code migration
-// Optimized with index-based loops for better performance
+// Optimized with caching and index-based loops for better performance
 func GetTypeNameString(t *Type) string {
 	if t == nil {
 		return ""
@@ -347,6 +353,14 @@ func GetTypeNameString(t *Type) string {
 	if paramCount == 0 {
 		return t.Name
 	}
+
+	// Check cache first
+	typeNameCacheMu.RLock()
+	if cached, found := typeNameCache[t]; found {
+		typeNameCacheMu.RUnlock()
+		return cached
+	}
+	typeNameCacheMu.RUnlock()
 
 	// Format with type parameters - preallocate builder
 	var buf strings.Builder
@@ -364,7 +378,14 @@ func GetTypeNameString(t *Type) string {
 	}
 	
 	buf.WriteByte('>')
-	return buf.String()
+	result := buf.String()
+	
+	// Cache the result
+	typeNameCacheMu.Lock()
+	typeNameCache[t] = result
+	typeNameCacheMu.Unlock()
+	
+	return result
 }
 
 // Position describes a location in a source file.
