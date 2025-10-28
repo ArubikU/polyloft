@@ -2031,6 +2031,43 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		
+		// Fast path for primitive integer operations (before expensive checks)
+		if aInt, aOk := a.(int); aOk {
+			if bInt, bOk := b.(int); bOk {
+				switch x.Op {
+				case ast.OpPlus:
+					return aInt + bInt, nil
+				case ast.OpMinus:
+					return aInt - bInt, nil
+				case ast.OpMul:
+					return aInt * bInt, nil
+				case ast.OpDiv:
+					if bInt == 0 {
+						return nil, ThrowRuntimeError(env, "division by zero")
+					}
+					return aInt / bInt, nil
+				case ast.OpMod:
+					if bInt == 0 {
+						return nil, ThrowRuntimeError(env, "division by zero")
+					}
+					return aInt % bInt, nil
+				case ast.OpEq:
+					return aInt == bInt, nil
+				case ast.OpNeq:
+					return aInt != bInt, nil
+				case ast.OpLt:
+					return aInt < bInt, nil
+				case ast.OpLte:
+					return aInt <= bInt, nil
+				case ast.OpGt:
+					return aInt > bInt, nil
+				case ast.OpGte:
+					return aInt >= bInt, nil
+				}
+			}
+		}
+		
 		switch x.Op {
 		case ast.OpPlus:
 			// Check for operator overloading first

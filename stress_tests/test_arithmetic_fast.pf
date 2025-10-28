@@ -1,0 +1,10 @@
+// Arithmetic-heavy test for fast path optimization
+let start = Sys.time()
+let result = 0
+for i in 1...100000:
+    result = result + i * i - i / 2
+end
+let endTime = Sys.time()
+
+Sys.print("Result: " + result)
+Sys.print("Time: " + (endTime - start) + " ms")
