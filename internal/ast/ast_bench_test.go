@@ -347,3 +347,32 @@ func BenchmarkPooledVsNonPooled(b *testing.B) {
 		}
 	})
 }
+
+// Benchmark composite operations that combine multiple functions
+func BenchmarkCompositeOperations(b *testing.B) {
+	b.Run("TypeParsing_And_NameGeneration", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			typ := TypeFromString("Map<String, Array<Int>>")
+			_ = GetTypeNameString(typ)
+		}
+	})
+
+	b.Run("MultipleTypeOperations", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			t1 := TypeFromString("Int")
+			t2 := TypeFromString("String")
+			t3 := TypeFromString("Array<Int>")
+			_ = t1.MatchesType("Int")
+			_ = t2.MatchesType("String")
+			_ = GetTypeNameString(t3)
+		}
+	})
+
+	b.Run("GenericTypeCreation", func(b *testing.B) {
+		baseType := TypeFromString("Array")
+		paramType := TypeFromString("Int")
+		for i := 0; i < b.N; i++ {
+			_ = GenericType(baseType, paramType)
+		}
+	})
+}
