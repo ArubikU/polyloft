@@ -52,39 +52,6 @@ func isGenericTypeParameter(typeName string) bool {
 }
 
 func bindParametersWithVariadic(env *common.Env, params []ast.Parameter, args []any) error {
-	// Fast path: Simple non-variadic, non-generic functions (90% of cases)
-	// Check if all parameters are non-variadic and non-generic
-	hasVariadic := false
-	hasGenericTypes := false
-	for i := range params {
-		if params[i].IsVariadic {
-			hasVariadic = true
-			break
-		}
-		if params[i].Type != nil {
-			typeName := ast.GetTypeNameString(params[i].Type)
-			if typeName != "" && isGenericTypeParameter(typeName) {
-				hasGenericTypes = true
-				break
-			}
-		}
-	}
-
-	// Fast path: Simple case without variadic or generic types
-	if !hasVariadic && !hasGenericTypes {
-		// Simple arity check
-		if len(args) != len(params) {
-			return ThrowArityError((*Env)(env), len(params), len(args))
-		}
-
-		// Direct parameter binding (no type checking for performance)
-		for i := range params {
-			env.Set(params[i].Name, args[i])
-		}
-		return nil
-	}
-
-	// Slow path: Handle variadic and generic types
 	// Check minimum required parameters (non-variadic)
 	requiredParams := 0
 	variadicParam := -1
@@ -1028,21 +995,12 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 	case *ast.DefStmt:
 		// Check if this is a generic function
 		isGeneric := len(s.TypeParams) > 0
-		// Conditional pooling: Use pooling for complex functions (>= 3 params or generic)
-		usePooling := len(s.Params) >= 3 || isGeneric
 
 		// Capture current env for closure
 		fn := common.Func(func(callEnv *common.Env, args []any) (any, error) {
-			var local *common.Env
-			if usePooling {
-				// Use pooled environment for complex functions
-				local = GetPooledEnv(env)
-				defer ReleaseEnv(local)
-			} else {
-				// Create simple environment for simple functions
-				local = common.NewEnvWithContext(env.GetFileName(), env.GetPackageName())
-				local.Parent = env
-			}
+			// Use pooled environment for better performance (2-3x faster function calls)
+			local := GetPooledEnv(env)
+			defer ReleaseEnv(local)
 
 			// For generic functions, we need to handle type parameters
 			// In a simple implementation, we just make them available as types in the local scope
@@ -2438,29 +2396,19 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			return nil, err
 		}
 
-		// Fast path: Direct Func type (most common case)
-		if fn, ok := cal.(Func); ok {
-			args := make([]any, 0, len(x.Args))
-			for _, a := range x.Args {
-				v, err := evalExpr(env, a)
-				if err != nil {
-					return nil, err
-				}
-				args = append(args, v)
-			}
-			return fn(env, args)
-		}
-
-		// Handle wrapped function types
+		// Handle ClassConstructor wrapper
 		var fn Func
-		switch v := cal.(type) {
-		case *common.FunctionDefinition:
-			fn = v.Func
-		case *common.LambdaDefinition:
-			fn = v.Func
-		case *common.ClassConstructor:
-			fn = v.Func
-		default:
+		if classConstructor, ok := cal.(*common.ClassConstructor); ok {
+			fn = classConstructor.Func
+		} else if funcDef, ok := cal.(*common.FunctionDefinition); ok {
+			// Unwrap FunctionDefinition to get the actual function
+			fn = funcDef.Func
+		} else if lambdaDef, ok := cal.(*common.LambdaDefinition); ok {
+			// Unwrap LambdaDefinition to get the actual function
+			fn = lambdaDef.Func
+		} else if funcVal, ok := cal.(Func); ok {
+			fn = funcVal
+		} else {
 			// Provide more detailed error information
 			valueInfo := "nil"
 			if cal != nil {
@@ -2470,6 +2418,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 					valueInfo = valueInfo[:47] + "..."
 				}
 			}
+
 			return nil, ThrowNotCallableError(env, fmt.Sprintf("%T", cal), valueInfo)
 		}
 
