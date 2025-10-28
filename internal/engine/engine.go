@@ -343,6 +343,78 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 		// Determine if we're using destructuring (multiple iteration variables)
 		useDestructuring := len(s.Names) > 1
 
+		// FAST PATH: Optimize integer range loops (for i in 1...n)
+		// This is the most common loop pattern and biggest bottleneck
+		if !useDestructuring && s.Where == nil {
+			if rangeInstance, ok := it.(*ClassInstance); ok && rangeInstance.ClassName == "Range" {
+				// Extract range parameters directly from fields
+				startField, hasStart := rangeInstance.Fields["_start"]
+				endField, hasEnd := rangeInstance.Fields["_end"]
+				stepField, hasStep := rangeInstance.Fields["_step"]
+
+				if hasStart && hasEnd && hasStep {
+					// Try to extract primitive int values
+					var start, end, step int
+					var gotInts bool
+
+					// Check if we can get primitive ints (most common case)
+					if startInt, ok := startField.(int); ok {
+						if endInt, ok := endField.(int); ok {
+							if stepInt, ok := stepField.(int); ok {
+								start, end, step = startInt, endInt, stepInt
+								gotInts = true
+							}
+						}
+					}
+
+					// If not primitive ints, try Int instances
+					if !gotInts {
+						if startInstance, ok := startField.(*ClassInstance); ok && startInstance.ClassName == "Int" {
+							if endInstance, ok := endField.(*ClassInstance); ok && endInstance.ClassName == "Int" {
+								if stepInstance, ok := stepField.(*ClassInstance); ok && stepInstance.ClassName == "Int" {
+									start, _ = utils.AsInt(startInstance.Fields["value"])
+									end, _ = utils.AsInt(endInstance.Fields["value"])
+									step, _ = utils.AsInt(stepInstance.Fields["value"])
+									gotInts = true
+								}
+							}
+						}
+					}
+
+					if gotInts && step > 0 {
+						// FAST PATH: Simple integer loop with direct counter
+						varName := s.Name
+						if len(s.Names) > 0 {
+							varName = s.Names[0]
+						}
+
+						// Pre-cache the variable name in the environment for faster access
+						// This avoids map lookups on every iteration
+						for i := start; i <= end; i += step {
+							// Set loop variable directly as primitive int (no ClassInstance wrapping)
+							env.Set(varName, i)
+
+							// Execute loop body
+							brk, cont, ret, val, err := runBlock(env, s.Body)
+							if err != nil {
+								return nil, false, err
+							}
+							if ret {
+								return val, true, nil
+							}
+							if brk {
+								break
+							}
+							if cont {
+								continue
+							}
+						}
+						return nil, false, nil
+					}
+				}
+			}
+		}
+
 		// Handle plain Go maps (map[string]any)
 		if mapVal, ok := it.(map[string]any); ok {
 			// Iterate over map entries
