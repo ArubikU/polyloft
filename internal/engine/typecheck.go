@@ -72,13 +72,13 @@ func GetTypeName(val any) string {
 						for _, bound := range gt.Bounds {
 							// Use the first bound's name for type argument
 							param := ""
-							
+
 							// Check if this is a wildcard type (Name is "?")
 							// Note: For wildcards, Variance contains WildcardKind ("extends", "super", "unbounded", "implements")
 							if bound.Name.Name == "?" {
 								// This is a wildcard
 								param = "?"
-								
+
 								// Add bound constraint if present
 								// Use the Variance field to determine the keyword (extends/super/implements)
 								if bound.Extends != nil {
@@ -116,7 +116,7 @@ func GetTypeName(val any) string {
 								} else {
 									param = "Any"
 								}
-								
+
 								// Add extends/implements for non-wildcard types
 								// Only add if not already part of wildcard formatting
 								if bound.Extends != nil && bound.Variance != "extends" {
@@ -126,7 +126,7 @@ func GetTypeName(val any) string {
 									param += " implements " + bound.Implements.Name
 								}
 							}
-							
+
 							if bound.IsVariadic {
 								param += "..."
 							}
@@ -168,7 +168,6 @@ func GetTypeName(val any) string {
 	case *common.LambdaDefinition:
 		return common.FormatFunctionType(v.Params, v.ReturnType)
 	default:
-		fmt.Println("Unknown type for GetTypeName:", v)
 		return v.(fmt.Stringer).String()
 	}
 }

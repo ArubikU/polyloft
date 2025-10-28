@@ -967,7 +967,6 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 		if returnType == nil {
 			returnType = common.InferReturnType(s.Body, env)
 		}
-
 		// Wrap function in FunctionDefinition with metadata
 		funcDef := &common.FunctionDefinition{
 			Name:        s.Name,
@@ -2044,6 +2043,31 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				return sa + utils.ToString(b), nil
 			}
 			// numbers
+			// Check if operands are ClassInstances to determine if any is Float
+			aClass, aIsClass := a.(*ClassInstance)
+			bClass, bIsClass := b.(*ClassInstance)
+
+			if aIsClass && bIsClass {
+				floatType := common.BuiltinTypeFloat.GetClassDefinition(env)
+				// If any operand is Float, return Float
+				if aClass.ParentClass.IsSubclassOf(floatType) || bClass.ParentClass.IsSubclassOf(floatType) {
+					fa, oka := utils.AsFloat(a)
+					fb, okb := utils.AsFloat(b)
+					if !oka || !okb {
+						return nil, typeError("number", a, b)
+					}
+					return CreateFloatInstance(env, fa+fb)
+				}
+				// Both are Int, return Int
+				ia, oka := utils.AsInt(a)
+				ib, okb := utils.AsInt(b)
+				if !oka || !okb {
+					return nil, typeError("int", a, b)
+				}
+				return CreateIntInstance(env, ia+ib)
+			}
+
+			// Fallback to float for non-ClassInstance operands
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
@@ -2055,6 +2079,31 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			if result, handled, err := tryOperatorOverload(env, "-", "subtract", a, b); handled {
 				return result, err
 			}
+			// Check if operands are ClassInstances to determine if any is Float
+			aClass, aIsClass := a.(*ClassInstance)
+			bClass, bIsClass := b.(*ClassInstance)
+
+			if aIsClass && bIsClass {
+				floatType := common.BuiltinTypeFloat.GetClassDefinition(env)
+				// If any operand is Float, return Float
+				if aClass.ParentClass.IsSubclassOf(floatType) || bClass.ParentClass.IsSubclassOf(floatType) {
+					fa, oka := utils.AsFloat(a)
+					fb, okb := utils.AsFloat(b)
+					if !oka || !okb {
+						return nil, typeError("number", a, b)
+					}
+					return CreateFloatInstance(env, fa-fb)
+				}
+				// Both are Int, return Int
+				ia, oka := utils.AsInt(a)
+				ib, okb := utils.AsInt(b)
+				if !oka || !okb {
+					return nil, typeError("int", a, b)
+				}
+				return CreateIntInstance(env, ia-ib)
+			}
+
+			// Fallback to float for non-ClassInstance operands
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
@@ -2116,12 +2165,55 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			if result, handled, err := tryOperatorOverload(env, "/", "divide", a, b); handled {
 				return result, err
 			}
+			// Check if operands are ClassInstances to determine if any is Float
+			aClass, aIsClass := a.(*ClassInstance)
+			bClass, bIsClass := b.(*ClassInstance)
+
+			if aIsClass && bIsClass {
+				floatType := common.BuiltinTypeFloat.GetClassDefinition(env)
+				// If any operand is Float, return Float
+				if aClass.ParentClass.IsSubclassOf(floatType) || bClass.ParentClass.IsSubclassOf(floatType) {
+					fa, oka := utils.AsFloat(a)
+					fb, okb := utils.AsFloat(b)
+					if !oka || !okb {
+						return nil, typeError("number", a, b)
+					}
+					result := fa / fb
+					// If result is a whole number, return Int
+					if utils.CanBeInt(result) {
+						return CreateIntInstance(env, int(result))
+					}
+					return CreateFloatInstance(env, result)
+				}
+				// Both are Int, perform division
+				ia, oka := utils.AsInt(a)
+				ib, okb := utils.AsInt(b)
+				if !oka || !okb {
+					return nil, typeError("int", a, b)
+				}
+				if ib == 0 {
+					return nil, ThrowRuntimeError(env, "division by zero")
+				}
+				// Check if division results in a whole number
+				result := float64(ia) / float64(ib)
+				if utils.CanBeInt(result) {
+					return CreateIntInstance(env, int(result))
+				}
+				return CreateFloatInstance(env, result)
+			}
+
+			// Fallback to float for non-ClassInstance operands
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
 				return nil, typeError("number", a, b)
 			}
-			return CreateFloatInstance(env, fa/fb)
+			result := fa / fb
+			// If result is a whole number, return Int
+			if utils.CanBeInt(result) {
+				return CreateIntInstance(env, int(result))
+			}
+			return CreateFloatInstance(env, result)
 		case ast.OpMod:
 			ia, oka := utils.AsInt(a)
 			ib, okb := utils.AsInt(b)
@@ -2787,25 +2879,25 @@ func resolveTypeToClassDef(env *common.Env, typeName string) (*ClassDefinition, 
 // Supports: variables, function calls, ternary operators, method calls, binary operations, etc.
 func evaluateInterpolationExpr(env *Env, exprStr string) (any, error) {
 	exprStr = strings.TrimSpace(exprStr)
-	
+
 	// Use the lexer and parser to parse the expression properly
 	lx := &lexer.Lexer{}
 	tokens := lx.Scan([]byte(exprStr))
-	
+
 	// Create a parser for the expression
 	p := parser.New(tokens)
-	
+
 	// Parse the expression
 	expr, err := p.ParseExpression()
 	if err != nil {
 		return nil, ThrowRuntimeError(env, fmt.Sprintf("failed to parse interpolation expression '%s': %v", exprStr, err))
 	}
-	
+
 	// Evaluate the parsed expression
 	result, err := evalExpr(env, expr)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return result, nil
 }

@@ -272,10 +272,13 @@ func ThrowRuntimeError(env *Env, message string) error {
 func ThrowTypeError(env *Env, expected string, got ...any) error {
 	message := fmt.Sprintf("expected %s", expected)
 	if len(got) > 0 {
-		message += fmt.Sprintf(", got %T", got[0])
+		// Use GetTypeName for better error messages
+		gotTypeName := GetTypeName(got[0])
+		message += fmt.Sprintf(", got %s", gotTypeName)
 		if len(got) > 1 {
 			for _, g := range got[1:] {
-				message += fmt.Sprintf(", %T", g)
+				gotTypeName := GetTypeName(g)
+				message += fmt.Sprintf(", %s", gotTypeName)
 			}
 		}
 	}

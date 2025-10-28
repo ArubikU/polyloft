@@ -824,15 +824,13 @@ type ContinueSentinel struct{}
 // InferReturnType analyzes function body statements to infer the return type
 func InferReturnType(body []ast.Stmt, env *Env) *ast.Type {
 	returnTypes := collectReturnTypes(body, env)
-
-	// If no return statements found, return nil (void/Any)
 	if len(returnTypes) == 0 {
 		return nil
 	}
 
 	// If more than 5 different return types, return Any
 	if len(returnTypes) > 5 {
-		return &ast.Type{Name: "any"}
+		return ast.ANY
 	}
 
 	// If all returns are the same type, return that type

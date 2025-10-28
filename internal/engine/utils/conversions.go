@@ -300,3 +300,9 @@ func AsStringArg(args []any, i int) string {
 	}
 	return ToString(args[i])
 }
+
+// CanBeInt checks if a float64 value can be represented as an integer without loss of precision
+// Returns true if the float is a whole number (e.g., 3.0, -5.0, 0.0)
+func CanBeInt(f float64) bool {
+	return f == float64(int(f))
+}

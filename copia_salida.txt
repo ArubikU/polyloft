@@ -1,3 +1,0 @@
-¡Hola desde Polyloft!
-Este es un archivo de prueba.
-Línea agregada con appendFile

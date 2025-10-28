@@ -278,12 +278,12 @@ func InstallIOModule(env *Env, opts Options) error {
 			}
 			return true, nil
 		})).
-		AddStaticMethod("fileExists", boolType, []ast.Parameter{{Name: "path", Type: stringType}}, Func(func(_ *Env, args []any) (any, error) {
+		AddStaticMethod("exists", boolType, []ast.Parameter{{Name: "path", Type: stringType}}, Func(func(_ *Env, args []any) (any, error) {
 			path := utils.ToString(args[0])
 			_, err := os.Stat(path)
 			return err == nil, nil
 		})).
-		AddStaticMethod("fileSize", floatType, []ast.Parameter{{Name: "path", Type: stringType}}, Func(func(_ *Env, args []any) (any, error) {
+		AddStaticMethod("stats", floatType, []ast.Parameter{{Name: "path", Type: stringType}}, Func(func(_ *Env, args []any) (any, error) {
 			path := utils.ToString(args[0])
 
 			info, err := os.Stat(path)

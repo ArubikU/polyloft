@@ -754,8 +754,7 @@ func validateConcreteType(typeName string, value any, env *Env) error {
 	}
 
 	if !IsInstanceOf(value, typeName) {
-		actualType := GetTypeName(value)
-		return ThrowTypeError(env, typeName, actualType)
+		return ThrowTypeError(env, typeName, value)
 	}
 	return nil
 }
