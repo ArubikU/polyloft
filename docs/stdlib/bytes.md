@@ -41,7 +41,7 @@ Retorna el tamaño del array de bytes.
 
 ```polyloft
 let bytes = Bytes.fromString("Hello")
-Sys.println(bytes.size())  // 5
+printlnln(bytes.size())  // 5
 ```
 
 ### get(index: Int) -> Int
@@ -50,7 +50,7 @@ Obtiene el byte en la posición especificada (0-255).
 
 ```polyloft
 let bytes = Bytes.fromString("ABC")
-Sys.println(bytes.get(0))  // 65 (ASCII 'A')
+printlnln(bytes.get(0))  // 65 (ASCII 'A')
 ```
 
 ### set(index: Int, value: Int) -> Void
@@ -70,7 +70,7 @@ Convierte los bytes a string.
 
 ```polyloft
 let bytes = Bytes.fromString("Hello")
-Sys.println(bytes.toString())  // "Hello"
+printlnln(bytes.toString())  // "Hello"
 ```
 
 ### toHex() -> String
@@ -79,7 +79,7 @@ Convierte los bytes a representación hexadecimal.
 
 ```polyloft
 let bytes = Bytes.fromString("Hello")
-Sys.println(bytes.toHex())  // "48656c6c6f"
+printlnln(bytes.toHex())  // "48656c6c6f"
 ```
 
 ### toArray() -> Array
@@ -99,7 +99,7 @@ Crea un nuevo `Bytes` con una porción del array original.
 ```polyloft
 let bytes = Bytes.fromString("Hello World")
 let slice = bytes.slice(0, 5)
-Sys.println(slice.toString())  // "Hello"
+printlnln(slice.toString())  // "Hello"
 ```
 
 ### equals(other: Bytes) -> Bool
@@ -111,8 +111,8 @@ let b1 = Bytes.fromString("Hello")
 let b2 = Bytes.fromString("Hello")
 let b3 = Bytes.fromString("World")
 
-Sys.println(b1.equals(b2))  // true
-Sys.println(b1.equals(b3))  // false
+printlnln(b1.equals(b2))  // true
+printlnln(b1.equals(b3))  // false
 ```
 
 ## Ejemplo Completo
@@ -122,20 +122,20 @@ Sys.println(b1.equals(b3))  // false
 let bytes = Bytes.fromString("Hello")
 
 // Ver tamaño
-Sys.println("Size: " + bytes.size())
+printlnln("Size: " + bytes.size())
 
 // Modificar bytes
 bytes.set(0, 74)  // Cambiar 'H' por 'J'
-Sys.println(bytes.toString())  // "Jello"
+printlnln(bytes.toString())  // "Jello"
 
 // Convertir a hex
-Sys.println("Hex: " + bytes.toHex())
+printlnln("Hex: " + bytes.toHex())
 
 // Crear slice
 let slice = bytes.slice(1, 4)
-Sys.println(slice.toString())  // "ell"
+printlnln(slice.toString())  // "ell"
 
 // Comparar
 let other = Bytes.fromString("Jello")
-Sys.println(bytes.equals(other))  // true
+printlnln(bytes.equals(other))  // true
 ```

@@ -8,5 +8,5 @@ for i in 1...500:
 end
 let endTime = Sys.time()
 
-Sys.print("Total: " + total)
-Sys.print("Time: " + (endTime - start) + " ms")
+println("Total: " + total)
+println("Time: " + (endTime - start) + " ms")

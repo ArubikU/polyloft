@@ -11,6 +11,6 @@ for key in data:
 end
 let endTime = Sys.time()
 
-Sys.print("Map size: " + data.size())
-Sys.print("Sum: " + total)
-Sys.print("Time: " + (endTime - start) + " ms")
+println("Map size: " + data.size())
+println("Sum: " + total)
+println("Time: " + (endTime - start) + " ms")

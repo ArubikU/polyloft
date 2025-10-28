@@ -17,9 +17,9 @@ Conecta el socket a un host y puerto.
 ```polyloft
 let socket = Socket()
 if socket.connect("example.com", 80, 5) {
-    Sys.println("Connected!")
+    printlnln("Connected!")
 } else {
-    Sys.println("Connection failed")
+    printlnln("Connection failed")
 }
 ```
 
@@ -31,7 +31,7 @@ Envía datos como string. Retorna el número de bytes enviados.
 let socket = Socket()
 socket.connect("localhost", 8080)
 let sent = socket.send("GET / HTTP/1.1\r\n\r\n")
-Sys.println("Sent " + sent + " bytes")
+printlnln("Sent " + sent + " bytes")
 ```
 
 ### sendBytes(data: Bytes) -> Int
@@ -54,7 +54,7 @@ let socket = Socket()
 socket.connect("localhost", 8080)
 socket.send("HELLO\n")
 let response = socket.recv(1024, 10)
-Sys.println("Received: " + response)
+printlnln("Received: " + response)
 ```
 
 ### recvBytes(size: Int = 1024, timeout: Int = 5) -> Bytes
@@ -112,9 +112,9 @@ Enlaza el servidor a un host y puerto para escuchar conexiones.
 ```polyloft
 let server = ServerSocket()
 if server.bind("0.0.0.0", 8080) {
-    Sys.println("Server listening on port 8080")
+    printlnln("Server listening on port 8080")
 } else {
-    Sys.println("Failed to bind")
+    printlnln("Failed to bind")
 }
 ```
 
@@ -126,9 +126,9 @@ Acepta una conexión entrante y retorna un `Socket` conectado al cliente.
 let server = ServerSocket()
 server.bind("0.0.0.0", 8080)
 
-Sys.println("Waiting for connection...")
+printlnln("Waiting for connection...")
 let client = server.accept()
-Sys.println("Client connected from: " + client.remoteAddr)
+printlnln("Client connected from: " + client.remoteAddr)
 ```
 
 ### close() -> Void
@@ -179,7 +179,7 @@ class HttpClient {
 
 // Usar el cliente
 let response = HttpClient.get("example.com", "/")
-Sys.println(response)
+printlnln(response)
 ```
 
 ### Servidor Echo Simple
@@ -190,26 +190,26 @@ class EchoServer {
         let server = ServerSocket()
         
         if !server.bind("0.0.0.0", port) {
-            Sys.println("Failed to start server")
+            printlnln("Failed to start server")
             return
         }
         
-        Sys.println("Echo server listening on port " + port)
+        printlnln("Echo server listening on port " + port)
         
         while true {
             // Aceptar cliente
             let client = server.accept()
-            Sys.println("Client connected: " + client.remoteAddr)
+            printlnln("Client connected: " + client.remoteAddr)
             
             // Echo loop
             let data = client.recv(1024, 30)
             while data != "" {
-                Sys.println("Received: " + data)
+                printlnln("Received: " + data)
                 client.send(data)  // Echo back
                 data = client.recv(1024, 5)
             }
             
-            Sys.println("Client disconnected")
+            printlnln("Client disconnected")
             client.close()
         }
         
@@ -230,14 +230,14 @@ class ByteServer {
         let server = ServerSocket()
         server.bind("0.0.0.0", port)
         
-        Sys.println("Byte server listening...")
+        printlnln("Byte server listening...")
         
         let client = server.accept()
         let data = client.recvBytes(100, 10)
         
-        Sys.println("Received " + data.size() + " bytes")
-        Sys.println("Hex: " + data.toHex())
-        Sys.println("Text: " + data.toString())
+        printlnln("Received " + data.size() + " bytes")
+        printlnln("Hex: " + data.toHex())
+        printlnln("Text: " + data.toString())
         
         client.close()
         server.close()
@@ -266,10 +266,10 @@ class ChatServer {
         let server = ServerSocket()
         server.bind("0.0.0.0", port)
         
-        Sys.println("Chat server started on port " + port)
+        printlnln("Chat server started on port " + port)
         
         let client = server.accept()
-        Sys.println("Client joined: " + client.remoteAddr)
+        printlnln("Client joined: " + client.remoteAddr)
         
         while true {
             let message = client.recv(1024, 60)
@@ -277,7 +277,7 @@ class ChatServer {
                 break
             }
             
-            Sys.println("Client: " + message)
+            printlnln("Client: " + message)
             
             // Echo con prefijo
             client.send("Server received: " + message)

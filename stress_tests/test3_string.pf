@@ -6,5 +6,5 @@ for i in 0...9999:
 end
 let endTime = Sys.time()
 
-Sys.print("String length: " + result.length())
-Sys.print("Time: " + (endTime - start) + " ms")
+println("String length: " + result.length())
+println("Time: " + (endTime - start) + " ms")

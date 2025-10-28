@@ -59,7 +59,7 @@ func getLanguagePatterns() []LanguagePattern {
 	return []LanguagePattern{
 		// JavaScript/TypeScript
 		{"console.log", "JavaScript", "println", "In HyLang, use: println(...)"},
-		{"console.error", "JavaScript", "Sys.println", "In HyLang, use: Sys.println(...)"},
+		{"console.error", "JavaScript", "printlnln", "In HyLang, use: printlnln(...)"},
 		{"typeof", "JavaScript", "Sys.type", "In HyLang, use: Sys.type(value)"},
 		{"function", "JavaScript", "def", "In HyLang, functions are defined as: def name(...) { ... } or def name(...) = expression"},
 		{"const ", "JavaScript", "let", "In HyLang, use: let name = value (immutable) or var name = value (mutable)"},
@@ -73,7 +73,7 @@ func getLanguagePatterns() []LanguagePattern {
 
 		// Python
 		{"def ", "Python", "def", "In HyLang, use: def name(...): ... end or def name(...) = expression"},
-		{"print(", "Python", "println", "Both work similarly, but HyLang also has: Sys.println(...)"},
+		{"print(", "Python", "println", "Both work similarly, but HyLang also has: printlnln(...)"},
 		{"__init__", "Python", "ClassName", "In HyLang, constructors use the class name: ClassName(...): ... end"},
 		{"self", "Python", "this", "In HyLang, use 'this' to refer to the current instance"},
 
@@ -82,7 +82,7 @@ func getLanguagePatterns() []LanguagePattern {
 		{"Console.Write", "C#", "print", "In HyLang, use: print(...)"},
 
 		// Common function names
-		{"log", "common", "println", "In HyLang, use: println(...) or Sys.println(...)"},
+		{"log", "common", "println", "In HyLang, use: println(...) or printlnln(...)"},
 		{"printf", "C/C++", "println", "In HyLang, use: println(...) for formatted output"},
 		{"echo", "PHP", "println", "In HyLang, use: println(...)"},
 	}
@@ -346,7 +346,7 @@ func (hp *HintProvider) GetHintForUndefinedNameWithContext(name string, filepath
 
 	// Check common built-in functions
 	builtins := []string{
-		"println", "print", "Sys.println", "Sys.print",
+		"println", "print", "printlnln", "println",
 		"Array", "Map", "String", "Int", "Float", "Bool",
 		"Math", "Sys", "IO", "Net", "Crypto",
 	}
@@ -577,7 +577,7 @@ func uniqueAndLimit(items []string, limit int) []string {
 func GetGeneralHint(errorType string, context string) *ExceptionHint {
 	hints := map[string]map[string][]string{
 		"NameError": {
-			"log": {"Use 'println' or 'sys.println' for output", "Use 'print' or 'sys.print' for output without newline"},
+			"log": {"Use 'println' or 'printlnln' for output", "Use 'print' or 'println' for output without newline"},
 		},
 		"TypeError": {
 			"callable": {"Make sure the object is a function", "Check if you're calling the right variable"},

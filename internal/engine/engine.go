@@ -342,136 +342,6 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 
 		// Determine if we're using destructuring (multiple iteration variables)
 		useDestructuring := len(s.Names) > 1
-
-		// FAST PATH: Optimize integer range loops (for i in 1...n)
-		// This is the most common loop pattern and biggest bottleneck
-		if !useDestructuring && s.Where == nil {
-			if rangeInstance, ok := it.(*ClassInstance); ok && rangeInstance.ClassName == "Range" {
-				// Extract range parameters directly from fields
-				startField, hasStart := rangeInstance.Fields["_start"]
-				endField, hasEnd := rangeInstance.Fields["_end"]
-				stepField, hasStep := rangeInstance.Fields["_step"]
-
-				if hasStart && hasEnd && hasStep {
-					// Try to extract primitive int values
-					var start, end, step int
-					var gotInts bool
-
-					// Check if we can get primitive ints (most common case)
-					if startInt, ok := startField.(int); ok {
-						if endInt, ok := endField.(int); ok {
-							if stepInt, ok := stepField.(int); ok {
-								start, end, step = startInt, endInt, stepInt
-								gotInts = true
-							}
-						}
-					}
-
-					// If not primitive ints, try Int instances
-					if !gotInts {
-						if startInstance, ok := startField.(*ClassInstance); ok && startInstance.ClassName == "Int" {
-							if endInstance, ok := endField.(*ClassInstance); ok && endInstance.ClassName == "Int" {
-								if stepInstance, ok := stepField.(*ClassInstance); ok && stepInstance.ClassName == "Int" {
-									start, _ = utils.AsInt(startInstance.Fields["value"])
-									end, _ = utils.AsInt(endInstance.Fields["value"])
-									step, _ = utils.AsInt(stepInstance.Fields["value"])
-									gotInts = true
-								}
-							}
-						}
-					}
-
-					if gotInts && step > 0 {
-						// FAST PATH: Simple integer loop with direct counter
-						varName := s.Name
-						if len(s.Names) > 0 {
-							varName = s.Names[0]
-						}
-
-						// Enable fast slots for this loop variable if it's a common name (i, j, k, result, etc.)
-						env.EnableFastSlots()
-
-						// Pre-cache the variable name in the environment for faster access
-						// This avoids map lookups on every iteration
-						for i := start; i <= end; i += step {
-							// Set loop variable directly as primitive int (no ClassInstance wrapping)
-							// Uses fast slot if available (i, j, k, etc.) for ~2-3x faster access
-							env.Set(varName, i)
-
-							// Execute loop body
-							brk, cont, ret, val, err := runBlock(env, s.Body)
-							if err != nil {
-								return nil, false, err
-							}
-							if ret {
-								return val, true, nil
-							}
-							if brk {
-								break
-							}
-							if cont {
-								continue
-							}
-						}
-						return nil, false, nil
-					}
-				}
-			}
-		}
-
-		// Handle plain Go maps (map[string]any)
-		if mapVal, ok := it.(map[string]any); ok {
-			// Iterate over map entries
-			for key, value := range mapVal {
-				if useDestructuring {
-					// Set key and value to the two variables
-					if len(s.Names) >= 2 {
-						env.Set(s.Names[0], key)
-						env.Set(s.Names[1], value)
-					}
-					// Set any additional variables to nil
-					for i := 2; i < len(s.Names); i++ {
-						env.Set(s.Names[i], nil)
-					}
-				} else {
-					// Single variable: set it to the key
-					varName := s.Name
-					if len(s.Names) > 0 {
-						varName = s.Names[0]
-					}
-					env.Set(varName, key)
-				}
-
-				// Evaluate where clause if present
-				if s.Where != nil {
-					whereResult, err := evalExpr(env, s.Where)
-					if err != nil {
-						return nil, false, err
-					}
-					// Skip this iteration if where clause is false
-					if !utils.AsBool(whereResult) {
-						continue
-					}
-				}
-
-				// Execute loop body
-				brk, cont, ret, val, err := runBlock(env, s.Body)
-				if err != nil {
-					return nil, false, err
-				}
-				if ret {
-					return val, true, nil
-				}
-				if brk {
-					break
-				}
-				if cont {
-					continue
-				}
-			}
-			return nil, false, nil
-		}
-
 		// Check if the object implements Iterable interface
 		if instance, ok := it.(*ClassInstance); ok {
 			// Check if class implements Iterable
@@ -481,15 +351,7 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 			}
 
 			// Check if instance implements Iterable interface
-			implementsIterable := false
-			if instance.ParentClass != nil {
-				for _, interfaceDef := range instance.ParentClass.Implements {
-					if interfaceDef == iterableInterfaceDef {
-						implementsIterable = true
-						break
-					}
-				}
-			}
+			implementsIterable := instance.ParentClass.ImplementsInterface(iterableInterfaceDef)
 
 			if !implementsIterable {
 				return nil, false, fmt.Errorf("object of type %s does not implement Iterable interface", instance.ClassName)
@@ -2109,7 +1971,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Fast path for primitive integer operations (before expensive checks)
 		if aInt, aOk := a.(int); aOk {
 			if bInt, bOk := b.(int); bOk {
@@ -2145,7 +2007,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				}
 			}
 		}
-		
+
 		switch x.Op {
 		case ast.OpPlus:
 			// Check for operator overloading first

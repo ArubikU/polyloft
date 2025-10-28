@@ -10,5 +10,5 @@ for i in 0...49999:
 end
 let endTime = Sys.time()
 
-Sys.print("Result: " + result)
-Sys.print("Time: " + (endTime - start) + " ms")
+println("Result: " + result)
+println("Time: " + (endTime - start) + " ms")

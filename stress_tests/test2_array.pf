@@ -11,6 +11,6 @@ for x in arr:
 end
 let endTime = Sys.time()
 
-Sys.print("Array length: " + arr.size())
-Sys.print("Sum: " + total)
-Sys.print("Time: " + (endTime - start) + " ms")
+println("Array length: " + arr.size())
+println("Sum: " + total)
+println("Time: " + (endTime - start) + " ms")
