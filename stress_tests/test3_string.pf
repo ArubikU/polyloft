@@ -1,0 +1,10 @@
+// Test 3: String concatenation
+let start = Sys.time()
+let result = ""
+for i in 0...9999:
+    result = result + i
+end
+let endTime = Sys.time()
+
+Sys.print("String length: " + result.length())
+Sys.print("Time: " + (endTime - start) + " ms")

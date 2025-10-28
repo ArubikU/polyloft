@@ -1,0 +1,17 @@
+// Test 5: Factorial computation
+def factorial(n):
+    if n <= 1:
+        return 1
+    end
+    return n * factorial(n - 1)
+end
+
+let start = Sys.time()
+let result = 0
+for i in 1...100:
+    result = result + factorial(i % 20)
+end
+let endTime = Sys.time()
+
+Sys.print("Result: " + result)
+Sys.print("Time: " + (endTime - start) + " ms")

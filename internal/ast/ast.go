@@ -1,6 +1,9 @@
 package ast
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
 
 // Package ast defines Polyloft's abstract syntax tree.
 // Keep node interfaces small and composable. Favor explicit fields over magic.
@@ -38,18 +41,106 @@ var (
 	NIL = &Type{Name: "nil", Aliases: []string{"null", "Nil", "Null"}, GoParallel: false, IsBuiltin: true}
 )
 
+// Commonly used constants to reduce allocations
+var (
+	// Pre-allocated common number literals
+	NumberZero  = &NumberLit{Value: 0}
+	NumberOne   = &NumberLit{Value: 1}
+	NumberTwo   = &NumberLit{Value: 2}
+	NumberTen   = &NumberLit{Value: 10}
+	
+	// Pre-allocated boolean literals
+	BoolTrue  = &BoolLit{Value: true}
+	BoolFalse = &BoolLit{Value: false}
+	
+	// Pre-allocated nil literal
+	NilValue = &NilLit{}
+)
+
+// GetCommonNumberLit returns a pre-allocated NumberLit for common values
+// This reduces allocations for frequently used numbers
+func GetCommonNumberLit(value int) *NumberLit {
+	switch value {
+	case 0:
+		return NumberZero
+	case 1:
+		return NumberOne
+	case 2:
+		return NumberTwo
+	case 10:
+		return NumberTen
+	default:
+		return &NumberLit{Value: value}
+	}
+}
+
+// GetCommonBoolLit returns a pre-allocated BoolLit
+func GetCommonBoolLit(value bool) *BoolLit {
+	if value {
+		return BoolTrue
+	}
+	return BoolFalse
+}
+
+// Type cache for frequently used types to reduce allocations
+var (
+	typeCacheMu     sync.RWMutex
+	typeCache       = make(map[string]*Type, 64) // Preallocate for common types
+	typeNameCacheMu sync.RWMutex
+	typeNameCache   = make(map[*Type]string, 64) // Cache for GetTypeNameString results
+)
+
+// fastTrimSpace trims leading and trailing whitespace without allocation
+// Returns the trimmed substring indices
+func fastTrimSpace(s string) (start, end int) {
+	start = 0
+	end = len(s)
+	
+	// Trim leading spaces
+	for start < end && (s[start] == ' ' || s[start] == '\t' || s[start] == '\n' || s[start] == '\r') {
+		start++
+	}
+	
+	// Trim trailing spaces
+	for start < end && (s[end-1] == ' ' || s[end-1] == '\t' || s[end-1] == '\n' || s[end-1] == '\r') {
+		end--
+	}
+	
+	return start, end
+}
+
+// ClearTypeCache clears the type cache. Useful for testing or memory management.
+func ClearTypeCache() {
+	typeCacheMu.Lock()
+	typeCache = make(map[string]*Type, 64)
+	typeCacheMu.Unlock()
+	
+	typeNameCacheMu.Lock()
+	typeNameCache = make(map[*Type]string, 64)
+	typeNameCacheMu.Unlock()
+}
+
 // GetBuiltinTypes returns all built-in types
 func GetBuiltinTypes() []*Type {
 	return []*Type{ANY, NIL}
 }
 
 // MatchesType checks if a type name matches this type (checking name and aliases)
+// Optimized with early returns to minimize comparisons
 func (t *Type) MatchesType(name string) bool {
+	// Fast path: exact name match
 	if t.Name == name {
 		return true
 	}
-	for _, alias := range t.Aliases {
-		if alias == name {
+	
+	// Only check aliases if they exist
+	if len(t.Aliases) == 0 {
+		return false
+	}
+	
+	// Check aliases
+	for i := range t.Aliases {
+		if t.Aliases[i] == name {
 			return true
 		}
 	}
@@ -58,16 +149,18 @@ func (t *Type) MatchesType(name string) bool {
 
 // ResolveTypeName returns the ast.Type for a given type name string
 // It checks built-in types first, then returns nil if not found
+// Optimized with direct checks for common cases
 func ResolveTypeName(typeName string) *Type {
 	if typeName == "" {
 		return nil
 	}
 
-	// Check all built-in types
-	for _, t := range GetBuiltinTypes() {
-		if t.MatchesType(typeName) {
-			return t
-		}
+	// Fast path: check most common built-in types directly
+	if ANY.MatchesType(typeName) {
+		return ANY
+	}
+	if NIL.MatchesType(typeName) {
+		return NIL
 	}
 
 	// Not a built-in type - could be a user-defined type
@@ -89,27 +182,42 @@ func TypeFromString(typeName string) *Type {
 		return nil
 	}
 
+	// Check cache first (read lock)
+	typeCacheMu.RLock()
+	if cached, found := typeCache[typeName]; found {
+		typeCacheMu.RUnlock()
+		return cached
+	}
+	typeCacheMu.RUnlock()
+
+	var result *Type
+
 	// Check if it's a union type (contains |)
 	if strings.Contains(typeName, "|") {
-		return parseUnionType(typeName)
+		result = parseUnionType(typeName)
+	} else if strings.Contains(typeName, "<") && strings.Contains(typeName, ">") {
+		// Check if it's a generic type (contains < and >)
+		result = parseGenericType(typeName)
+	} else {
+		// First try to resolve as built-in type
+		if builtinType := ResolveTypeName(typeName); builtinType != nil {
+			return builtinType // Don't cache builtin types, they're already singletons
+		}
+
+		// Otherwise create a user-defined type placeholder
+		// The actual type will be resolved at runtime
+		result = &Type{
+			Name:      typeName,
+			IsBuiltin: false,
+		}
 	}
 
-	// Check if it's a generic type (contains < and >)
-	if strings.Contains(typeName, "<") && strings.Contains(typeName, ">") {
-		return parseGenericType(typeName)
-	}
+	// Cache the result (write lock)
+	typeCacheMu.Lock()
+	typeCache[typeName] = result
+	typeCacheMu.Unlock()
 
-	// First try to resolve as built-in type
-	if builtinType := ResolveTypeName(typeName); builtinType != nil {
-		return builtinType
-	}
-
-	// Otherwise create a user-defined type placeholder
-	// The actual type will be resolved at runtime
-	return &Type{
-		Name:      typeName,
-		IsBuiltin: false,
-	}
+	return result
 }
 
 // parseGenericType parses a generic type string like "Array<Int>" or "Map<String, Int>"
@@ -120,7 +228,10 @@ func parseGenericType(typeName string) *Type {
 		return TypeFromString(typeName)
 	}
 
-	baseName := strings.TrimSpace(typeName[:openBracket])
+	// Fast trim without allocation
+	start, end := fastTrimSpace(typeName[:openBracket])
+	baseName := typeName[start:end]
+	
 	closeBracket := strings.LastIndex(typeName, ">")
 	if closeBracket == -1 || closeBracket <= openBracket {
 		// Invalid syntax, return as simple type
@@ -160,8 +271,10 @@ func parseGenericType(typeName string) *Type {
 // parseUnionType parses a union type string like "string | int" or "string | int | null"
 func parseUnionType(typeName string) *Type {
 	// Split by | but respect generic type brackets
-	var unionTypes []*Type
+	// Preallocate for common case (2-3 union members)
+	unionTypes := make([]*Type, 0, 2)
 	var currentType strings.Builder
+	currentType.Grow(32) // Preallocate reasonable buffer size
 	depth := 0
 
 	for _, ch := range typeName {
@@ -175,11 +288,13 @@ func parseUnionType(typeName string) *Type {
 		case '|':
 			if depth == 0 {
 				// End of current union member
-				typeStr := strings.TrimSpace(currentType.String())
-				if typeStr != "" {
-					unionTypes = append(unionTypes, TypeFromString(typeStr))
+				typeStr := currentType.String()
+				start, end := fastTrimSpace(typeStr)
+				if start < end {
+					unionTypes = append(unionTypes, TypeFromString(typeStr[start:end]))
 				}
 				currentType.Reset()
+				currentType.Grow(32) // Reset with preallocated buffer
 			} else {
 				currentType.WriteRune(ch)
 			}
@@ -189,9 +304,10 @@ func parseUnionType(typeName string) *Type {
 	}
 
 	// Add the last type
-	typeStr := strings.TrimSpace(currentType.String())
-	if typeStr != "" {
-		unionTypes = append(unionTypes, TypeFromString(typeStr))
+	typeStr := currentType.String()
+	start, end := fastTrimSpace(typeStr)
+	if start < end {
+		unionTypes = append(unionTypes, TypeFromString(typeStr[start:end]))
 	}
 
 	if len(unionTypes) == 0 {
@@ -204,9 +320,11 @@ func parseUnionType(typeName string) *Type {
 	}
 
 	// Create union type name by joining all type names
-	var typeNames []string
-	for _, t := range unionTypes {
-		typeNames = append(typeNames, t.Name)
+	// Use index-based loop for better performance
+	unionCount := len(unionTypes)
+	typeNames := make([]string, unionCount)
+	for i := 0; i < unionCount; i++ {
+		typeNames[i] = unionTypes[i].Name
 	}
 	unionName := strings.Join(typeNames, " | ")
 
@@ -224,8 +342,10 @@ func parseTypeParams(paramsStr string) []*Type {
 		return nil
 	}
 
-	var params []*Type
+	// Preallocate for common case (1-2 parameters)
+	params := make([]*Type, 0, 2)
 	var currentParam strings.Builder
+	currentParam.Grow(32) // Preallocate reasonable buffer size
 	depth := 0
 
 	for _, ch := range paramsStr {
@@ -239,11 +359,13 @@ func parseTypeParams(paramsStr string) []*Type {
 		case ',':
 			if depth == 0 {
 				// End of current parameter
-				paramStr := strings.TrimSpace(currentParam.String())
-				if paramStr != "" {
-					params = append(params, TypeFromString(paramStr))
+				paramStr := currentParam.String()
+				start, end := fastTrimSpace(paramStr)
+				if start < end {
+					params = append(params, TypeFromString(paramStr[start:end]))
 				}
 				currentParam.Reset()
+				currentParam.Grow(32) // Reset with preallocated buffer
 			} else {
 				currentParam.WriteRune(ch)
 			}
@@ -253,9 +375,10 @@ func parseTypeParams(paramsStr string) []*Type {
 	}
 
 	// Add the last parameter
-	paramStr := strings.TrimSpace(currentParam.String())
-	if paramStr != "" {
-		params = append(params, TypeFromString(paramStr))
+	paramStr := currentParam.String()
+	start, end := fastTrimSpace(paramStr)
+	if start < end {
+		params = append(params, TypeFromString(paramStr[start:end]))
 	}
 
 	return params
@@ -286,23 +409,50 @@ func GenericType(baseType *Type, typeParams ...*Type) *Type {
 
 // GetTypeName returns the string name of a type
 // This is a compatibility helper for code migration
+// Optimized with caching and index-based loops for better performance
 func GetTypeNameString(t *Type) string {
 	if t == nil {
 		return ""
 	}
 
 	// If no type parameters, return simple name
-	if len(t.TypeParams) == 0 {
+	paramCount := len(t.TypeParams)
+	if paramCount == 0 {
 		return t.Name
 	}
 
-	// Format with type parameters
-	var paramNames []string
-	for _, param := range t.TypeParams {
-		paramNames = append(paramNames, GetTypeNameString(param))
+	// Check cache first
+	typeNameCacheMu.RLock()
+	if cached, found := typeNameCache[t]; found {
+		typeNameCacheMu.RUnlock()
+		return cached
 	}
+	typeNameCacheMu.RUnlock()
 
-	return t.Name + "<" + strings.Join(paramNames, ", ") + ">"
+	// Format with type parameters - preallocate builder
+	var buf strings.Builder
+	// Estimate size: base name + brackets + params (rough estimate)
+	buf.Grow(len(t.Name) + paramCount*10 + 10)
+	buf.WriteString(t.Name)
+	buf.WriteByte('<')
+	
+	// Use index-based loop to avoid range overhead
+	for i := 0; i < paramCount; i++ {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(GetTypeNameString(t.TypeParams[i]))
+	}
+	
+	buf.WriteByte('>')
+	result := buf.String()
+	
+	// Cache the result
+	typeNameCacheMu.Lock()
+	typeNameCache[t] = result
+	typeNameCacheMu.Unlock()
+	
+	return result
 }
 
 // Position describes a location in a source file.
