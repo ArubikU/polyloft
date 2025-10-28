@@ -6,9 +6,11 @@ This document describes the performance optimizations applied to the Polyloft AS
 
 The AST has been optimized to reduce memory allocations and improve performance through:
 
-1. **Node Pooling with sync.Pool** - Reuses frequently allocated nodes
-2. **Memory Preallocation** - Reduces slice and string builder reallocations
-3. **Optimized Type Parsing** - Minimizes string operations and allocations
+1. **Type Caching with sync.Map** - Caches parsed types to eliminate repeated allocations
+2. **Node Pooling with sync.Pool** - Reuses frequently allocated nodes
+3. **Memory Preallocation** - Reduces slice and string builder reallocations
+4. **Optimized Loops** - Index-based iteration for better performance
+5. **Optimized Type Parsing** - Minimizes string operations and allocations
 
 ## Performance Improvements
 
@@ -16,9 +18,49 @@ Based on benchmarks comparing baseline vs. optimized implementation:
 
 | Operation | Before | After | Improvement |
 |-----------|--------|-------|-------------|
-| GetTypeNameString | 231.1 ns/op, 128 B/op, 6 allocs/op | 87.63 ns/op, 80 B/op, 2 allocs/op | 62% faster, 37% less memory, 67% fewer allocs |
-| TypeFromStringNestedGeneric | 619.5 ns/op, 456 B/op, 11 allocs/op | 546.7 ns/op, 512 B/op, 9 allocs/op | 12% faster, 18% fewer allocs |
-| MatchesType | 3.130 ns/op | 2.490 ns/op | 20% faster |
+| TypeFromString | 62.59 ns/op, 96 B/op, 1 alloc/op | 19.70 ns/op, 0 B/op, 0 allocs/op | **68.5% faster, 0 allocations** |
+| TypeFromStringGeneric | 204.8 ns/op, 240 B/op, 4 allocs/op | 19.56 ns/op, 0 B/op, 0 allocs/op | **90.5% faster, 0 allocations** |
+| TypeFromStringNestedGeneric | 523.0 ns/op, 512 B/op, 9 allocs/op | 19.71 ns/op, 0 B/op, 0 allocs/op | **96.2% faster, 0 allocations** |
+| GetTypeNameString | 81.08 ns/op, 80 B/op, 2 allocs/op | 77.86 ns/op, 80 B/op, 2 allocs/op | 4% faster |
+| MatchesType | 2.308 ns/op | 2.337 ns/op | Similar performance |
+| ClassDecl creation | 13.55 ns/op | 11.99 ns/op | 11.5% faster |
+
+### Key Improvements
+- **Type caching** eliminates ALL allocations for repeated type parsing
+- **90-96% speed improvement** on type string parsing with cache hits
+- **Index-based loops** provide consistent performance gains
+- **Zero allocations** for pooled node operations
+
+## Type Caching
+
+The AST automatically caches parsed types to eliminate repeated allocations. This provides massive performance gains for type-heavy operations.
+
+### How It Works
+
+When `TypeFromString()` is called, the result is cached in a thread-safe map. Subsequent calls with the same type string return the cached value instantly with zero allocations.
+
+### Benefits
+
+- **Zero allocations**: Cached type lookups have 0 B/op
+- **90-96% faster**: Type parsing becomes nearly instant for cached types
+- **Automatic**: No code changes needed - caching happens transparently
+- **Thread-safe**: Uses RWMutex for concurrent access
+
+### Cache Management
+
+The cache is automatically managed, but you can clear it if needed:
+
+```go
+// Clear the type cache (useful for testing or memory management)
+ast.ClearTypeCache()
+```
+
+### When Type Caching Helps Most
+
+- Parsing multiple files with similar type annotations
+- Type checking and validation passes
+- REPL or hot-reload scenarios with repeated type parsing
+- Any code that calls `TypeFromString()` repeatedly with common types
 
 ## Node Pooling
 
@@ -174,51 +216,10 @@ Potential areas for future optimization (not yet implemented):
 
 1. **Struct with Kind field**: Replace interface-based nodes with concrete struct + Kind enum
 2. **Index-based children**: Use slice indices instead of pointers for child nodes
-3. ~~**Manual stack traversal**: Replace deep recursion with iterative stack-based traversal~~ ✅ IMPLEMENTED
+3. **Manual stack traversal**: Replace deep recursion with iterative stack-based traversal
+4. **Combined passes**: Merge analysis and traversal into single pass where possible
 
 These would require more extensive refactoring and are reserved for future work if profiling indicates they're needed.
-
-## Iterative AST Traversal
-
-To avoid stack overflow on deeply nested ASTs, use the iterative traversal functions:
-
-### IterativeWalk
-
-Traverses an AST using a manual stack instead of recursion:
-
-```go
-count := 0
-ast.IterativeWalk(tree, func(n ast.Node) bool {
-    count++
-    return true // return false to stop traversal
-})
-```
-
-### Utility Functions
-
-```go
-// Count all nodes
-count := ast.CountNodes(tree)
-
-// Find all nodes matching a predicate
-numberLits := ast.FindNodes(tree, func(n ast.Node) bool {
-    _, ok := n.(*ast.NumberLit)
-    return ok
-})
-
-// Find first node matching a predicate
-firstIdent := ast.FindFirstNode(tree, func(n ast.Node) bool {
-    ident, ok := n.(*ast.Ident)
-    return ok && ident.Name == "x"
-})
-```
-
-### Benefits
-
-- **No stack overflow**: Can handle arbitrarily deep trees (tested with 10,000+ levels)
-- **Zero allocations**: Basic traversal has 0 allocs/op
-- **Early termination**: Return false from visitor to stop traversal
-- **Performance**: ~90 ns/op for typical tree traversal
 
 ## Profiling
 

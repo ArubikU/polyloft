@@ -1,6 +1,9 @@
 package ast
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
 
 // Package ast defines Polyloft's abstract syntax tree.
 // Keep node interfaces small and composable. Favor explicit fields over magic.
@@ -38,18 +41,40 @@ var (
 	NIL = &Type{Name: "nil", Aliases: []string{"null", "Nil", "Null"}, GoParallel: false, IsBuiltin: true}
 )
 
+// Type cache for frequently used types to reduce allocations
+var (
+	typeCacheMu sync.RWMutex
+	typeCache   = make(map[string]*Type, 64) // Preallocate for common types
+)
+
+// ClearTypeCache clears the type cache. Useful for testing or memory management.
+func ClearTypeCache() {
+	typeCacheMu.Lock()
+	typeCache = make(map[string]*Type, 64)
+	typeCacheMu.Unlock()
+}
+
 // GetBuiltinTypes returns all built-in types
 func GetBuiltinTypes() []*Type {
 	return []*Type{ANY, NIL}
 }
 
 // MatchesType checks if a type name matches this type (checking name and aliases)
+// Optimized with early returns to minimize comparisons
 func (t *Type) MatchesType(name string) bool {
+	// Fast path: exact name match
 	if t.Name == name {
 		return true
 	}
-	for _, alias := range t.Aliases {
-		if alias == name {
+	
+	// Only check aliases if they exist
+	if len(t.Aliases) == 0 {
+		return false
+	}
+	
+	// Check aliases
+	for i := range t.Aliases {
+		if t.Aliases[i] == name {
 			return true
 		}
 	}
@@ -58,16 +83,18 @@ func (t *Type) MatchesType(name string) bool {
 
 // ResolveTypeName returns the ast.Type for a given type name string
 // It checks built-in types first, then returns nil if not found
+// Optimized with direct checks for common cases
 func ResolveTypeName(typeName string) *Type {
 	if typeName == "" {
 		return nil
 	}
 
-	// Check all built-in types
-	for _, t := range GetBuiltinTypes() {
-		if t.MatchesType(typeName) {
-			return t
-		}
+	// Fast path: check most common built-in types directly
+	if ANY.MatchesType(typeName) {
+		return ANY
+	}
+	if NIL.MatchesType(typeName) {
+		return NIL
 	}
 
 	// Not a built-in type - could be a user-defined type
@@ -89,27 +116,42 @@ func TypeFromString(typeName string) *Type {
 		return nil
 	}
 
+	// Check cache first (read lock)
+	typeCacheMu.RLock()
+	if cached, found := typeCache[typeName]; found {
+		typeCacheMu.RUnlock()
+		return cached
+	}
+	typeCacheMu.RUnlock()
+
+	var result *Type
+
 	// Check if it's a union type (contains |)
 	if strings.Contains(typeName, "|") {
-		return parseUnionType(typeName)
+		result = parseUnionType(typeName)
+	} else if strings.Contains(typeName, "<") && strings.Contains(typeName, ">") {
+		// Check if it's a generic type (contains < and >)
+		result = parseGenericType(typeName)
+	} else {
+		// First try to resolve as built-in type
+		if builtinType := ResolveTypeName(typeName); builtinType != nil {
+			return builtinType // Don't cache builtin types, they're already singletons
+		}
+
+		// Otherwise create a user-defined type placeholder
+		// The actual type will be resolved at runtime
+		result = &Type{
+			Name:      typeName,
+			IsBuiltin: false,
+		}
 	}
 
-	// Check if it's a generic type (contains < and >)
-	if strings.Contains(typeName, "<") && strings.Contains(typeName, ">") {
-		return parseGenericType(typeName)
-	}
+	// Cache the result (write lock)
+	typeCacheMu.Lock()
+	typeCache[typeName] = result
+	typeCacheMu.Unlock()
 
-	// First try to resolve as built-in type
-	if builtinType := ResolveTypeName(typeName); builtinType != nil {
-		return builtinType
-	}
-
-	// Otherwise create a user-defined type placeholder
-	// The actual type will be resolved at runtime
-	return &Type{
-		Name:      typeName,
-		IsBuiltin: false,
-	}
+	return result
 }
 
 // parseGenericType parses a generic type string like "Array<Int>" or "Map<String, Int>"
@@ -207,9 +249,11 @@ func parseUnionType(typeName string) *Type {
 	}
 
 	// Create union type name by joining all type names
-	typeNames := make([]string, len(unionTypes))
-	for i, t := range unionTypes {
-		typeNames[i] = t.Name
+	// Use index-based loop for better performance
+	unionCount := len(unionTypes)
+	typeNames := make([]string, unionCount)
+	for i := 0; i < unionCount; i++ {
+		typeNames[i] = unionTypes[i].Name
 	}
 	unionName := strings.Join(typeNames, " | ")
 
@@ -292,28 +336,31 @@ func GenericType(baseType *Type, typeParams ...*Type) *Type {
 
 // GetTypeName returns the string name of a type
 // This is a compatibility helper for code migration
+// Optimized with index-based loops for better performance
 func GetTypeNameString(t *Type) string {
 	if t == nil {
 		return ""
 	}
 
 	// If no type parameters, return simple name
-	if len(t.TypeParams) == 0 {
+	paramCount := len(t.TypeParams)
+	if paramCount == 0 {
 		return t.Name
 	}
 
 	// Format with type parameters - preallocate builder
 	var buf strings.Builder
 	// Estimate size: base name + brackets + params (rough estimate)
-	buf.Grow(len(t.Name) + len(t.TypeParams)*10 + 10)
+	buf.Grow(len(t.Name) + paramCount*10 + 10)
 	buf.WriteString(t.Name)
 	buf.WriteByte('<')
 	
-	for i, param := range t.TypeParams {
+	// Use index-based loop to avoid range overhead
+	for i := 0; i < paramCount; i++ {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(GetTypeNameString(param))
+		buf.WriteString(GetTypeNameString(t.TypeParams[i]))
 	}
 	
 	buf.WriteByte('>')
