@@ -1,0 +1,16 @@
+// Test 6: Map operations
+let start = Sys.time()
+let data = {}
+for i in 0...9999:
+    data[i + ""] = i * 2
+end
+
+let total = 0
+for key in data:
+    total = total + data[key]
+end
+let endTime = Sys.time()
+
+Sys.print("Map size: " + data.size())
+Sys.print("Sum: " + total)
+Sys.print("Time: " + (endTime - start) + " ms")

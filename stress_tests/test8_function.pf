@@ -1,0 +1,14 @@
+// Test 8: Function calls
+def calculate(x, y):
+    return x * x + y * y
+end
+
+let start = Sys.time()
+let result = 0
+for i in 0...49999:
+    result = result + calculate(i, i + 1)
+end
+let endTime = Sys.time()
+
+Sys.print("Result: " + result)
+Sys.print("Time: " + (endTime - start) + " ms")
