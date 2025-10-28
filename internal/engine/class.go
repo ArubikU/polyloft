@@ -248,6 +248,7 @@ func evalClassDecl(env *Env, s *ast.ClassDecl) (any, error) {
 		TypeParams:   typeParams,
 		IsGeneric:    len(typeParams) > 0,
 		Constructors: []ConstructorInfo{},
+		MethodTemplates: make(map[string]Func), // Initialize method template cache
 	}
 
 	// Process fields
@@ -401,12 +402,13 @@ func createClassInstance(classDef *ClassDefinition, env *Env, args []any) (any, 
 		return nil, ThrowTypeError(env, "concrete class", fmt.Sprintf("abstract class '%s'", classDef.Name))
 	}
 
-	// Create instance
+	// Create instance with method cache
 	instance := &ClassInstance{
-		ClassName:   classDef.Name,
-		Fields:      make(map[string]any),
-		Methods:     make(map[string]Func),
-		ParentClass: classDef,
+		ClassName:    classDef.Name,
+		Fields:       make(map[string]any),
+		Methods:      make(map[string]Func),
+		ParentClass:  classDef,
+		MethodCache:  make(map[string]Func), // Initialize method lookup cache
 	}
 
 	// Initialize fields from class hierarchy
@@ -414,8 +416,8 @@ func createClassInstance(classDef *ClassDefinition, env *Env, args []any) (any, 
 		return nil, err
 	}
 
-	// Bind methods
-	if err := bindMethods(instance, classDef, env); err != nil {
+	// Bind methods using cached templates if available
+	if err := bindMethodsFast(instance, classDef, env); err != nil {
 		return nil, err
 	}
 
@@ -432,8 +434,10 @@ func createClassInstance(classDef *ClassDefinition, env *Env, args []any) (any, 
 			return nil, ThrowRuntimeError(env, fmt.Sprintf("no constructor found for %s with %d arguments (available: %v)", classDef.Name, len(args), available))
 		}
 
-		// Create constructor environment
-		constructorEnv := &Env{Parent: env, Vars: map[string]any{}, Consts: map[string]bool{}}
+		// Use pooled environment for constructor
+		constructorEnv := GetPooledEnv(env)
+		defer ReleaseEnv(constructorEnv)
+		
 		constructorEnv.Set("this", instance)
 
 		// Add super function if there's a parent class
@@ -649,7 +653,94 @@ func initializeFields(instance *ClassInstance, classDef *ClassDefinition) error 
 	return nil
 }
 
-// bindMethods binds instance methods from the class hierarchy
+// bindMethodsFast binds instance methods using cached templates for performance
+func bindMethodsFast(instance *ClassInstance, classDef *ClassDefinition, env *Env) error {
+	if instance == nil {
+		return fmt.Errorf("bindMethodsFast: instance is nil")
+	}
+	if classDef == nil {
+		return fmt.Errorf("bindMethodsFast: classDef is nil")
+	}
+
+	// Bind parent methods first
+	if classDef.Parent != nil {
+		if err := bindMethodsFast(instance, classDef.Parent, env); err != nil {
+			return err
+		}
+	}
+
+	// Use cached method templates if available (created once, reused for all instances)
+	// This avoids creating new closures for every instance
+	for name, methodOverloads := range classDef.Methods {
+		// Initialize MethodTemplates map if nil (for builtin classes created before this optimization)
+		if classDef.MethodTemplates == nil {
+			classDef.MethodTemplates = make(map[string]Func)
+		}
+		
+		// Check if we have a cached template for this method
+		if template, cached := classDef.MethodTemplates[name]; cached {
+			instance.Methods[name] = template
+			continue
+		}
+
+		// Create new template and cache it
+		overloads := methodOverloads // Copy for closure
+		method := Func(func(callEnv *Env, args []any) (any, error) {
+			// Select appropriate method based on argument count
+			selectedMethod := common.SelectMethodOverload(overloads, len(args))
+			if selectedMethod == nil {
+				return nil, ThrowRuntimeError((*Env)(callEnv), fmt.Sprintf("no overload found for %s.%s with %d arguments", instance.ClassName, name, len(args)))
+			}
+			if selectedMethod.IsStatic || selectedMethod.IsAbstract {
+				return nil, ThrowRuntimeError((*Env)(callEnv), fmt.Sprintf("cannot call static or abstract method %s via instance", name))
+			}
+			return CallInstanceMethod(instance, *selectedMethod, callEnv, args)
+		})
+		
+		// Cache the template for future instances
+		classDef.MethodTemplates[name] = method
+		instance.Methods[name] = method
+	}
+
+	// Bind default interface methods for implemented interfaces
+	for _, interfaceDef := range classDef.Implements {
+		if interfaceDef == nil {
+			continue
+		}
+		for methodName, signatures := range interfaceDef.Methods {
+			// Only bind default methods that aren't already implemented
+			if _, methodExists := instance.Methods[methodName]; !methodExists {
+				sigs := signatures // Copy for closure
+				method := Func(func(callEnv *Env, args []any) (any, error) {
+					// Find matching signature based on argument count
+					var matchingSig *MethodSignature
+					for i := range sigs {
+						if sigs[i].HasDefault && sigs[i].DefaultBody != nil && len(sigs[i].Params) == len(args) {
+							matchingSig = &sigs[i]
+							break
+						}
+					}
+					if matchingSig == nil {
+						return nil, ThrowRuntimeError((*Env)(callEnv), fmt.Sprintf("no default implementation for interface method %s with %d arguments", methodName, len(args)))
+					}
+					return callDefaultInterfaceMethod(instance, *matchingSig, callEnv, args)
+				})
+				instance.Methods[methodName] = method
+			}
+		}
+	}
+
+	// Add default toString method if not already present
+	if _, exists := instance.Methods["toString"]; !exists {
+		instance.Methods["toString"] = Func(func(callEnv *Env, args []any) (any, error) {
+			return fmt.Sprintf("%s@%p", instance.ClassName, instance), nil
+		})
+	}
+
+	return nil
+}
+
+// bindMethods binds instance methods from the class hierarchy (original version kept for compatibility)
 func bindMethods(instance *ClassInstance, classDef *ClassDefinition, env *Env) error {
 	if instance == nil {
 		return fmt.Errorf("bindMethods: instance is nil")

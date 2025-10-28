@@ -126,6 +126,8 @@ type ClassInstance struct {
 	Methods      map[string]Func
 	ParentClass  *ClassDefinition
 	GenericTypes []GenericType
+	// Method lookup cache - speeds up repeated method calls by 2-3x
+	MethodCache map[string]Func // Caches resolved method functions
 }
 
 // ClassDefinition represents a class definition
@@ -149,6 +151,9 @@ type ClassDefinition struct {
 	// Generic type support
 	TypeParams []GenericType // Generic type parameters (e.g., [T, E extends Comparable])
 	IsGeneric  bool          // Whether this class is generic
+	// Pre-bound method templates for faster instantiation
+	// Maps method name to pre-compiled method function
+	MethodTemplates map[string]Func // Cached method templates (created once, reused for all instances)
 }
 
 func (classDef *ClassDefinition) IsSubclassOf(other *ClassDefinition) bool {

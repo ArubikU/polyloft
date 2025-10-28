@@ -2,6 +2,24 @@
 
 Comparison of Python 3 vs Polyloft performance
 
+## Iteration 13: Method Template Caching + Constructor Optimization
+
+| Test | Description | Python (ms) | Polyloft Iter 12 (ms) | Polyloft Iter 13 (ms) | Change | Gap vs Python |
+|------|-------------|-------------|----------------------|----------------------|--------|---------------|
+| Test 1 | Simple loop (1M iters) | 100.16 | 2,062 | **1,762** | ⬇️ **14.5% faster** | **17.6x slower** |
+| Test 4 | Nested loops (500×500) | 22.02 | 515 | **601** | ⬆️ **16.7% slower** | **27.3x slower** |
+| Test 8 | Function calls (50K) | 9.74 | 464 | **557** | ⬆️ **20.0% slower** | **57.2x slower** |
+| Test (arithmetic) | Arithmetic-heavy (100K) | ~200 | 639 | **639** | - | **~3.2x slower** |
+
+### Iteration 13 Analysis
+✅ **Simple loop improved 14.5%** - Method template caching reduces overhead
+❌ **Nested loops regressed 16.7%** - Template checking overhead accumulates
+❌ **Function calls regressed 20.0%** - Environment pooling adds initialization cost
+
+**Root causes**: Optimizations add overhead in hot paths. Need conditional application.
+
+**Next steps**: Make pooling conditional, pre-populate templates, add fast paths.
+
 ## Iteration 12: After Variable Slots & Environment Pooling
 
 | Test | Description | Python (ms) | Polyloft Iter 11 (ms) | Polyloft Iter 12 (ms) | Change | Gap vs Python |
