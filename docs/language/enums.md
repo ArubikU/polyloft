@@ -209,7 +209,7 @@ class Task:
     let title: String
     let priority: Priority
     
-    def init(title: String, priority: Priority):
+    Task(title: String, priority: Priority):
         this.title = title
         this.priority = priority
     end
@@ -236,7 +236,7 @@ end
 class StateMachine:
     var currentState: State
     
-    def init():
+    StateMachine():
         this.currentState = State.IDLE
     end
     

@@ -270,7 +270,7 @@ end
 class Counter:
     var count: Int
     
-    def init():
+    Counter():
         this.count = 0
     end
     

@@ -516,7 +516,7 @@ end
 class Counter:
     var count: Int
     
-    def init():
+    Counter():
         this.count = 0
     end
     
@@ -524,7 +524,7 @@ class Counter:
         this.count = this.count + 1
     end
     
-    def getValue(): Int
+    def getValue() -> Int
         return this.count
     end
 end

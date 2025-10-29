@@ -243,7 +243,7 @@ class Article:
     let title: String
     let tags: Set
     
-    def init(title: String):
+    Article(title: String):
         this.title = title
         this.tags = Set()
     end

@@ -132,7 +132,7 @@ end
 class ValidationError < Exception:
     let message
     
-    def init(msg):
+    ValidationError(msg):
         this.message = msg
     end
 end

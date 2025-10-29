@@ -98,7 +98,7 @@ class Person:
     let name: String
     let age: Int
     
-    def init(name: String, age: Int):
+    Person(name: String, age: Int):
         this.name = name
         this.age = age
     end
