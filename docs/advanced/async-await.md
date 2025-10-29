@@ -1,367 +1,454 @@
-# Async/Await
+# Async/Await and Promises
 
-Polyloft provides async/await for asynchronous programming, allowing non-blocking operations.
+Polyloft provides Promise-based asynchronous programming using `async()` function and `.await()` method for non-blocking operations.
 
-## Syntax
+## Promise System
 
-### Async Function
+Polyloft uses JavaScript-style Promises for asynchronous operations.
+
+### Creating Promises
+
+### `async(function)`
+Creates a Promise that executes the function asynchronously.
+
+**Parameters:**
+- `function`: Function to execute asynchronously
+
+**Returns:** Promise
+
 ```pf
-async def functionName(params):
-    // Asynchronous code
-    return result
-end
+let promise = async(() => 42)
+let result = promise.await()
+println(result)  // 42
 ```
 
-### Await Expression
+### Promise Constructor
 ```pf
-let result = await asyncFunction()
-```
-
-## Basic Examples
-
-### Simple Async Function
-```pf
-async def fetchData(url):
-    let response = await Http.get(url)
-    return response.body
-end
-
-let data = await fetchData("https://api.example.com/data")
-println(data)
-```
-
-### Multiple Async Operations
-```pf
-async def getUserData(userId):
-    let user = await fetchUser(userId)
-    let posts = await fetchPosts(userId)
-    let comments = await fetchComments(userId)
-    
-    return {
-        user: user,
-        posts: posts,
-        comments: comments
-    }
-end
-```
-
-### Error Handling in Async
-```pf
-async def safeAsyncOperation():
-    try:
-        let result = await riskyAsyncCall()
-        return result
-    catch e:
-        println("Async error: #{e}")
-        return nil
+let promise = Promise((resolve, reject) => do
+    // Do async work
+    if success:
+        resolve(result)
+    else:
+        reject(error)
     end
-end
+end)
 ```
 
-## Parallel Execution
+## Promise Methods
 
-### Launching Multiple Async Tasks
+### `.await()`
+Waits for the promise to resolve and returns the result.
+
+**Returns:** Any (the resolved value)
+
 ```pf
-async def fetchMultiple():
-    // Start all requests in parallel
-    let task1 = async: fetchData("url1")
-    let task2 = async: fetchData("url2")
-    let task3 = async: fetchData("url3")
-    
-    // Wait for all to complete
-    let data1 = await task1
-    let data2 = await task2
-    let data3 = await task3
-    
-    return [data1, data2, data3]
-end
+let promise = async(() => do
+    Sys.sleep(1000)
+    return "Done!"
+end)
+
+let result = promise.await()
+println(result)  // "Done!" (after 1 second)
 ```
 
-### Promise.all Pattern
-```pf
-async def fetchAll(urls):
-    let tasks = []
-    for url in urls:
-        tasks = tasks.concat([async: Http.get(url)])
-    end
-    
-    let results = []
-    for task in tasks:
-        results = results.concat([await task])
-    end
-    
-    return results
-end
+### `.then(onFulfilled)`
+Chains a callback to execute when the promise resolves.
 
-let urls = ["url1", "url2", "url3"]
-let responses = await fetchAll(urls)
+**Parameters:**
+- `onFulfilled` (Function): Callback function
+
+**Returns:** Promise (for chaining)
+
+```pf
+let promise = async(() => 10)
+
+promise.then((value) => do
+    println("Got value: #{value}")
+    return value * 2
+end)
+
+Sys.sleep(100)  // Wait for async operation
 ```
 
-## Async with Channels
+### `.catch(onRejected)`
+Chains a callback to handle errors.
+
+**Parameters:**
+- `onRejected` (Function): Error handler
+
+**Returns:** Promise
 
 ```pf
-async def worker(id, ch):
-    loop:
-        let task = await ch.receive()
-        if task == nil:
-            break
-        end
-        
-        println("Worker #{id} processing #{task}")
-        Sys.sleep(1000)
-        
-        await ch.send("Result from worker #{id}")
-    end
-end
+let promise = async(() => do
+    throw RuntimeError("Something went wrong")
+end)
 
-async def main():
-    let ch = Channel()
-    
-    // Start workers
-    async: worker(1, ch)
-    async: worker(2, ch)
-    
-    // Send tasks
-    await ch.send("Task 1")
-    await ch.send("Task 2")
-    
-    // Get results
-    let result1 = await ch.receive()
-    let result2 = await ch.receive()
-    
-    println(result1)
-    println(result2)
-end
+promise.catch((err) => do
+    println("Error: #{err}")
+    return nil
+end)
+
+Sys.sleep(100)
+```
+
+### `.finally(handler)`
+Executes code regardless of promise outcome.
+
+**Parameters:**
+- `handler` (Function): Cleanup function
+
+**Returns:** Promise
+
+```pf
+let promise = async(() => fetchData())
+
+promise
+    .then((data) => processData(data))
+    .catch((err) => println("Error: #{err}"))
+    .finally(() => println("Cleanup done"))
 ```
 
 ## Examples
 
-### Sequential vs Parallel
+### Basic Async Operation
 ```pf
-// Sequential (slow)
-async def sequential():
-    let r1 = await fetchData("url1")  // Wait 1s
-    let r2 = await fetchData("url2")  // Wait 1s
-    let r3 = await fetchData("url3")  // Wait 1s
-    return [r1, r2, r3]  // Total: 3s
+let promise = async(() => do
+    Sys.sleep(1000)
+    return 42
+end)
+
+let result = promise.await()
+println("Result: #{result}")
+```
+
+### Promise Chaining
+```pf
+let result = nil
+
+async(() => 5)
+    .then((val) => val * 2)
+    .then((val) => do
+        result = val + 10
+        return result
+    end)
+
+Sys.sleep(100)
+println(result)  // 20 (5*2+10)
+```
+
+### Error Handling
+```pf
+let promise = async(() => do
+    if someCondition:
+        throw RuntimeError("error occurred")
+    end
+    return "success"
+end)
+
+let errorMsg = nil
+promise.catch((err) => do
+    errorMsg = err
+    return nil
+end)
+
+Sys.sleep(100)
+if errorMsg:
+    println("Error: #{errorMsg}")
+end
+```
+
+### Multiple Async Operations
+```pf
+// Start multiple operations
+let p1 = async(() => fetchUser(1))
+let p2 = async(() => fetchUser(2))
+let p3 = async(() => fetchUser(3))
+
+// Wait for all
+let user1 = p1.await()
+let user2 = p2.await()
+let user3 = p3.await()
+
+println("Loaded #{[user1, user2, user3].length()} users")
+```
+
+### Async with External Operations
+```pf
+let promise = async(() => do
+    let response = Http.get("https://api.example.com/data")
+    return response.body
+end)
+
+promise
+    .then((data) => do
+        println("Received: #{data}")
+        return parseJSON(data)
+    end)
+    .then((parsed) => do
+        println("Parsed: #{parsed}")
+    end)
+    .catch((err) => do
+        println("Request failed: #{err}")
+    end)
+
+Sys.sleep(2000)  // Wait for completion
+```
+
+## CompletableFuture
+
+Polyloft also provides Java-style CompletableFuture for more control.
+
+### Creating CompletableFuture
+```pf
+let future = CompletableFuture()
+
+// Complete it from another thread
+thread spawn do
+    Sys.sleep(100)
+    future.complete(42)
 end
 
-// Parallel (fast)
-async def parallel():
-    let t1 = async: fetchData("url1")
-    let t2 = async: fetchData("url2")
-    let t3 = async: fetchData("url3")
+let result = future.get()
+println(result)  // 42
+```
+
+### CompletableFuture Methods
+
+**`complete(value)`** - Complete the future with a value
+```pf
+let future = CompletableFuture()
+future.complete(100)
+```
+
+**`get()`** - Wait for completion and get value
+```pf
+let value = future.get()
+```
+
+**`getTimeout(milliseconds)`** - Wait with timeout
+```pf
+try:
+    let value = future.getTimeout(1000)
+    println("Got: #{value}")
+catch e:
+    println("Timeout!")
+end
+```
+
+**`isDone()`** - Check if completed
+```pf
+if future.isDone():
+    let value = future.get()
+end
+```
+
+**`cancel()`** - Cancel the future
+```pf
+future.cancel()
+```
+
+### CompletableFuture Example
+```pf
+let future = CompletableFuture()
+
+thread spawn do
+    Sys.sleep(500)
+    let result = expensiveOperation()
+    future.complete(result)
+end
+
+println("Waiting for result...")
+
+try:
+    let result = future.getTimeout(1000)
+    println("Result: #{result}")
+catch e:
+    println("Operation timed out")
+end
+```
+
+## Threading
+
+Polyloft supports spawning threads for parallel execution.
+
+### `thread spawn`
+```pf
+thread spawn do
+    println("Running in background")
+    Sys.sleep(1000)
+    println("Background task done")
+end
+
+println("Main thread continues")
+Sys.sleep(2000)
+```
+
+### With CompletableFuture
+```pf
+let future = CompletableFuture()
+
+thread spawn do
+    let result = heavyComputation()
+    future.complete(result)
+end
+
+let result = future.get()
+println("Computation result: #{result}")
+```
+
+## Common Patterns
+
+### Parallel Data Fetching
+```pf
+def fetchAllUsers(ids):
+    let promises = []
     
-    return [
-        await t1,  // All run concurrently
-        await t2,  // Total: ~1s
-        await t3
-    ]
-end
-```
-
-### Async File Operations
-```pf
-async def processFile(filename):
-    let content = await IO.readFileAsync(filename)
-    let processed = await processData(content)
-    await IO.writeFileAsync("output.txt", processed)
-    return "Done"
-end
-
-let result = await processFile("input.txt")
-println(result)
-```
-
-### Async HTTP Server
-```pf
-async def handleRequest(request, response):
-    let data = await fetchFromDatabase(request.params.id)
-    response.json(data)
-end
-
-let server = Http.createServer()
-server.get("/api/users/:id", handleRequest)
-await server.listen(8080)
-```
-
-### Timeout Pattern
-```pf
-async def withTimeout(task, timeoutMs):
-    let timer = async:
-        Sys.sleep(timeoutMs)
-        throw "Timeout"
+    for id in ids:
+        let p = async(() => fetchUser(id))
+        promises = promises.concat([p])
     end
     
-    // Race between task and timer
-    try:
-        return await task
-    catch e:
-        if e == "Timeout":
-            println("Operation timed out")
-            return nil
-        end
-        throw e
+    let users = []
+    for p in promises:
+        users = users.concat([p.await()])
     end
+    
+    return users
 end
 
-let result = await withTimeout(
-    async: slowOperation(),
-    5000
-)
+let userIds = [1, 2, 3, 4, 5]
+let users = fetchAllUsers(userIds)
 ```
 
-### Retry with Backoff
+### Retry Pattern
 ```pf
-async def retryWithBackoff(operation, maxRetries):
-    let delay = 1000
+def asyncWithRetry(operation, maxRetries):
+    let attempts = 0
     
-    for attempt in range(maxRetries):
+    loop attempts < maxRetries:
+        let promise = async(operation)
+        
         try:
-            return await operation()
+            return promise.await()
         catch e:
-            if attempt < maxRetries - 1:
-                println("Attempt #{attempt + 1} failed, retrying...")
-                await Sys.sleepAsync(delay)
-                delay = delay * 2  // Exponential backoff
-            else:
+            attempts = attempts + 1
+            if attempts >= maxRetries:
                 throw e
             end
+            println("Retry #{attempts}/#{maxRetries}")
+            Sys.sleep(1000 * attempts)
         end
     end
 end
 ```
 
-### Data Pipeline
+### Timeout with Promise
 ```pf
-async def pipeline(data):
-    let step1 = await transform1(data)
-    let step2 = await transform2(step1)
-    let step3 = await transform3(step2)
-    return step3
-end
-
-async def processBatch(items):
-    let results = []
-    for item in items:
-        let result = await pipeline(item)
-        results = results.concat([result])
-    end
-    return results
-end
-```
-
-### Concurrent Workers
-```pf
-async def workerPool(tasks, numWorkers):
-    let results = []
-    let taskQueue = tasks
-    let activeWorkers = 0
+def withTimeout(promise, timeoutMs):
+    let future = CompletableFuture()
     
-    async def processTask(task):
-        let result = await executeTask(task)
-        results = results.concat([result])
-    end
-    
-    loop taskQueue.length() > 0 or activeWorkers > 0:
-        if taskQueue.length() > 0 and activeWorkers < numWorkers:
-            let task = taskQueue.shift()
-            activeWorkers = activeWorkers + 1
-            
-            async:
-                await processTask(task)
-                activeWorkers = activeWorkers - 1
-            end
-        else:
-            await Sys.sleepAsync(100)
+    thread spawn do
+        Sys.sleep(timeoutMs)
+        if not future.isDone():
+            future.complete(nil)
         end
     end
     
-    return results
+    thread spawn do
+        let result = promise.await()
+        if not future.isDone():
+            future.complete(result)
+        end
+    end
+    
+    return future.get()
 end
 ```
 
-### Event Loop Pattern
+### Background Worker
 ```pf
-async def eventLoop():
-    let running = true
-    
+let taskQueue = []
+let running = true
+
+def worker():
     loop running:
-        let event = await getNextEvent()
-        
-        switch event.type:
-            case "click":
-                await handleClick(event)
-            case "keypress":
-                await handleKeypress(event)
-            case "quit":
-                running = false
+        if taskQueue.length() > 0:
+            let task = taskQueue.shift()
+            let promise = async(() => processTask(task))
+            promise.then((result) => do
+                println("Task completed: #{result}")
+            end)
+        else:
+            Sys.sleep(100)
         end
     end
 end
+
+thread spawn do
+    worker()
+end
+
+// Add tasks
+taskQueue = taskQueue.concat(["task1", "task2", "task3"])
 ```
 
 ## Best Practices
 
-### ✅ DO - Use await for async operations
+### ✅ DO - Use async for I/O operations
 ```pf
-async def fetchUserData():
-    let user = await fetchUser()
-    let profile = await fetchProfile(user.id)
-    return {user: user, profile: profile}
-end
+let promise = async(() => do
+    return IO.readFile("large.txt")
+end)
+
+// Continue with other work
+doOtherWork()
+
+// Get result when needed
+let content = promise.await()
 ```
 
-### ✅ DO - Parallelize independent operations
+### ✅ DO - Chain promises for sequential operations
 ```pf
-// Good: Parallel execution
-let task1 = async: operation1()
-let task2 = async: operation2()
-let r1 = await task1
-let r2 = await task2
+async(() => fetchUser(id))
+    .then((user) => fetchProfile(user.id))
+    .then((profile) => displayProfile(profile))
+    .catch((err) => handleError(err))
 ```
 
-### ✅ DO - Handle async errors properly
+### ✅ DO - Handle errors in promises
 ```pf
-async def safeOperation():
-    try:
-        return await riskyAsyncCall()
-    catch e:
-        logError(e)
-        return defaultValue
-    end
-end
+let promise = async(() => riskyOperation())
+promise.catch((err) => do
+    println("Error: #{err}")
+    logError(err)
+end)
 ```
 
-### ❌ DON'T - Await in loops unnecessarily
+### ❌ DON'T - Forget to wait for promises
 ```pf
-// Bad: Sequential (slow)
-for item in items:
-    await processItem(item)
-end
+// Bad: Promise never awaited
+let promise = async(() => saveData())
+// Missing: promise.await()
 
-// Good: Parallel (fast)
-let tasks = items.map((item) => async: processItem(item))
-for task in tasks:
-    await task
-end
+// Good: Wait for completion
+let promise = async(() => saveData())
+promise.await()
 ```
 
-### ❌ DON'T - Forget to await
+### ❌ DON'T - Block unnecessarily
 ```pf
-// Bad: Returns promise, not value
-async def getData():
-    return Http.get(url)  // Missing await!
-end
+// Bad: Blocking main thread
+let result = expensiveOperation()
 
-// Good: Returns actual data
-async def getData():
-    return await Http.get(url)
-end
+// Good: Use async
+let promise = async(() => expensiveOperation())
+// Do other work
+let result = promise.await()
 ```
 
 ## See Also
 
 - [Channels](channels.md)
+- [Threading](threading.md)
 - [Concurrency Patterns](../examples/concurrency.md)
 - [Http Module](../stdlib/http.md)
