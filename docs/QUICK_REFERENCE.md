@@ -61,7 +61,7 @@ class Person:
     let name: String
     let age: Int
     
-    def init(name: String, age: Int):
+    Person(name: String, age: Int):
         this.name = name
         this.age = age
     end
@@ -72,6 +72,74 @@ class Person:
 end
 
 let p = Person("Alice", 25)
+```
+
+### Access Modifiers
+```pf
+class BankAccount:
+    public let accountId        // Accessible everywhere
+    private var balance         // Only in this class
+    protected var lastAccess    // In class and subclasses
+    
+    BankAccount(id, initialBalance):
+        this.accountId = id
+        this.balance = initialBalance
+        this.lastAccess = Sys.time()
+    end
+    
+    public def getBalance() -> Float
+        return this.balance
+    end
+    
+    private def updateAccess():
+        this.lastAccess = Sys.time()
+    end
+end
+
+// Static members
+class Config:
+    static var appName = "MyApp"
+    
+    static def getSetting(key) -> any
+        return settings.get(key)
+    end
+end
+```
+
+### Annotations
+```pf
+class Animal:
+    def speak():
+        println("Some sound")
+    end
+end
+
+class Dog < Animal:
+    @Override
+    def speak():
+        println("Woof!")
+    end
+end
+```
+
+### Interfaces
+```pf
+interface Drawable:
+    draw() -> void
+end
+
+class Circle implements Drawable:
+    let radius
+    
+    Circle(r):
+        this.radius = r
+    end
+    
+    @Override
+    def draw():
+        println("Drawing circle")
+    end
+end
 ```
 
 ## Control Flow
@@ -137,13 +205,37 @@ end
 ## Exception Handling
 
 ```pf
+// Basic try-catch
 try:
     riskyOperation()
 catch e:
     println("Error: #{e}")
 end
 
+// Typed catch
+try:
+    processFile("data.txt")
+catch e: FileNotFoundException:
+    println("File not found")
+catch e: IOException:
+    println("IO error: #{e}")
+end
+
+// Throw exceptions
 throw "Error message"
+
+// Custom error types
+class ValidationError < Exception:
+    let field
+    let message
+    
+    ValidationError(fieldName, msg):
+        this.field = fieldName
+        this.message = msg
+    end
+end
+
+throw ValidationError("email", "Invalid format")
 ```
 
 ## Enums
@@ -466,17 +558,24 @@ comment
 
 ```
 var let const final
-def class record enum
+def class record enum interface
 if else switch case default
 for loop do end break continue
 try catch throw
 async await
 true false nil
 this super
-return
-public private static
-sealed abstract interface
+return implements
+public private protected static
+sealed abstract
 and or not in instanceof
+```
+
+## Annotations
+
+```
+@Override    // Mark method overrides
+// More annotations can be added in the future
 ```
 
 ## Best Practices

@@ -21,11 +21,13 @@ Welcome to the complete Polyloft language reference! This documentation covers a
 #### Functions & Classes
 - [Functions](definitions/function.md)
 - [Classes](definitions/class.md)
+  - [Access Modifiers - public/private/protected/static](language/access-modifiers.md)
+  - [Annotations - @Override and more](language/annotations.md)
+- [Interfaces](language/interfaces.md)
+- [Sealed Classes](language/sealed.md)
 - [Enums](language/enums.md)
 - [Records](language/records.md)
 - [Import - Module system](language/import.md)
-- [Sealed Classes](language/sealed.md)
-- [Interfaces](language/interfaces.md)
 
 #### Control Flow
 - [Conditionals: `if/else`](control-flow/conditionals.md)
