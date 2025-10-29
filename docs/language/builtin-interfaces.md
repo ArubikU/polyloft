@@ -34,21 +34,17 @@ Returns the element at the specified index (0-based).
 ### Example Implementation
 ```pf
 class CustomList implements Iterable<any>:
-    var items
+    var items = []
     
-    func __init():
-        this.items = []
-    end
-    
-    func __length():
+    def __length():
         return this.items.length()
     end
     
-    func __get(index):
+    def __get(index):
         return this.items[index]
     end
     
-    func add(item):
+    def add(item):
         this.items = this.items.concat([item])
     end
 end
@@ -97,16 +93,16 @@ class Point implements Unstructured:
     var x
     var y
     
-    func __init(x, y):
-        this.x = x
-        this.y = y
+    Point(px, py):
+        this.x = px
+        this.y = py
     end
     
-    func __pieces():
+    def __pieces():
         return 2
     end
     
-    func __get_piece(index):
+    def __get_piece(index):
         if index == 0:
             return this.x
         else:
@@ -116,6 +112,11 @@ class Point implements Unstructured:
                 throw "Index out of bounds"
             end
         end
+    end
+    
+    // Note: __getPiece (camelCase) is also supported as an alias
+    def __getPiece(index):
+        return this.__get_piece(index)
     end
 end
 
@@ -176,11 +177,11 @@ Returns a slice of the collection from `start` (inclusive) to `end` (exclusive).
 class CustomArray implements Sliceable<CustomArray>:
     var data
     
-    func __init(data):
-        this.data = data
+    CustomArray(initialData):
+        this.data = initialData
     end
     
-    func __slice(start, end):
+    def __slice(start, end):
         let result = CustomArray([])
         for i in range(start, end):
             if i < this.data.length():
@@ -190,7 +191,7 @@ class CustomArray implements Sliceable<CustomArray>:
         return result
     end
     
-    func toString():
+    def toString():
         return this.data.toString()
     end
 end
@@ -234,24 +235,20 @@ Returns `true` if the key exists in the collection.
 ### Example Implementation
 ```pf
 class Dictionary implements Indexable<String, any>:
-    var entries
+    var entries = {}
     
-    func __init():
-        this.entries = {}
-    end
-    
-    func __get(key):
+    def __get(key):
         if this.__contains(key):
             return this.entries[key]
         end
         return nil
     end
     
-    func __set(key, value):
+    def __set(key, value):
         this.entries[key] = value
     end
     
-    func __contains(key):
+    def __contains(key):
         // Check if key exists in entries
         for k in this.entries:
             if k == key:
@@ -322,31 +319,27 @@ Returns an array containing all elements in the collection.
 ### Example Implementation
 ```pf
 class SimpleSet implements Collection<any>:
-    var items
+    var items = []
     
-    func __init():
-        this.items = []
-    end
-    
-    func size():
+    def size():
         return this.items.length()
     end
     
-    func isEmpty():
+    def isEmpty():
         return this.size() == 0
     end
     
-    func add(element):
-        if not this.contains(element):
+    def add(element):
+        if !this.contains(element):
             this.items = this.items.concat([element])
         end
     end
     
-    func remove(element):
+    def remove(element):
         let newItems = []
         let found = false
         for item in this.items:
-            if item == element and not found:
+            if item == element && !found:
                 found = true
             else:
                 newItems = newItems.concat([item])
@@ -356,7 +349,7 @@ class SimpleSet implements Collection<any>:
         return found
     end
     
-    func contains(element):
+    def contains(element):
         for item in this.items:
             if item == element:
                 return true
@@ -365,11 +358,11 @@ class SimpleSet implements Collection<any>:
         return false
     end
     
-    func clear():
+    def clear():
         this.items = []
     end
     
-    func asArray():
+    def asArray():
         return this.items
     end
 end
@@ -398,39 +391,35 @@ Objects can implement multiple interfaces to provide richer functionality:
 
 ```pf
 class FlexibleList implements Iterable<any>, Collection<any>, Sliceable<FlexibleList>:
-    var data
-    
-    func __init():
-        this.data = []
-    end
+    var data = []
     
     // Iterable methods
-    func __length():
+    def __length():
         return this.data.length()
     end
     
-    func __get(index):
+    def __get(index):
         return this.data[index]
     end
     
     // Collection methods
-    func size():
+    def size():
         return this.data.length()
     end
     
-    func isEmpty():
+    def isEmpty():
         return this.size() == 0
     end
     
-    func add(element):
+    def add(element):
         this.data = this.data.concat([element])
     end
     
-    func remove(element):
+    def remove(element):
         let newData = []
         let found = false
         for item in this.data:
-            if item == element and not found:
+            if item == element && !found:
                 found = true
             else:
                 newData = newData.concat([item])
@@ -440,7 +429,7 @@ class FlexibleList implements Iterable<any>, Collection<any>, Sliceable<Flexible
         return found
     end
     
-    func contains(element):
+    def contains(element):
         for item in this.data:
             if item == element:
                 return true
@@ -449,16 +438,16 @@ class FlexibleList implements Iterable<any>, Collection<any>, Sliceable<Flexible
         return false
     end
     
-    func clear():
+    def clear():
         this.data = []
     end
     
-    func asArray():
+    def asArray():
         return this.data
     end
     
     // Sliceable method
-    func __slice(start, end):
+    def __slice(start, end):
         let result = FlexibleList()
         for i in range(start, end):
             if i < this.data.length():
@@ -498,11 +487,11 @@ end
 ```pf
 // Good: All required methods implemented
 class MyList implements Iterable<any>:
-    func __length():
+    def __length():
         return this.items.length()
     end
     
-    func __get(index):
+    def __get(index):
         return this.items[index]
     end
 end
@@ -543,7 +532,7 @@ end
 ```pf
 // Bad: Missing required methods
 class BadList implements Iterable<any>:
-    func __length():
+    def __length():
         return this.items.length()
     end
     // Missing __get method!
@@ -573,15 +562,15 @@ end
 class ReadOnlyList implements Iterable<any>:
     final var source
     
-    func __init(data):
+    ReadOnlyList(data):
         this.source = data
     end
     
-    func __length():
+    def __length():
         return this.source.length()
     end
     
-    func __get(index):
+    def __get(index):
         return this.source[index]
     end
 end
@@ -593,16 +582,16 @@ class LazyRange implements Iterable<Int>:
     final var start
     final var end
     
-    func __init(start, end):
-        this.start = start
-        this.end = end
+    LazyRange(rangeStart, rangeEnd):
+        this.start = rangeStart
+        this.end = rangeEnd
     end
     
-    func __length():
+    def __length():
         return this.end - this.start
     end
     
-    func __get(index):
+    def __get(index):
         return this.start + index
     end
 end
@@ -615,13 +604,13 @@ class FilteredList implements Iterable<any>:
     final var predicate
     var cached
     
-    func __init(source, predicate):
-        this.source = source
-        this.predicate = predicate
+    FilteredList(src, pred):
+        this.source = src
+        this.predicate = pred
         this.cached = nil
     end
     
-    func buildCache():
+    def buildCache():
         if this.cached == nil:
             this.cached = []
             for item in this.source:
@@ -632,12 +621,12 @@ class FilteredList implements Iterable<any>:
         end
     end
     
-    func __length():
+    def __length():
         this.buildCache()
         return this.cached.length()
     end
     
-    func __get(index):
+    def __get(index):
         this.buildCache()
         return this.cached[index]
     end
