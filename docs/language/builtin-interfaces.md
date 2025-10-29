@@ -114,7 +114,7 @@ class Point implements Unstructured:
         end
     end
     
-    // Note: __getPiece (camelCase) is also supported as an alias
+    // Alias for compatibility: some contexts use __getPiece (camelCase)
     def __getPiece(index):
         return this.__get_piece(index)
     end
@@ -338,10 +338,13 @@ class SimpleSet implements Collection<any>:
     def remove(element):
         let newItems = []
         let found = false
+        // Iterate through items, skipping the first occurrence of element
         for item in this.items:
-            if item == element && !found:
+            if !found && item == element:
+                // Skip first occurrence
                 found = true
             else:
+                // Keep all other items
                 newItems = newItems.concat([item])
             end
         end
@@ -418,10 +421,13 @@ class FlexibleList implements Iterable<any>, Collection<any>, Sliceable<Flexible
     def remove(element):
         let newData = []
         let found = false
+        // Iterate through data, skipping the first occurrence of element
         for item in this.data:
-            if item == element && !found:
+            if !found && item == element:
+                // Skip first occurrence
                 found = true
             else:
+                // Keep all other items
                 newData = newData.concat([item])
             end
         end
