@@ -1,0 +1,15 @@
+def nestedFunction():
+    return "I'm in a subdirectory!"
+end
+
+class NestedClass:
+    value: String
+    
+    NestedClass(val: String):
+        this.value = val
+    end
+    
+    def getValue() -> String:
+        return this.value
+    end
+end

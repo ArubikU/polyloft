@@ -1,0 +1,17 @@
+// Test 10: Fibonacci sequence
+def fib(n):
+    if n <= 1:
+        return n
+    end
+    return fib(n - 1) + fib(n - 2)
+end
+
+let start = Sys.time()
+let result = 0
+for i in 0...24:
+    result = result + fib(i)
+end
+let endTime = Sys.time()
+
+println("Result: " + result)
+println("Time: " + (endTime - start) + " ms")

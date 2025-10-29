@@ -1,0 +1,156 @@
+// Comprehensive Switch Statement Demo
+// Demonstrates all switch features requested in the issue
+
+println("╔════════════════════════════════════════╗")
+println("║  POLYLOFT SWITCH STATEMENT DEMO       ║")
+println("╚════════════════════════════════════════╝")
+println("")
+
+// 1. BASIC VALUE MATCHING
+println("1. Basic Value Matching")
+println("   Testing day of week...")
+let dayNumber = 5
+
+switch dayNumber:
+    case 1:
+        println("   → Monday")
+    case 2:
+        println("   → Tuesday")
+    case 3:
+        println("   → Wednesday")
+    case 4:
+        println("   → Thursday")
+    case 5:
+        println("   → Friday ✓")
+    case 6, 7:
+        println("   → Weekend")
+    default:
+        println("   → Invalid day")
+end
+println("")
+
+// 2. MULTIPLE VALUES PER CASE
+println("2. Multiple Values Per Case")
+println("   Testing fruit category...")
+let fruit = "orange"
+
+switch fruit:
+    case "apple", "banana":
+        println("   → Common fruit")
+    case "orange", "lemon", "lime":
+        println("   → Citrus fruit ✓")
+    case "grape", "strawberry":
+        println("   → Berry")
+    default:
+        println("   → Unknown fruit")
+end
+println("")
+
+// 3. TYPE MATCHING WITH Sys.type()
+println("3. Type Matching with Sys.type()")
+println("   Checking variable types...")
+
+let testValue = 42
+switch Sys.type(testValue):
+    case "int", "Int":
+        println("   → Integer type detected ✓")
+        println("   → Value: " + testValue.toString())
+    case "string", "String":
+        println("   → String type detected")
+    case "float", "Float":
+        println("   → Float type detected")
+    default:
+        println("   → Unknown type")
+end
+println("")
+
+// 4. TYPE MATCHING WITH VARIABLE BINDING
+println("4. Type Matching with Variable Binding")
+println("   Processing mixed-type values...")
+
+let values = [42, "hello", 3.14]
+for val in values:
+    switch val:
+        case (x: Int):
+            println("   → Integer: " + x.toString())
+        case (s: String):
+            println("   → String: \"" + s + "\"")
+        case (f: Float):
+            println("   → Float: " + f.toString())
+        default:
+            println("   → Other type")
+    end
+end
+println("")
+
+// 5. ENUM MATCHING
+println("5. Enum Matching")
+println("   Testing color enum...")
+
+enum Color:
+    RED
+    GREEN
+    BLUE
+end
+
+let myColor = Color.RED
+
+switch myColor:
+    case Color.RED:
+        println("   → Red color detected ✓")
+    case Color.GREEN:
+        println("   → Green color detected")
+    case Color.BLUE:
+        println("   → Blue color detected")
+    default:
+        println("   → Invalid color")
+end
+println("")
+
+// 6. DEFAULT CASE
+println("6. Default Case")
+println("   Testing with unmatchable value...")
+
+let unknownValue = 999
+
+switch unknownValue:
+    case 1, 2, 3:
+        println("   → Small number")
+    case 10, 20, 30:
+        println("   → Round number")
+    default:
+        println("   → Default case executed ✓")
+end
+println("")
+
+// 7. NESTED SWITCH
+println("7. Nested Switch")
+println("   Testing grade evaluation...")
+
+let score = 85
+let grade = ""
+
+switch score:
+    case (s: Int):
+        switch true:
+            case s >= 90:
+                grade = "A"
+            case s >= 80:
+                grade = "B"
+            case s >= 70:
+                grade = "C"
+            case s >= 60:
+                grade = "D"
+            default:
+                grade = "F"
+        end
+        println("   → Score: " + s.toString())
+        println("   → Grade: " + grade + " ✓")
+    default:
+        println("   → Invalid score")
+end
+println("")
+
+println("╔════════════════════════════════════════╗")
+println("║  ALL SWITCH FEATURES WORKING! ✓       ║")
+println("╚════════════════════════════════════════╝")

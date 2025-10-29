@@ -1,0 +1,9 @@
+def greet(name: String):
+    return "Hello, " + name + "!"
+end
+
+def doubleValue(x: Int):
+    return x * 2
+end
+
+CONSTANT = 42

@@ -1,0 +1,13 @@
+// Test: Math module
+println("=== Math Module Test ===")
+
+println("Math.PI = " + Math.PI.toString())
+println("Math.E = " + Math.E.toString())
+println("Math.sqrt(9) = " + Math.sqrt(9).toString())
+println("Math.pow(2, 3) = " + Math.pow(2, 3).toString())
+println("Math.abs(-5.5) = " + Math.abs(-5.5).toString())
+println("Math.floor(3.7) = " + Math.floor(3.7).toString())
+println("Math.ceil(3.2) = " + Math.ceil(3.2).toString())
+println("Math.min(5, 3) = " + Math.min(5, 3).toString())
+println("Math.max(5, 3) = " + Math.max(5, 3).toString())
+println("✓ Math module test passed")

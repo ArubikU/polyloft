@@ -1,0 +1,18 @@
+// Test: Channels
+println("=== Channels Test ===")
+
+let ch = Channel<Int>()
+
+thread spawn do
+    ch.send(42)
+    ch.send(100)
+    ch.close()
+end
+
+let value1 = ch.recv()
+println("Received: " + value1.toString())
+
+let value2 = ch.recv()
+println("Received: " + value2.toString())
+
+println("✓ Channels test passed")

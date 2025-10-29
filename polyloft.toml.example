@@ -1,0 +1,18 @@
+[project]
+name = "polyloft-example"
+version = "0.1.0"
+entry_point = "src/test.pf"
+
+# Go dependencies for compatibility
+[[dependencies.go]]
+name = "github.com/example/some-go-lib"
+version = "v1.0.0"
+
+# Hy library dependencies
+[[dependencies.hy]]
+name = "math.vector"
+version = "1.0.0"
+
+[[dependencies.hy]]
+name = "utils"
+version = "1.0.0"

@@ -1,0 +1,46 @@
+{
+  "root": "./docs",
+  "title": "Polyloft Documentation",
+  "description": "Complete guide to the Polyloft programming language",
+  "author": "ArubikU",
+  "language": "en",
+  "structure": {
+    "readme": "README.md",
+    "summary": "SUMMARY.md"
+  },
+  "plugins": [
+    
+    "-highlight"
+  
+    
+  ],
+  "pluginsConfig": {
+    "github": {
+      "url": "https://github.com/ArubikU/polyloft"
+    },
+    "sharing-plus": {
+      "twitter": true,
+      "reddit": true
+    },
+  
+    "code": {
+      "copyButtons": true,
+      "languages": [
+        {
+          "name": "Polyloft",
+          "lang": "polyloft",
+          "syntax": "javascript"
+        }
+      ]
+    }
+  },
+  "styles": {
+    "website": "styles/website.css"
+  },
+  "links": {
+    "sidebar": {
+      "GitHub": "https://github.com/ArubikU/polyloft",
+      "Issues": "https://github.com/ArubikU/polyloft/issues"
+    }
+  }
+}

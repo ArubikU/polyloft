@@ -1,0 +1,33 @@
+# Go build artifacts
+bin/
+polyloft
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+a.out
+test_executable
+test_full
+test_simple
+test_final
+test_new
+
+# Polyloft config and build artifacts
+polyloft.toml
+polyloft_test.toml
+test_config.toml
+
+# IDE/editor
+.vscode/
+.idea/
+.DS_Store
+
+# VSCode extension
+vscode-extension/node_modules/
+vscode-extension/out/
+vscode-extension/*.vsix
+
+# Generated files
+mappings.json

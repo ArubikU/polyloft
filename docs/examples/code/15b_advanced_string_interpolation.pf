@@ -1,0 +1,84 @@
+// Advanced String Interpolation Examples
+// Demonstrates function calls, ternary operators, and complex expressions in string interpolation
+
+println("=== Advanced String Interpolation Test ===\n")
+
+// Setup some variables
+let x = 5
+let y = 10
+let name = "Alice"
+let score = 85
+let yes = "Yes"
+let no = "No"
+let pass = "PASS"
+let fail = "FAIL"
+
+// Define helper functions
+def double(n: Int) -> Int:
+    return n * 2
+end
+
+def triple(n: Int) -> Int:
+    return n * 3
+end
+
+def add(a: Int, b: Int) -> Int:
+    return a + b
+end
+
+// Test 1: Function calls in interpolation
+println("Test 1: Function Calls")
+println("  double(#{x}) = #{double(x)}")
+println("  triple(#{y}) = #{triple(y)}")
+println("  add(#{x}, #{y}) = #{add(x, y)}")
+
+// Test 2: Ternary operators in interpolation
+println("\nTest 2: Ternary Operators")
+println("  Is x > y? #{x > y ? yes : no}")
+println("  Max of x and y: #{x > y ? x : y}")
+println("  Min of x and y: #{x < y ? x : y}")
+
+// Test 3: Binary operations in interpolation
+println("\nTest 3: Binary Operations")
+println("  #{x} + #{y} = #{x + y}")
+println("  #{x} * #{y} = #{x * y}")
+println("  #{y} - #{x} = #{y - x}")
+println("  #{y} / #{x} = #{y / x}")
+
+// Test 4: Complex expressions
+println("\nTest 4: Complex Expressions")
+println("  double(x) + triple(y) = #{double(x) + triple(y)}")
+println("  x * 2 + y * 3 = #{x * 2 + y * 3}")
+println("  Nested: triple(double(#{x})) = #{triple(double(x))}")
+
+// Test 5: Ternary operators with complex conditions
+println("\nTest 5: Complex Ternary Operations")
+println("  Result: #{(x + y) > 10 ? x + y : 0}")
+let xpos = "x positive"
+let xneg = "x negative"
+let bothpos = "both positive"
+println("  Status: #{x > 0 ? (y > 0 ? bothpos : xpos) : xneg}")
+
+// Test 6: Combining functions and ternary
+println("\nTest 6: Combined Operations")
+let bigger = x > y ? x : y
+println("  The bigger value doubled: #{double(bigger)}")
+println("  Direct: #{double(x > y ? x : y)}")
+
+// Test 7: Real-world examples
+println("\nTest 7: Real-World Examples")
+println("  Hello, #{name}! Your score is #{score}.")
+let gradeA = "A"
+let gradeB = "B"
+let gradeC = "C"
+let gradeF = "F"
+println("  Grade: #{score >= 90 ? gradeA : (score >= 80 ? gradeB : (score >= 70 ? gradeC : gradeF))}")
+println("  Status: #{score >= 60 ? pass : fail}")
+
+// Test 8: Comparison operations
+println("\nTest 8: Comparisons")
+println("  Is #{x} less than #{y}? #{x < y}")
+println("  Is #{x} equal to #{y}? #{x == y}")
+println("  Is #{x} greater than or equal to 5? #{x >= 5}")
+
+println("\n✓ All advanced string interpolation tests completed!")

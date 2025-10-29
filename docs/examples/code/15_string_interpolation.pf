@@ -1,0 +1,15 @@
+// Test: String interpolation
+println("=== String Interpolation Test ===")
+
+let name = "Alice"
+let age = 30
+let height = 1.75
+
+println("Name: #{name}")
+println("Age: #{age}")
+println("Height: #{height}m")
+
+let greeting = "Hello, #{name}! You are #{age} years old."
+println(greeting)
+
+println("✓ String interpolation test passed")

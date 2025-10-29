@@ -1,0 +1,6 @@
+import test.utils.helper { greet, CONSTANT }
+
+result = greet("World")
+print(result)
+
+print("Constant value:", CONSTANT)

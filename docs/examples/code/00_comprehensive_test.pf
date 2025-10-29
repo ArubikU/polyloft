@@ -1,0 +1,183 @@
+// Comprehensive Polyloft Language Test
+// Tests all major language features
+
+println("===========================================")
+println("   POLYLOFT COMPREHENSIVE LANGUAGE TEST")
+println("===========================================")
+println("")
+
+// ========== VARIABLES AND TYPES ==========
+println("1. Variables and Types")
+let x = 42
+const PI = 3.14159
+var name: String
+name = "Alice"
+println("  let x = " + x.toString())
+println("  const PI = " + PI.toString())
+println("  var name = " + name)
+println("  ✓ Variables passed")
+println("")
+
+// ========== CLASSES ==========
+println("2. Classes and Constructors")
+class Person:
+    name: String
+    age: Int
+    
+    Person(n: String, a: Int):
+        this.name = n
+        this.age = a
+    end
+    
+    def greet():
+        println("  Hello, I'm " + this.name)
+    end
+end
+
+let person = Person("Bob", 30)
+person.greet()
+println("  ✓ Classes passed")
+println("")
+
+// ========== INHERITANCE ==========
+println("3. Inheritance")
+class Animal:
+    name: String
+    
+    Animal(n: String):
+        this.name = n
+    end
+    
+    def speak() -> String:
+        return "Some sound"
+    end
+end
+
+class Dog < Animal:
+    Dog(n: String):
+        super(n)
+    end
+    
+    def speak() -> String:
+        return "Woof!"
+    end
+end
+
+let dog = Dog("Buddy")
+println("  Dog says: " + dog.speak())
+println("  ✓ Inheritance passed")
+println("")
+
+// ========== GENERICS ==========
+println("4. Generics")
+class Box<T>:
+    value: T
+    
+    Box(v: T):
+        this.value = v
+    end
+    
+    def get() -> T:
+        return this.value
+    end
+end
+
+let intBox = Box<Int>(42)
+let strBox = Box<String>("test")
+println("  Int box: " + intBox.get().toString())
+println("  String box: " + strBox.get())
+println("  ✓ Generics passed")
+println("")
+
+// ========== FUNCTIONS ==========
+println("5. Functions and Lambdas")
+def add(a: Int, b: Int) -> Int:
+    return a + b
+end
+
+let multiply = (x: Int, y: Int) -> Int => x * y
+println("  add(5, 3) = " + add(5, 3).toString())
+println("  multiply(4, 5) = " + multiply(4, 5).toString())
+println("  ✓ Functions passed")
+println("")
+
+// ========== MATH MODULE ==========
+println("6. Math Module")
+println("  Math.PI = " + Math.PI.toString())
+println("  Math.sqrt(9) = " + Math.sqrt(9).toString())
+println("  Math.pow(2, 3) = " + Math.pow(2, 3).toString())
+println("  Math.abs(-5) = " + Math.abs(-5).toString())
+println("  ✓ Math module passed")
+println("")
+
+// ========== SYS MODULE ==========
+println("7. Sys Module")
+let startTime = Sys.time()
+println("  Time: " + startTime)
+Sys.sleep(50)
+println("  Random: " + Sys.random().toString())
+println("  ✓ Sys module passed")
+println("")
+
+// ========== COLLECTIONS ==========
+println("8. Collections")
+let numbers = [1, 2, 3, 4, 5]
+let doubled = numbers.map((x: Int) -> Int => x * 2)
+let evens = numbers.filter((x: Int) -> Boolean => x % 2 == 0)
+println("  Original: " + numbers.toString())
+println("  Doubled: " + doubled.toString())
+println("  Evens: " + evens.toString())
+println("  ✓ Collections passed")
+println("")
+
+// ========== CONTROL FLOW ==========
+println("9. Control Flow")
+if true:
+    println("  if works")
+end
+
+for i in range(3):
+    print("  " + i.toString())
+end
+println("")
+
+let count = 0
+while count < 2:
+    print("  " + count.toString())
+    count = count + 1
+end
+println("")
+println("  ✓ Control flow passed")
+println("")
+
+// ========== STRING INTERPOLATION ==========
+println("10. String Interpolation")
+let user = "Alice"
+let userAge = 25
+println("  Name: " + user + ", Age: " + userAge.toString())
+println("  ✓ String interpolation passed")
+println("")
+
+// ========== THREADS ==========
+println("11. Threads")
+let t = thread spawn do
+    return 42
+end
+let result = thread join t
+println("  Thread result: " + result.toString())
+println("  ✓ Threads passed")
+println("")
+
+// ========== DEFER ==========
+println("12. Defer")
+def testDefer():
+    defer println("  Deferred")
+    println("  Body")
+end
+testDefer()
+println("  ✓ Defer passed")
+println("")
+
+println("===========================================")
+println("   ALL TESTS PASSED!")
+println("===========================================")

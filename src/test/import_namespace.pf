@@ -1,0 +1,11 @@
+import test.math
+
+point1 = test.math.Point(0, 0)
+point2 = test.math.Point(3, 4)
+dist = point1.distance(point2)
+print("Distance:", dist)
+
+print("PI:", test.math.PI)
+
+result = test.math.abs(-10)
+print("Absolute value:", result)

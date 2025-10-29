@@ -1,0 +1,45 @@
+// Test: Switch statement with enum matching
+println("=== Switch Statement - Enum Matching ===")
+
+// Define a Color enum
+enum Color:
+    RED
+    GREEN
+    BLUE
+    YELLOW
+end
+
+let currentColor = Color.RED
+
+switch currentColor:
+    case Color.RED:
+        println("The color is RED")
+    case Color.GREEN:
+        println("The color is GREEN")
+    case Color.BLUE:
+        println("The color is BLUE")
+    case Color.YELLOW:
+        println("The color is YELLOW")
+    default:
+        println("Unknown color")
+end
+
+println("")
+
+// Test with multiple enum values in one case
+let trafficLight = Color.GREEN
+
+switch trafficLight:
+    case Color.RED:
+        println("Stop!")
+    case Color.YELLOW:
+        println("Caution!")
+    case Color.GREEN:
+        println("Go!")
+    default:
+        println("Invalid traffic light color")
+end
+
+println("")
+
+println("✓ Enum switch statement test passed")

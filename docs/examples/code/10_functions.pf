@@ -1,0 +1,19 @@
+// Test: Functions
+println("=== Functions Test ===")
+
+def greet(name: String):
+    println("Hello, #{name}!")
+end
+
+greet("World")
+
+def add(a: Int, b: Int) -> Int:
+    return a + b
+end
+
+let sum = add(5, 3)
+println("5 + 3 = " + sum.toString())
+
+let multiply = (x: Int, y: Int) -> Int => x * y
+println("4 * 5 = " + multiply(4, 5).toString())
+println("✓ Functions test passed")

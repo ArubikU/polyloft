@@ -1,0 +1,40 @@
+// Test: Interfaces
+println("=== Interfaces Test ===")
+
+interface Drawable:
+    def draw(): Void
+end
+
+class Circle implements Drawable:
+    private let radius: Float
+    
+    Circle(radius: Float):
+        this.radius = radius
+    end
+    
+    def draw():
+        println("Drawing circle with radius #{this.radius}")
+    end
+end
+
+class Rectangle implements Drawable:
+    private let width: Float
+    private let height: Float
+    
+    Rectangle(width: Float, height: Float):
+        this.width = width
+        this.height = height
+    end
+    
+    def draw():
+        println("Drawing rectangle #{this.width}x#{this.height}")
+    end
+end
+
+let circle = Circle(5.0)
+circle.draw()
+
+let rect = Rectangle(4.0, 6.0)
+rect.draw()
+
+println("✓ Interfaces test passed")

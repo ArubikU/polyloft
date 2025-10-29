@@ -1,0 +1,10 @@
+// Test 1: Simple loop with arithmetic
+let start = Sys.time()
+let result = 0
+for i in 1...1000000:
+    result = result + i * i
+end
+let endTime = Sys.time()
+
+println("Result: " + result)
+println("Time: " + (endTime - start) + " ms")

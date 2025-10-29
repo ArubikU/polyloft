@@ -1,0 +1,12 @@
+// Test 4: Nested loops
+let start = Sys.time()
+let total = 0
+for i in 1...500:
+    for j in 1...500:
+        total = total + i * j
+    end
+end
+let endTime = Sys.time()
+
+println("Total: " + total)
+println("Time: " + (endTime - start) + " ms")

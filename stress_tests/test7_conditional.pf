@@ -1,0 +1,16 @@
+// Test 7: Conditional logic
+let start = Sys.time()
+let count = 0
+for i in 0...99999:
+    if i % 2 == 0:
+        count = count + 1
+    elif i % 3 == 0:
+        count = count + 2
+    else:
+        count = count + 3
+    end
+end
+let endTime = Sys.time()
+
+println("Count: " + count)
+println("Time: " + (endTime - start) + " ms")

@@ -1,0 +1,13 @@
+import test.animal { Dog, Cat, Animal }
+
+dog = Dog("Buddy")
+println("Dog name: " + dog.name)
+println("Dog says: " + dog.speak())
+
+cat = Cat("Whiskers")
+println("Cat name: " + cat.name)
+println("Cat says: " + cat.speak())
+
+animal = Animal("Generic")
+println("Animal name: " + animal.name)
+println("Animal says: " + animal.speak())

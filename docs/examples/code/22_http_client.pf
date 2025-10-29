@@ -1,0 +1,18 @@
+// Test: HTTP Client Module
+println("=== HTTP Client Test ===")
+
+// Note: Http.get requires an actual endpoint
+// For testing purposes, we'll demonstrate the API
+
+println("HTTP Module Methods Available:")
+println("  - Http.get(url, timeout)")
+println("  - Http.post(url, data, timeout)")
+println("  - Http.put(url, data, timeout)")
+println("  - Http.delete(url, timeout)")
+println("  - Http.request(method, url, data, timeout, headers)")
+
+// Example usage (commented out as it requires real endpoint):
+// let response = Http.get("http://example.com", 5000)
+// println("Response: " + response.toString())
+
+println("✓ HTTP Client module documented")

@@ -1,0 +1,7 @@
+import test.subdir.nested { NestedClass, nestedFunction }
+
+obj = NestedClass("Test Value")
+print("Nested value:", obj.getValue())
+
+message = nestedFunction()
+print(message)

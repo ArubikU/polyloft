@@ -1,0 +1,11 @@
+import test.math { Point, PI, abs }
+
+p1 = Point(1, 1)
+p2 = Point(4, 5)
+distance = p1.distance(p2)
+print("Distance:", distance)
+
+print("PI value:", PI)
+
+absValue = abs(-15)
+print("Abs(-15):", absValue)

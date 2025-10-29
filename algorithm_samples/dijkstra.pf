@@ -1,0 +1,152 @@
+// Dijkstra's Shortest Path Algorithm
+// Real implementation finding the shortest path in a weighted graph
+
+println("╔════════════════════════════════════════════╗")
+println("║   Dijkstra's Shortest Path Algorithm      ║")
+println("╚════════════════════════════════════════════╝")
+println("")
+
+let INF = 999999
+
+// Graph as adjacency matrix: weights[from][to] = weight
+// 0=A, 1=B, 2=C, 3=D, 4=E, 5=F
+let weights = [
+    [0, 4, 2, INF, INF, INF],     // A
+    [INF, 0, 1, 5, INF, INF],      // B
+    [INF, INF, 0, 8, 10, INF],     // C
+    [INF, INF, INF, 0, 2, 6],      // D
+    [INF, INF, INF, INF, 0, 3],    // E
+    [INF, INF, INF, INF, INF, 0]   // F
+]
+
+let vertices = ["A", "B", "C", "D", "E", "F"]
+let numVertices = 6
+
+println("Graph structure:")
+println("  A --4--> B --5--> D --6--> F")
+println("  |        |        |        |")
+println("  2        1        2        3")
+println("  |        |        |        |")
+println("  C --8--> + --10-> E -------+")
+println("")
+
+// Find vertex with minimum distance that hasn't been visited
+def findMinVertex(distances, visited):
+    let minDist = INF
+    let minIndex = -1
+    for i in range(numVertices):
+        if !visited[i] && distances[i] < minDist:
+            minDist = distances[i]
+            minIndex = i
+        end
+    end
+    return minIndex
+end
+
+// Dijkstra's algorithm implementation
+def dijkstra(source):
+    // Initialize distances and tracking arrays
+    let distances = [INF, INF, INF, INF, INF, INF]
+    let visited = [false, false, false, false, false, false]
+    let previous = [-1, -1, -1, -1, -1, -1]
+    
+    distances[source] = 0
+    
+    // Process all vertices
+    for count in range(numVertices):
+        let u = findMinVertex(distances, visited)
+        
+        if u == -1:
+            break
+        end
+        
+        visited[u] = true
+        
+        // Update distances for all neighbors
+        for v in range(numVertices):
+            if !visited[v] && weights[u][v] != INF:
+                let newDist = distances[u] + weights[u][v]
+                if newDist < distances[v]:
+                    distances[v] = newDist
+                    previous[v] = u
+                end
+            end
+        end
+    end
+    
+    return {distances: distances, previous: previous}
+end
+
+// Reconstruct path from source to destination
+def getPath(previous, dest):
+    // First count how many steps we need
+    let count = 0
+    let current = dest
+    for step in range(numVertices):
+        if current == -1:
+            break
+        end
+        count = count + 1
+        current = previous[current]
+    end
+    
+    // Now build the path array in reverse
+    let path = []
+    current = dest
+    for step in range(count):
+        path = path.concat([current])
+        current = previous[current]
+    end
+    
+    // Reverse the path
+    let reversed = []
+    for i in range(count):
+        let idx = count - 1 - i
+        reversed = reversed.concat([path[idx]])
+    end
+    
+    return reversed
+end
+
+// Run Dijkstra from vertex A (index 0)
+let source = 0
+println("Running Dijkstra's algorithm from vertex '" + vertices[source] + "'...")
+println("")
+
+let result = dijkstra(source)
+let distances = result.get("distances")
+let previous = result.get("previous")
+
+println("Shortest distances:")
+for i in range(numVertices):
+    if distances[i] == INF:
+        println("  " + vertices[source] + " -> " + vertices[i] + ": unreachable")
+    else:
+        println("  " + vertices[source] + " -> " + vertices[i] + ": " + distances[i])
+    end
+end
+
+println("")
+println("Shortest paths:")
+for i in range(numVertices):
+    if i != source:
+        let path = getPath(previous, i)
+        let pathStr = ""
+        let pathLen = path.length()
+        
+        for j in range(pathLen):
+            pathStr = pathStr + vertices[path[j]]
+            let isLast = (j == pathLen - 1)
+            if !isLast:
+                pathStr = pathStr + " -> "
+            end
+        end
+        
+        println("  " + pathStr + " (distance: " + distances[i] + ")")
+    end
+end
+
+println("")
+println("╔════════════════════════════════════════════╗")
+println("║   Algorithm Complete!                     ║")
+println("╚════════════════════════════════════════════╝")

@@ -1,0 +1,21 @@
+// Test: Generic classes
+println("=== Generics Test ===")
+
+class Box<T>:
+    private let value: T
+    
+    Box(value: T):
+        this.value = value
+    end
+    
+    def get() -> T:
+        return this.value
+    end
+end
+
+let intBox = Box<Int>(42)
+println("Int box: " + intBox.get().toString())
+
+let strBox = Box<String>("Hello")
+println("String box: " + strBox.get())
+println("✓ Generics test passed")

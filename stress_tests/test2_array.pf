@@ -1,0 +1,16 @@
+// Test 2: Array operations
+let start = Sys.time()
+let arr = []
+for i in 0...99999:
+    arr.push(i)
+end
+
+let total = 0
+for x in arr:
+    total = total + x
+end
+let endTime = Sys.time()
+
+println("Array length: " + arr.size())
+println("Sum: " + total)
+println("Time: " + (endTime - start) + " ms")
