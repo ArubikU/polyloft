@@ -43,12 +43,14 @@ Welcome to the complete Polyloft language reference! This documentation covers a
 - [**Math** - Mathematical functions](stdlib/math.md)
 - [**IO** - Input/Output operations](stdlib/io.md)
 - [**Http** - HTTP client & server](stdlib/http.md)
+- [**Crypto** - Cryptographic functions & encoding](stdlib/crypto.md)
 
 #### Built-in Types
 - [**String** - Text manipulation](types/string.md)
 - [**Array** - Dynamic arrays](types/array.md)
 - [**Map** - Key-value mappings](types/map.md)
 - [**Set** - Unique values](types/set.md)
+- [**Bytes** - Binary data](types/bytes.md)
 
 ### 📝 Examples & Tutorials
 - [Algorithm Examples](../algorithm_samples/README.md)
