@@ -23,6 +23,7 @@ Welcome to the complete Polyloft language reference! This documentation covers a
 - [Classes](definitions/class.md)
 - [Enums](language/enums.md)
 - [Records](language/records.md)
+- [Import - Module system](language/import.md)
 - [Sealed Classes](language/sealed.md)
 - [Interfaces](language/interfaces.md)
 
@@ -44,6 +45,7 @@ Welcome to the complete Polyloft language reference! This documentation covers a
 - [**IO** - Input/Output operations](stdlib/io.md)
 - [**Http** - HTTP client & server](stdlib/http.md)
 - [**Crypto** - Cryptographic functions & encoding](stdlib/crypto.md)
+- [**JSON** - JSON serialization & parsing](stdlib/json.md)
 
 #### Built-in Types
 - [**String** - Text manipulation](types/string.md)
@@ -59,6 +61,7 @@ Welcome to the complete Polyloft language reference! This documentation covers a
 
 ### 📚 Reference
 - [**Quick Reference** - Complete cheat sheet](QUICK_REFERENCE.md)
+- [**CLI Reference** - Command-line interface](CLI.md)
 - [VSCode Extension](vscode-extension.md)
 - [Build System](build-system.md)
 
