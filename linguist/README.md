@@ -46,13 +46,19 @@ Before submitting to Linguist:
 
 The TextMate grammar supports:
 
-- Comments: `// line comments`
-- Keywords: `let`, `def`, `class`, `if`, `for`, `while`, `return`, `end`
-- String interpolation: `"Hello #{name}"`
-- Classes: `class Point:` ... `end`
-- Functions: `def fibonacci(n):` ... `end`
-- Built-ins: `println()`, `Sys.type()`, `Sys.time()`
-- Ranges: `0...10`, `range(0, 10)`
+- **Comments**: `// line comments` and `/* block comments */`
+- **Keywords**: `let`, `def`, `class`, `if`, `elif`, `for`, `loop`, `where`, `return`, `break`, `continue`, `end`
+- **Modifiers**: `public`, `private`, `protected`, `static`, `abstract`, `sealed`
+- **String interpolation**: `"Hello #{name}"`
+- **Classes**: `class Point:` ... `end`
+- **Functions**: `def fibonacci(n):` ... `end`
+- **Type annotations**: `let x: Int = 5`, `name: String`, `def foo() -> Int:`
+- **Generic types**: `Array<Int>`, `Map<String, Float>`
+- **Built-in functions**: `println()`, `print()`, `len()`, `range()`, `int()`, `float()`, `str()`, `bool()`
+- **Built-in classes**: `Sys`, `Array`, `String`, `Map`, etc.
+- **Logical operators**: `&&`, `||`, `!` (note: `and`, `or`, `not` do not exist)
+- **Ranges**: `0...10` (only `...`, not `..`)
+- **Where clause**: `for n in numbers where n > 5:`
 
 ## Next Steps
 

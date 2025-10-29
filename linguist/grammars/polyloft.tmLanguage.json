@@ -25,6 +25,9 @@
       "include": "#classes"
     },
     {
+      "include": "#type-annotations"
+    },
+    {
       "include": "#constants"
     },
     {
@@ -43,6 +46,11 @@
         {
           "name": "comment.line.double-slash.polyloft",
           "match": "//.*$"
+        },
+        {
+          "name": "comment.block.polyloft",
+          "begin": "/\\*",
+          "end": "\\*/"
         }
       ]
     },
@@ -50,11 +58,11 @@
       "patterns": [
         {
           "name": "keyword.control.polyloft",
-          "match": "\\b(if|else|elif|for|while|break|continue|return|in|end)\\b"
+          "match": "\\b(if|elif|else|for|loop|break|continue|return|in|end|do|try|catch|finally|throw|defer|switch|case|default|where)\\b"
         },
         {
           "name": "keyword.other.polyloft",
-          "match": "\\b(import|from|as|export)\\b"
+          "match": "\\b(import|from|as|export|implements|instanceof|extends|out)\\b"
         }
       ]
     },
@@ -62,11 +70,47 @@
       "patterns": [
         {
           "name": "storage.type.polyloft",
-          "match": "\\b(let|def|class)\\b"
+          "match": "\\b(let|var|const|final|def|class|interface|enum|record)\\b"
+        },
+        {
+          "name": "storage.modifier.polyloft",
+          "match": "\\b(public|pub|private|priv|protected|prot|static|abstract|sealed)\\b"
         },
         {
           "name": "variable.language.polyloft",
-          "match": "\\b(this|self)\\b"
+          "match": "\\b(this|super)\\b"
+        }
+      ]
+    },
+    "type-annotations": {
+      "patterns": [
+        {
+          "name": "meta.type.annotation.polyloft",
+          "match": ":\\s*([A-Z][a-zA-Z0-9_]*)(?:<([A-Z][a-zA-Z0-9_]*(?:\\s*,\\s*[A-Z][a-zA-Z0-9_]*)*)>)?",
+          "captures": {
+            "1": {
+              "name": "entity.name.type.polyloft"
+            },
+            "2": {
+              "name": "entity.name.type.generic.polyloft"
+            }
+          }
+        },
+        {
+          "name": "meta.return.type.polyloft",
+          "match": "->\\s*([A-Z][a-zA-Z0-9_]*)(?:<([A-Z][a-zA-Z0-9_]*(?:\\s*,\\s*[A-Z][a-zA-Z0-9_]*)*)>)?",
+          "captures": {
+            "1": {
+              "name": "entity.name.type.polyloft"
+            },
+            "2": {
+              "name": "entity.name.type.generic.polyloft"
+            }
+          }
+        },
+        {
+          "name": "entity.name.type.builtin.polyloft",
+          "match": "\\b(Int|Float|String|Bool|Array|Map|List|Set|Deque|Tuple|Pair|Range|Bytes|Promise|CompletableFuture|HttpServer|HttpRequest|HttpResponse|Any|Void)\\b"
         }
       ]
     },
@@ -109,8 +153,16 @@
     "numbers": {
       "patterns": [
         {
+          "name": "constant.numeric.hex.polyloft",
+          "match": "\\b0x[0-9a-fA-F]+\\b"
+        },
+        {
+          "name": "constant.numeric.binary.polyloft",
+          "match": "\\b0b[01]+\\b"
+        },
+        {
           "name": "constant.numeric.float.polyloft",
-          "match": "\\b\\d+\\.\\d+\\b"
+          "match": "\\b\\d+\\.\\d+([eE][+-]?\\d+)?f?\\b"
         },
         {
           "name": "constant.numeric.integer.polyloft",
@@ -142,13 +194,46 @@
       "patterns": [
         {
           "name": "meta.class.polyloft",
-          "match": "\\b(class)\\s+([A-Z][a-zA-Z0-9_]*)\\s*:",
+          "match": "\\b(class)\\s+([A-Z][a-zA-Z0-9_]*)(?:\\s*<\\s*([A-Z][a-zA-Z0-9_,\\s]*)\\s*>)?\\s*(?:<\\s*([A-Z][a-zA-Z0-9_]*))?",
           "captures": {
             "1": {
               "name": "storage.type.class.polyloft"
             },
             "2": {
               "name": "entity.name.class.polyloft"
+            },
+            "3": {
+              "name": "entity.name.type.generic.polyloft"
+            },
+            "4": {
+              "name": "entity.other.inherited-class.polyloft"
+            }
+          }
+        },
+        {
+          "name": "meta.interface.polyloft",
+          "match": "\\b(interface)\\s+([A-Z][a-zA-Z0-9_]*)(?:\\s*<\\s*([A-Z][a-zA-Z0-9_,\\s]*)\\s*>)?",
+          "captures": {
+            "1": {
+              "name": "storage.type.interface.polyloft"
+            },
+            "2": {
+              "name": "entity.name.interface.polyloft"
+            },
+            "3": {
+              "name": "entity.name.type.generic.polyloft"
+            }
+          }
+        },
+        {
+          "name": "meta.enum.polyloft",
+          "match": "\\b(enum)\\s+([A-Z][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.enum.polyloft"
+            },
+            "2": {
+              "name": "entity.name.enum.polyloft"
             }
           }
         }
@@ -170,19 +255,23 @@
         },
         {
           "name": "keyword.operator.comparison.polyloft",
-          "match": "==|!=|<|>|<=|>="
+          "match": "==|!=|<=|>=|<|>"
         },
         {
           "name": "keyword.operator.logical.polyloft",
-          "match": "\\b(and|or|not)\\b|&&|\\|\\||!"
+          "match": "&&|\\|\\||!"
         },
         {
           "name": "keyword.operator.assignment.polyloft",
-          "match": "="
+          "match": "=|\\+=|-=|\\*=|/="
         },
         {
           "name": "keyword.operator.range.polyloft",
-          "match": "\\.\\.\\.|\\.\\."
+          "match": "\\.\\.\\."
+        },
+        {
+          "name": "keyword.operator.arrow.polyloft",
+          "match": "->|=>"
         }
       ]
     },
@@ -190,11 +279,11 @@
       "patterns": [
         {
           "name": "support.function.builtin.polyloft",
-          "match": "\\b(println|print|len|range|type|str|int|float|bool|list|dict|map|filter|reduce|concat|split|join|push|pop|shift|unshift|slice|indexOf|lastIndexOf|contains|startsWith|endsWith|replace|toLowerCase|toUpperCase|trim|charAt|charCodeAt|fromCharCode|abs|ceil|floor|round|sqrt|pow|exp|log|min|max|random|sin|cos|tan|asin|acos|atan|atan2)\\b"
+          "match": "\\b(println|print|len|range|int|float|str|bool)\\b"
         },
         {
           "name": "support.class.builtin.polyloft",
-          "match": "\\b(Sys|Array|String|Math|Object|JSON|File|Http|Time|Regex)\\b"
+          "match": "\\b(Sys|Array|String|Map|Set|List|Tuple|Deque|Range|Bytes|Generic|Object|Cronometer|Math|Net|Http|IO|File|Socket|Promise|CompletableFuture)\\b"
         }
       ]
     }

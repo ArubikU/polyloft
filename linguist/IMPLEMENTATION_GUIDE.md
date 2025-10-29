@@ -58,13 +58,16 @@ This file defines the Polyloft language for Linguist. Key fields:
 
 A TextMate-compatible grammar defining syntax highlighting rules:
 
-- **Comments**: `//` line comments
-- **Keywords**: `let`, `def`, `if`, `for`, `while`, `return`, `class`, `end`, etc.
+- **Comments**: `//` line comments and `/* */` block comments
+- **Keywords**: `let`, `def`, `if`, `elif`, `for`, `loop`, `return`, `class`, `end`, etc.
+- **Modifiers**: `public`, `private`, `protected`, `static`, `abstract`, `sealed`
 - **Strings**: Double quotes with `#{}` interpolation support
 - **Numbers**: Integers and floats
-- **Built-in functions**: `println`, `Sys.type`, `Sys.time`, etc.
+- **Built-in functions**: `println`, `print`, `len`, `range`, `int`, `float`, `str`, `bool`
+- **Built-in classes**: `Sys`, `Array`, `String`, `Map`, etc.
 - **Classes**: `class ClassName:` syntax
-- **Operators**: Arithmetic, comparison, logical, range (`...`)
+- **Operators**: Arithmetic (`+`, `-`, `*`, `/`), comparison (`==`, `!=`, `<`, `>`), logical (`&&`, `||`, `!`), range (`...`)
+
 
 ### 3. `samples/`
 
@@ -269,11 +272,15 @@ under the MIT license. They demonstrate:
 
 ### Grammar
 The TextMate grammar is MIT licensed and supports:
-- Keywords: `let`, `def`, `class`, `if`, `for`, `while`, `return`, etc.
+- Keywords: `let`, `def`, `class`, `if`, `elif`, `for`, `while`, `loop`, `return`, `break`, `continue`, etc.
+- Modifiers: `public`, `private`, `protected`, `static`, `abstract`, `sealed`
 - String interpolation with `#{}`
-- Comments: `//`
+- Comments: `//` (line) and `/* */` (block)
 - Classes and functions
-- Built-in functions: `println`, `Sys.*`, etc.
+- Built-in functions: `println`, `print`, `len`, `range`, `int`, `float`, `str`, `bool`
+- Built-in classes: `Sys`, `Array`, `String`, `Map`, etc.
+- Logical operators: `&&`, `||`, `!`
+- Range operator: `...`
 
 ### Checklist
 - [x] Added entry to `languages.yml`
