@@ -33,6 +33,7 @@ Welcome to the complete Polyloft language reference! This documentation covers a
 - [Conditionals: `if/else`](control-flow/conditionals.md)
 - [Loops: `for`, `loop`, `do-loop`](control-flow/loops.md)
 - [Switch Statement: Pattern matching](control-flow/switch.md)
+- [Inline Syntax: Single-line control flow](control-flow/inline-syntax.md)
 - [Exception Handling: `try/catch`](control-flow/exceptions.md)
 
 #### Advanced Features

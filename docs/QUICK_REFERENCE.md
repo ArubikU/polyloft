@@ -146,6 +146,7 @@ end
 
 ### If-Else
 ```pf
+// Multi-line
 if condition:
     // code
 else:
@@ -155,10 +156,16 @@ else:
         // code
     end
 end
+
+// Inline syntax
+if condition: statement
+elif other: statement
+else: statement
 ```
 
 ### For Loop
 ```pf
+// Multi-line
 for i in range(10):
     println(i)
 end
@@ -166,14 +173,22 @@ end
 for item in array:
     println(item)
 end
+
+// Inline syntax
+for i in range(10): println(i)
+for item in array: process(item)
 ```
 
 ### Loop (while-like)
 ```pf
+// Multi-line
 loop count < 10:
     println(count)
     count = count + 1
 end
+
+// Inline syntax
+loop count < 10: count = count + 1
 
 // Infinite loop
 loop:

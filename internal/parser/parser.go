@@ -796,8 +796,34 @@ func (p *Parser) parseBlock() ([]ast.Stmt, error) {
 	return body, nil
 }
 
+// isOnSameLine checks if current token is on the same line as the previous token
+func (p *Parser) isOnSameLine(prevLine int) bool {
+	return p.curr().Start.Line == prevLine
+}
+
+// parseBlockOrInline parses either a multi-line block (ending with 'end', 'elif', or 'else')
+// or a single-line statement if we're on the same line as the colon
+func (p *Parser) parseBlockOrInline(colonLine int) ([]ast.Stmt, bool, error) {
+	// Check if we're on the same line as the colon
+	if p.isOnSameLine(colonLine) {
+		// Inline syntax: parse single statement
+		st, err := p.parseStmt()
+		if err != nil {
+			return nil, false, err
+		}
+		return []ast.Stmt{st}, true, nil
+	}
+	
+	// Multi-line block: parse until terminator
+	body, err := p.parseBlock()
+	if err != nil {
+		return nil, false, err
+	}
+	return body, false, nil
+}
+
 func (p *Parser) parseIf() (ast.Stmt, error) {
-	// if <expr>: <block> (elif <expr>: <block>)* (else: <block>)? end
+	// if <expr>: <stmt> | if <expr>: <block> (elif <expr>: <stmt/block>)* (else: <stmt/block>)? end
 	p.next()
 	cond, err := p.parseExpr(0)
 	if err != nil {
@@ -806,11 +832,18 @@ func (p *Parser) parseIf() (ast.Stmt, error) {
 	if !p.accept(lexer.COLON) {
 		return nil, p.errf("expected ':' after if condition")
 	}
-	thenB, err := p.parseBlock()
+	
+	// Track colon position for inline detection
+	colonLine := p.items[p.pos-1].Start.Line
+	
+	thenB, isInline, err := p.parseBlockOrInline(colonLine)
 	if err != nil {
 		return nil, err
 	}
+	
 	clauses := []ast.IfClause{{Cond: cond, Body: thenB}}
+	
+	// Parse elif clauses
 	for p.curr().Tok == lexer.KW_ELIF {
 		p.next()
 		c, err := p.parseExpr(0)
@@ -820,32 +853,55 @@ func (p *Parser) parseIf() (ast.Stmt, error) {
 		if !p.accept(lexer.COLON) {
 			return nil, p.errf("expected ':' after elif condition")
 		}
-		b, err := p.parseBlock()
+		
+		elifColonLine := p.items[p.pos-1].Start.Line
+		b, elifInline, err := p.parseBlockOrInline(elifColonLine)
 		if err != nil {
 			return nil, err
 		}
+		
+		// If this elif is inline, the whole if-elif-else chain must be inline
+		if elifInline {
+			isInline = true
+		}
+		
 		clauses = append(clauses, ast.IfClause{Cond: c, Body: b})
 	}
+	
+	// Parse else clause
 	var elseB []ast.Stmt
 	if p.curr().Tok == lexer.KW_ELSE {
 		p.next()
 		if !p.accept(lexer.COLON) {
 			return nil, p.errf("expected ':' after else")
 		}
-		b, err := p.parseBlock()
+		
+		elseColonLine := p.items[p.pos-1].Start.Line
+		b, elseInline, err := p.parseBlockOrInline(elseColonLine)
 		if err != nil {
 			return nil, err
 		}
+		
+		// If this else is inline, the whole if-elif-else chain must be inline
+		if elseInline {
+			isInline = true
+		}
+		
 		elseB = b
 	}
-	if !p.accept(lexer.KW_END) {
-		return nil, p.errf("expected 'end' to close if")
+	
+	// Only require 'end' if not inline
+	if !isInline {
+		if !p.accept(lexer.KW_END) {
+			return nil, p.errf("expected 'end' to close if")
+		}
 	}
+	
 	return &ast.IfStmt{Clauses: clauses, Else: elseB}, nil
 }
 
 func (p *Parser) parseForIn() (ast.Stmt, error) {
-	// for <ident>[,<ident>...] in <expr>: <block> end
+	// for <ident>[,<ident>...] in <expr>: <stmt> | for <ident>[,<ident>...] in <expr>: <block> end
 	p.next()
 
 	// Parse iteration variable(s)
@@ -887,12 +943,20 @@ func (p *Parser) parseForIn() (ast.Stmt, error) {
 	if !p.accept(lexer.COLON) {
 		return nil, p.errf("expected ':' after for-in header")
 	}
-	body, err := p.parseBlock()
+	
+	// Track colon position for inline detection
+	colonLine := p.items[p.pos-1].Start.Line
+	
+	body, isInline, err := p.parseBlockOrInline(colonLine)
 	if err != nil {
 		return nil, err
 	}
-	if !p.accept(lexer.KW_END) {
-		return nil, p.errf("expected 'end' to close for-in")
+	
+	// Only require 'end' if not inline
+	if !isInline {
+		if !p.accept(lexer.KW_END) {
+			return nil, p.errf("expected 'end' to close for-in")
+		}
 	}
 
 	// For backward compatibility, set Name to the first name
@@ -905,16 +969,21 @@ func (p *Parser) parseForIn() (ast.Stmt, error) {
 }
 
 func (p *Parser) parseLoop() (ast.Stmt, error) {
-	// loop <condition>? <:>? <block> end
+	// loop <condition>? <:>? <stmt/block> end?
 	// Syntax:
 	//   loop ... end               (infinite loop, old style - backward compatible)
 	//   loop: ... end              (infinite loop, new style with explicit colon)
+	//   loop: stmt                 (infinite loop, inline single statement)
 	//   loop condition: ... end    (while-like loop with condition)
+	//   loop condition: stmt       (while-like loop, inline)
 	//   loop condition ... end     (while-like loop, colon optional if condition present)
 	p.next() // consume 'loop'
 
 	// Check if next token is a colon (immediate block start for infinite loop)
 	var condition ast.Expr
+	var colonLine int
+	hasColon := false
+	
 	if p.curr().Tok != lexer.COLON {
 		// Try to parse a condition - if this fails or is not present, it's an infinite loop
 		// We need to detect if we're at a statement start (backward compatibility)
@@ -941,16 +1010,38 @@ func (p *Parser) parseLoop() (ast.Stmt, error) {
 		}
 	}
 
-	// Colon is optional (for backward compatibility)
-	p.accept(lexer.COLON)
+	// Colon is optional (for backward compatibility), but track if present
+	if p.accept(lexer.COLON) {
+		hasColon = true
+		colonLine = p.items[p.pos-1].Start.Line
+	}
 
-	body, err := p.parseBlock()
-	if err != nil {
-		return nil, err
+	// Parse body - inline if colon was on same line, otherwise block
+	var body []ast.Stmt
+	var isInline bool
+	var err error
+	
+	if hasColon {
+		body, isInline, err = p.parseBlockOrInline(colonLine)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// No colon means multi-line block (backward compatibility)
+		body, err = p.parseBlock()
+		if err != nil {
+			return nil, err
+		}
+		isInline = false
 	}
-	if !p.accept(lexer.KW_END) {
-		return nil, p.errf("expected 'end' to close loop")
+	
+	// Only require 'end' if not inline
+	if !isInline {
+		if !p.accept(lexer.KW_END) {
+			return nil, p.errf("expected 'end' to close loop")
+		}
 	}
+	
 	return &ast.LoopStmt{Condition: condition, Body: body}, nil
 }
 
@@ -3359,15 +3450,30 @@ func (p *Parser) parseSwitch() (ast.Stmt, error) {
 				return nil, p.errf("expected ':' after case value(s)")
 			}
 			p.next() // consume ':'
+			
+			// Track colon line for inline detection
+			colonLine := p.items[p.pos-1].Start.Line
 
-			// Parse case body until next case, default, or end
-			for p.curr().Tok != lexer.KW_CASE && p.curr().Tok != lexer.KW_DEFAULT && p.curr().Tok != lexer.KW_END && p.curr().Tok != lexer.EOF {
+			// Check if inline (same line as colon)
+			if p.isOnSameLine(colonLine) {
+				// Inline case: parse single statement
 				stmt, err := p.parseStmt()
 				if err != nil {
 					return nil, err
 				}
 				if stmt != nil {
 					switchCase.Body = append(switchCase.Body, stmt)
+				}
+			} else {
+				// Multi-line case: parse until next case, default, or end
+				for p.curr().Tok != lexer.KW_CASE && p.curr().Tok != lexer.KW_DEFAULT && p.curr().Tok != lexer.KW_END && p.curr().Tok != lexer.EOF {
+					stmt, err := p.parseStmt()
+					if err != nil {
+						return nil, err
+					}
+					if stmt != nil {
+						switchCase.Body = append(switchCase.Body, stmt)
+					}
 				}
 			}
 
@@ -3380,15 +3486,30 @@ func (p *Parser) parseSwitch() (ast.Stmt, error) {
 				return nil, p.errf("expected ':' after default")
 			}
 			p.next() // consume ':'
+			
+			// Track colon line for inline detection
+			colonLine := p.items[p.pos-1].Start.Line
 
-			// Parse default body until end
-			for p.curr().Tok != lexer.KW_END && p.curr().Tok != lexer.EOF {
+			// Check if inline (same line as colon)
+			if p.isOnSameLine(colonLine) {
+				// Inline default: parse single statement
 				stmt, err := p.parseStmt()
 				if err != nil {
 					return nil, err
 				}
 				if stmt != nil {
 					defaultBody = append(defaultBody, stmt)
+				}
+			} else {
+				// Multi-line default: parse until end
+				for p.curr().Tok != lexer.KW_END && p.curr().Tok != lexer.EOF {
+					stmt, err := p.parseStmt()
+					if err != nil {
+						return nil, err
+					}
+					if stmt != nil {
+						defaultBody = append(defaultBody, stmt)
+					}
 				}
 			}
 		} else {
