@@ -1,9 +1,0 @@
-# Web-server Example
-
-Example code for web server is coming soon.
-
-Check the `algorithm_samples/` directory in the repository for working examples.
-
-## See Also
-
-- [Getting Started](../getting-started.md)
