@@ -64,7 +64,7 @@ end
 
 // 3. State machines
 var state = "initial"
-while state != "done":
+loop state != "done":
     if state == "initial":
         state = "processing"
     else:

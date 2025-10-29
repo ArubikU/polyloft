@@ -28,7 +28,7 @@ Welcome to the complete Polyloft language reference! This documentation covers a
 
 #### Control Flow
 - [Conditionals: `if/else`](control-flow/conditionals.md)
-- [Loops: `for`, `while`](control-flow/loops.md)
+- [Loops: `for`, `loop`, `do-loop`](control-flow/loops.md)
 - [Pattern Matching: `switch`](control-flow/switch.md)
 - [Exception Handling: `try/catch`](control-flow/exceptions.md)
 
@@ -137,9 +137,9 @@ for i in range(10):
     println(i)
 end
 
-// While loop
+// Loop statement (conditional loop)
 let count = 0
-while count < 5:
+loop count < 5:
     println(count)
     count = count + 1
 end
