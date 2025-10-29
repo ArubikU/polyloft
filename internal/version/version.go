@@ -9,7 +9,7 @@ var (
 	// Commit is the VCS commit identifier.
 	Commit = ""
 	// Date is the build date.
-	Date = "2025-10-28"
+	Date = "2025-10-29"
 )
 
 // String returns a human-friendly version string.
