@@ -29,15 +29,12 @@ Welcome to the complete Polyloft language reference! This documentation covers a
 #### Control Flow
 - [Conditionals: `if/else`](control-flow/conditionals.md)
 - [Loops: `for`, `loop`, `do-loop`](control-flow/loops.md)
-- [Pattern Matching: `switch`](control-flow/switch.md)
+- [Switch Statement: Pattern matching](control-flow/switch.md)
 - [Exception Handling: `try/catch`](control-flow/exceptions.md)
 
 #### Advanced Features
-- [Generics](advanced/generics.md)
-- [Type System](advanced/types.md)
 - [Async/Await](advanced/async-await.md)
-- [Channels & Concurrency](advanced/channels.md)
-- [Reflection](advanced/reflection.md)
+- [Promises & Futures](advanced/async-await.md#completablefuture)
 
 ### 📚 Standard Library
 
@@ -46,37 +43,22 @@ Welcome to the complete Polyloft language reference! This documentation covers a
 - [**Math** - Mathematical functions](stdlib/math.md)
 - [**IO** - Input/Output operations](stdlib/io.md)
 - [**Http** - HTTP client & server](stdlib/http.md)
-- [**Net** - Network operations](stdlib/net.md)
-- [**Crypto** - Cryptographic functions](stdlib/crypto.md)
-- [**Sockets** - Socket programming](stdlib/sockets.md)
 
 #### Built-in Types
 - [**String** - Text manipulation](types/string.md)
-- [**Array** - Fixed-size arrays](types/array.md)
-- [**List** - Dynamic lists](types/list.md)
+- [**Array** - Dynamic arrays](types/array.md)
 - [**Map** - Key-value mappings](types/map.md)
 - [**Set** - Unique values](types/set.md)
-- [**Deque** - Double-ended queue](types/deque.md)
-- [**Tuple** - Immutable sequences](types/tuple.md)
-- [**Bytes** - Binary data](types/bytes.md)
-- [**Range** - Number sequences](types/range.md)
-- [**Channel** - Concurrent communication](types/channel.md)
 
 ### 📝 Examples & Tutorials
 - [Algorithm Examples](../algorithm_samples/README.md)
 - [Common Patterns](examples/patterns.md)
 - [Best Practices](examples/best-practices.md)
 
-### 🔧 Tools & Integration
-- [VSCode Extension](vscode-extension.md)
-- [Package Management](package-management.md)
-- [Build System](build-system.md)
-
 ### 📚 Reference
-- [Keyword Reference](reference/keywords.md)
-- [Operator Reference](reference/operators.md)
-- [Built-in Functions](reference/builtins.md)
-- [Error Messages](reference/errors.md)
+- [**Quick Reference** - Complete cheat sheet](QUICK_REFERENCE.md)
+- [VSCode Extension](vscode-extension.md)
+- [Build System](build-system.md)
 
 ## Quick Reference
 
