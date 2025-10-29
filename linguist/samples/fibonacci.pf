@@ -1,0 +1,70 @@
+// Fibonacci Sequence
+// Real implementations using different approaches
+
+println("╔════════════════════════════════════════════╗")
+println("║   Fibonacci Sequence Implementations      ║")
+println("╚════════════════════════════════════════════╝")
+println("")
+
+// Iterative approach (most efficient)
+def fibonacciIterative(n):
+    if n <= 1:
+        return n
+    end
+    
+    let a = 0
+    let b = 1
+    
+    for i in range(2, n + 1):
+        let temp = a + b
+        a = b
+        b = temp
+    end
+    
+    return b
+end
+
+// Test iterative approach
+println("Iterative Approach:")
+let n = 10
+let result = ""
+for i in range(n):
+    let fib = fibonacciIterative(i)
+    result = result + fib
+    if i < n - 1:
+        result = result + ", "
+    end
+end
+println("  First " + n + " Fibonacci numbers: " + result)
+println("  Fib(10) = " + fibonacciIterative(10))
+println("  Time complexity: O(n), Space: O(1)")
+println("")
+
+// Array-based memoization approach
+println("Memoization Approach (using array):")
+let fibMemo = [0, 1]
+for i in range(2, 15):
+    fibMemo = fibMemo.concat([fibMemo[i-1] + fibMemo[i-2]])
+end
+
+result = ""
+for i in range(10):
+    result = result + fibMemo[i]
+    if i < 9:
+        result = result + ", "
+    end
+end
+println("  First 10 cached: " + result)
+println("  Fib(14) = " + fibMemo[14])
+println("  Time complexity: O(n), Space: O(n)")
+println("")
+
+println("Algorithm properties:")
+println("  • Iterative: Best for computing single values")
+println("  • Memoization: Best for multiple queries")
+println("  • Applications: Nature patterns, algorithms, optimization")
+
+println("")
+println("╔════════════════════════════════════════════╗")
+println("║   Fibonacci Complete!                     ║")
+println("╚════════════════════════════════════════════╝")

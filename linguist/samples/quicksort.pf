@@ -1,0 +1,82 @@
+// QuickSort Algorithm
+// Real implementation of efficient divide-and-conquer sorting
+
+println("╔════════════════════════════════════════════╗")
+println("║   QuickSort Sorting Algorithm             ║")
+println("╚════════════════════════════════════════════╝")
+println("")
+
+// Partition function: rearranges array so elements less than pivot 
+// are on left, greater are on right
+def partition(arr, low, high):
+    let pivot = arr[high]
+    let i = low - 1
+    
+    for j in range(low, high):
+        if arr[j] < pivot:
+            i = i + 1
+            // Swap arr[i] and arr[j]
+            let temp = arr[i]
+            arr[i] = arr[j]
+            arr[j] = temp
+        end
+    end
+    
+    // Swap arr[i+1] and arr[high] (pivot)
+    i = i + 1
+    let temp = arr[i]
+    arr[i] = arr[high]
+    arr[high] = temp
+    
+    return i
+end
+
+// QuickSort recursive function
+def quicksort(arr, low, high):
+    if low < high:
+        // Partition array and get pivot index
+        let pi = partition(arr, low, high)
+        
+        // Recursively sort elements before and after partition
+        quicksort(arr, low, pi - 1)
+        quicksort(arr, pi + 1, high)
+    end
+end
+
+// Helper to print array
+def printArray(arr):
+    let str = "["
+    for i in range(arr.length()):
+        str = str + arr[i]
+        if i < arr.length() - 1:
+            str = str + ", "
+        end
+    end
+    str = str + "]"
+    return str
+end
+
+// Test the algorithm
+let arr = [64, 34, 25, 12, 22, 11, 90, 88, 45, 50, 23]
+println("Original array: " + printArray(arr))
+println("")
+
+println("Sorting array...")
+quicksort(arr, 0, arr.length() - 1)
+
+println("Sorted array: " + printArray(arr))
+println("")
+
+println("Algorithm properties:")
+println("  • Time complexity:")
+println("    - Best case: O(n log n)")
+println("    - Average case: O(n log n)")
+println("    - Worst case: O(n²) (already sorted)")
+println("  • Space complexity: O(log n) for recursion")
+println("  • In-place sorting (modifies original array)")
+println("  • Not stable (equal elements may change order)")
+
+println("")
+println("╔════════════════════════════════════════════╗")
+println("║   QuickSort Complete!                     ║")
+println("╚════════════════════════════════════════════╝")

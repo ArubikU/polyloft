@@ -1,0 +1,25 @@
+// Test 9: Class instantiation and method calls
+class Point:
+    let x
+    let y
+    
+    def init(x, y):
+        this.x = x
+        this.y = y
+    end
+    
+    def distance():
+        return (this.x * this.x + this.y * this.y)
+    end
+end
+
+let start = Sys.time()
+let total = 0
+for i in 0...9999:
+    let p = Point(i, i + 1)
+    total = total + p.distance()
+end
+let endTime = Sys.time()
+
+println("Total: " + total)
+println("Time: " + (endTime - start) + " ms")
