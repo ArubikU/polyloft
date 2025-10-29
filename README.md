@@ -1,7 +1,7 @@
 # Polyloft
 
 ![Polyloft Banner](public/polyloft_banner.png)
-
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ArubikU/polyloft)
 Polyloft is a modular hybrid language combining object-oriented structure with scripting flexibility and reflection.
 
 > **Polyloft — a language, a lot of ways.**  
