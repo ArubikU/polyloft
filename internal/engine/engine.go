@@ -1081,8 +1081,7 @@ func installBuiltins(env *common.Env, opts Options) {
 			start = 0
 			end = endVal
 			step = 1
-		}
-		else if len(args) == 2 {
+		} else if len(args) == 2 {
 			// range(start, end)
 			startVal, ok := utils.AsInt(args[0])
 			if !ok {
@@ -1115,7 +1114,7 @@ func installBuiltins(env *common.Env, opts Options) {
 		}
 		return CreateRangeInstance((*Env)(e), start, end, step)
 	}))
-	
+
 
 	// Install Net module
 	InstallNetModule(env, opts)
