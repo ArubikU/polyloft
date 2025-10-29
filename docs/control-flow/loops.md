@@ -48,6 +48,78 @@ for key in person:
 end
 ```
 
+### Map Iteration with Destructuring
+You can destructure key-value pairs while iterating over maps:
+```pf
+let person = {name: "Alice", age: 25, city: "NYC"}
+for key, value in person:
+    println("#{key}: #{value}")
+end
+```
+
+### Array Destructuring
+When iterating over arrays of arrays, you can destructure each element:
+```pf
+let pairs = [[1, 2], [3, 4], [5, 6]]
+for a, b in pairs:
+    println("#{a} + #{b} = #{a + b}")
+end
+// Outputs:
+// 1 + 2 = 3
+// 3 + 4 = 7
+// 5 + 6 = 11
+```
+
+### For Loop with Where Clause
+The `where` clause allows you to filter elements during iteration:
+```pf
+let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+let sum = 0
+
+for n in numbers where n > 5:
+    sum = sum + n
+end
+
+println("Sum: #{sum}")  // Sum: 40 (6+7+8+9+10)
+```
+
+### Where Clause with Modulo
+```pf
+let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+let evenSum = 0
+
+for n in numbers where n % 2 == 0:
+    evenSum = evenSum + n
+end
+
+println("Even sum: #{evenSum}")  // Even sum: 30
+```
+
+### Combining Destructuring and Where Clause
+You can use both destructuring and filtering together:
+```pf
+let data = {a: 10, b: 5, c: 20, d: 3}
+let sum = 0
+
+for key, value in data where value > 5:
+    sum = sum + value
+end
+
+println("Filtered sum: #{sum}")  // Filtered sum: 30 (10+20)
+```
+
+### Where Clause with Complex Conditions
+```pf
+let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+let count = 0
+
+for n in numbers where (n > 3) && (n < 8):
+    count = count + 1
+end
+
+println("Count: #{count}")  // Count: 4 (numbers 4, 5, 6, 7)
+```
+
 ### Break Statement
 ```pf
 for i in range(10):
@@ -504,3 +576,4 @@ println("Ready!")
 - [Conditionals](conditionals.md)
 - [Arrays](../types/array.md)
 - [Range Type](../types/range.md)
+- [Builtin Interfaces](../language/builtin-interfaces.md)
