@@ -110,14 +110,14 @@ println(person.address.city)  // "NYC"
 ### Records with Validation
 ```pf
 record Email(address: String)
-    def init(address: String):
+    Email(address: String):
         if not address.contains("@"):
             throw ValidationError("Invalid email")
         end
         this.address = address
     end
     
-    def domain(): String
+    def domain() -> String
         return this.address.split("@")[1]
     end
 end
