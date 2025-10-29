@@ -287,7 +287,7 @@ println("Decrypted: #{decrypted.toString()}")
 class BinaryMessage:
     let bytes: Bytes
     
-    def init(data: String):
+    BinaryMessage(data: String):
         // Create message: [type][length][data]
         let dataBytes = Bytes(data)
         this.bytes = Bytes()
@@ -338,7 +338,7 @@ println("BPP: #{info.bpp}")
 class NetworkPacket:
     let bytes: Bytes
     
-    def init():
+    NetworkPacket():
         this.bytes = Bytes()
     end
     

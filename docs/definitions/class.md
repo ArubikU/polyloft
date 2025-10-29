@@ -12,7 +12,7 @@ class ClassName:
     var field2
     
     // Constructor
-    def init(param1, param2):
+    ClassName(param1, param2):
         this.field1 = param1
         this.field2 = param2
     end
@@ -32,7 +32,7 @@ class Person:
     let name
     let age
     
-    def init(name, age):
+    Person(name, age):
         this.name = name
         this.age = age
     end
@@ -52,7 +52,7 @@ class Rectangle:
     let width: Float
     let height: Float
     
-    def init(width: Float, height: Float):
+    Rectangle(width: Float, height: Float):
         this.width = width
         this.height = height
     end
@@ -76,7 +76,7 @@ println("Perimeter: #{rect.perimeter()}")
 class BankAccount:
     private let balance
     
-    def init(initialBalance):
+    BankAccount(initialBalance):
         this.balance = initialBalance
     end
     
@@ -119,7 +119,7 @@ println(MathHelper.cube(3))    // 27
 class Animal:
     let name
     
-    def init(name):
+    Animal(name):
         this.name = name
     end
     
@@ -129,7 +129,7 @@ class Animal:
 end
 
 class Dog < Animal:
-    def init(name):
+    Dog(name):
         super.init(name)  // Call parent constructor
     end
     
@@ -139,7 +139,7 @@ class Dog < Animal:
 end
 
 class Cat < Animal:
-    def init(name):
+    Cat(name):
         super.init(name)
     end
     
@@ -170,7 +170,7 @@ end
 class Circle < Shape:
     let radius
     
-    def init(radius):
+    Circle(radius):
         this.radius = radius
     end
     
@@ -188,7 +188,7 @@ circle.describe()  // This is a shape with area 78.53975
 class Vehicle:
     let brand
     
-    def init(brand):
+    Vehicle(brand):
         this.brand = brand
     end
     
@@ -213,7 +213,7 @@ car.startEngine()  // Toyota car engine started
 class Temperature:
     private var celsius
     
-    def init(c):
+    Temperature(c):
         this.celsius = c
     end
     
@@ -244,7 +244,7 @@ println("#{temp.getFahrenheit()}°F")
 class Engine:
     let horsepower
     
-    def init(hp):
+    Engine(hp):
         this.horsepower = hp
     end
     
@@ -257,7 +257,7 @@ class Car:
     let brand
     let engine
     
-    def init(brand, hp):
+    Car(brand, hp):
         this.brand = brand
         this.engine = Engine(hp)
     end
@@ -278,7 +278,7 @@ class Counter:
     static var totalInstances = 0
     var instanceId
     
-    def init():
+    Counter():
         Counter.totalInstances = Counter.totalInstances + 1
         this.instanceId = Counter.totalInstances
     end
@@ -304,7 +304,7 @@ c3.getInfo()  // Instance 3 of 3
 class Box<T>:
     let value: T
     
-    def init(value: T):
+    Box(value: T):
         this.value = value
     end
     
@@ -329,7 +329,7 @@ end
 class Circle implements Drawable:
     let radius
     
-    def init(r):
+    Circle(r):
         this.radius = r
     end
     
@@ -349,14 +349,14 @@ end
 
 class Success < Result:
     let value
-    def init(v):
+    Success(v):
         this.value = v
     end
 end
 
 class Failure < Result:
     let error
-    def init(e):
+    Failure(e):
         this.error = e
     end
 end
@@ -379,7 +379,7 @@ class Person:
     private let ssn
     let name
     
-    def init(name, ssn):
+    Person(name, ssn):
         this.name = name
         this.ssn = ssn
     end
@@ -459,7 +459,7 @@ let person = PersonBuilder()
 class Database:
     private static var instance = nil
     
-    private def init():
+    private Database():
         // Private constructor
     end
     

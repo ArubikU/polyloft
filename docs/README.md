@@ -21,16 +21,19 @@ Welcome to the complete Polyloft language reference! This documentation covers a
 #### Functions & Classes
 - [Functions](definitions/function.md)
 - [Classes](definitions/class.md)
+  - [Access Modifiers - public/private/protected/static](language/access-modifiers.md)
+  - [Annotations - @Override and more](language/annotations.md)
+- [Interfaces](language/interfaces.md)
+- [Sealed Classes](language/sealed.md)
 - [Enums](language/enums.md)
 - [Records](language/records.md)
 - [Import - Module system](language/import.md)
-- [Sealed Classes](language/sealed.md)
-- [Interfaces](language/interfaces.md)
 
 #### Control Flow
 - [Conditionals: `if/else`](control-flow/conditionals.md)
 - [Loops: `for`, `loop`, `do-loop`](control-flow/loops.md)
 - [Switch Statement: Pattern matching](control-flow/switch.md)
+- [Inline Syntax: Single-line control flow](control-flow/inline-syntax.md)
 - [Exception Handling: `try/catch`](control-flow/exceptions.md)
 
 #### Advanced Features
@@ -96,7 +99,7 @@ class Person:
     let name: String
     let age: Int
     
-    def init(name: String, age: Int):
+    Person(name: String, age: Int):
         this.name = name
         this.age = age
     end

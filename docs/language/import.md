@@ -71,7 +71,7 @@ class User:
     let name
     let email
     
-    def init(name, email):
+    User(name, email):
         this.name = name
         this.email = email
     end
@@ -182,7 +182,7 @@ class User:
     let username
     let email
     
-    def init(id, username, email):
+    User(id, username, email):
         this.id = id
         this.username = username
         this.email = email
@@ -204,7 +204,7 @@ class Post:
     let content
     let authorId
     
-    def init(id, title, content, authorId):
+    Post(id, title, content, authorId):
         this.id = id
         this.title = title
         this.content = content
