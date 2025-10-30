@@ -1071,7 +1071,7 @@ func installBuiltins(env *common.Env, opts Options) {
 		if len(args) < 1 || len(args) > 3 {
 			return nil, ThrowArityError((*Env)(e), 1, len(args))
 		}
-		var start, end, step int64
+		var start, end, step int
 		if len(args) == 1 {
 			// range(end)
 			endVal, ok := utils.AsInt(args[0])
