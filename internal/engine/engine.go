@@ -1067,7 +1067,7 @@ func installBuiltins(env *common.Env, opts Options) {
 		return utils.ToString(args[0]), nil
 	}))
 
-	env.set("range", common.Func(func(e *common.Env, args []any) (any, error) {
+	env.Set("range", common.Func(func(e *common.Env, args []any) (any, error) {
 		if len(args) < 1 || len(args) > 3 {
 			return nil, ThrowArityError((*Env)(e), 1, len(args))
 		}
