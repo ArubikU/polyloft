@@ -1,0 +1,17 @@
+def saludar(nombre: String):
+    return "Hola, " + nombre + "!"
+end
+
+class MiClase:
+    valor: Int
+    
+    MiClase(v: Int):
+        this.valor = v
+    end
+    
+    def obtenerValor() -> Int:
+        return this.valor
+    end
+end
+
+CONSTANTE = 42
