@@ -1094,19 +1094,8 @@ func installBuiltins(env *common.Env, opts Options) {
 		fmt.Printf("Warning: Failed to install Bool builtin: %v\n", err)
 	}
 
-	// Install String builtin as a class (can now reference Int for parameters)
-	if err := InstallStringBuiltin((*Env)(env)); err != nil {
-		fmt.Printf("Warning: Failed to install String builtin: %v\n", err)
-	}
-	// Install IO and Bytes builtins
-	if err := InstallBytesBuiltin(env); err != nil {
-		fmt.Printf("Warning: Failed to install Bytes builtin: %v\n", err)
-	}
-	if err := InstallSocketsModule(env, opts); err != nil {
-		fmt.Printf("Warning: Failed to install Sockets module: %v\n", err)
-	}
-
 	// Install Iterable interface (base for all collections)
+	// These interfaces must be installed BEFORE String, Bytes, Array, Map, etc. that depend on them
 	if err := InstallIterableInterface((*Env)(env)); err != nil {
 		fmt.Printf("Warning: Failed to install Iterable interface: %v\n", err)
 	}
@@ -1122,6 +1111,18 @@ func installBuiltins(env *common.Env, opts Options) {
 	// Install Unstructured interface (for destructuring support)
 	if err := InstallUnstructuredInterface((*Env)(env)); err != nil {
 		fmt.Printf("Warning: Failed to install Unstructured interface: %v\n", err)
+	}
+
+	// Install String builtin as a class (can now reference Int for parameters and interfaces)
+	if err := InstallStringBuiltin((*Env)(env)); err != nil {
+		fmt.Printf("Warning: Failed to install String builtin: %v\n", err)
+	}
+	// Install IO and Bytes builtins
+	if err := InstallBytesBuiltin(env); err != nil {
+		fmt.Printf("Warning: Failed to install Bytes builtin: %v\n", err)
+	}
+	if err := InstallSocketsModule(env, opts); err != nil {
+		fmt.Printf("Warning: Failed to install Sockets module: %v\n", err)
 	}
 
 	// Install MapEntry builtin class
@@ -1147,11 +1148,6 @@ func installBuiltins(env *common.Env, opts Options) {
 	// Install unified Map builtin (replaces Object and old Map)
 	if err := InstallMapBuiltin((*Env)(env)); err != nil {
 		fmt.Printf("Warning: Failed to install Map builtin: %v\n", err)
-	}
-
-	// Install Pair builtin (for key-value pairs)
-	if err := InstallPairBuiltin((*Env)(env)); err != nil {
-		fmt.Printf("Warning: Failed to install Pair builtin: %v\n", err)
 	}
 
 	// Install Range builtin as a class (iterable but not unstructured)
