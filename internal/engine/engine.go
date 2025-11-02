@@ -950,12 +950,12 @@ func installBuiltins(env *common.Env, opts Options) {
 		}
 		return nil, nil
 	}))
-	env.Set("println", common.Func(func(_ *common.Env, args []any) (any, error) {
+	env.Set("println", common.Func(func(callEnv *common.Env, args []any) (any, error) {
 		for i, a := range args {
 			if i > 0 {
 				fmt.Fprint(out, " ")
 			}
-			fmt.Fprint(out, utils.ToString(a))
+			fmt.Fprint(out, utils.ToStringWithEnv(a, callEnv))
 		}
 		fmt.Fprintln(out)
 		return nil, nil

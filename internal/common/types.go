@@ -428,14 +428,6 @@ var (
 	BuiltinInterfaceUnstructured = Builtin{Name: "__UnstructuredInterface__", IsInterface: true}
 )
 
-// BuiltinClassLookup is a callback function that the engine package can set
-// to provide access to the builtinClasses registry
-var BuiltinClassLookup func(name string) *ClassDefinition
-
-// BuiltinInterfaceLookup is a callback function that the engine package can set
-// to provide access to the interfaceRegistry
-var BuiltinInterfaceLookup func(name string) *InterfaceDefinition
-
 // ClearBuiltinClassCache clears the cached ClassDef pointers in all builtin types
 // This should be called when ResetGlobalRegistries is called to avoid stale pointer references
 func ClearBuiltinClassCache() {
@@ -472,28 +464,12 @@ func (bt *Builtin) GetClassDefinition(env *Env) *ClassDefinition {
 	if bt.ClassDef != nil {
 		return bt.ClassDef
 	}
-	
-	// Try to look up from the builtinClasses registry first (if available)
-	if BuiltinClassLookup != nil {
-		if classDef := BuiltinClassLookup(bt.Name); classDef != nil {
-			bt.ClassDef = classDef
-			return bt.ClassDef
-		}
+	val, ok := env.Get(bt.Name)
+	if !ok {
+		return nil
 	}
-	
-	// Fallback: look up in the environment
-	// Builtin classes are always registered in the root environment
-	// Look them up there to avoid issues with child environments
-	if env != nil {
-		rootEnv := env.GetRoot()
-		val, ok := rootEnv.Get(bt.Name)
-		if ok {
-			bt.ClassDef = val.(*ClassDefinition)
-			return bt.ClassDef
-		}
-	}
-	
-	return nil
+	bt.ClassDef = val.(*ClassDefinition)
+	return bt.ClassDef
 }
 
 func (bt *Builtin) GetConstructor(env *Env) *ClassConstructor {
@@ -510,9 +486,7 @@ func (bt *Builtin) GetConstructor(env *Env) *ClassConstructor {
 		}
 	}
 
-	// Builtin constructors are always registered in the root environment
-	rootEnv := env.GetRoot()
-	val, ok := rootEnv.Get(publicName)
+	val, ok := env.Get(publicName)
 	if !ok {
 		return nil
 	}
@@ -529,9 +503,7 @@ func (bt *Builtin) GetTypeDefinition(env *Env) *ast.Type {
 	if bt.TypeDef != nil {
 		return bt.TypeDef
 	}
-	// Builtin types are always registered in the root environment
-	rootEnv := env.GetRoot()
-	val, ok := rootEnv.Get(bt.Name)
+	val, ok := env.Get(bt.Name)
 	if !ok {
 		return nil
 	}
@@ -543,35 +515,18 @@ func (bt *Builtin) GetInterfaceDefinition(env *Env) *InterfaceDefinition {
 	if bt.InterfaceDef != nil {
 		return bt.InterfaceDef
 	}
-	
-	// Try to look up from the interfaceRegistry first (if available)
-	if BuiltinInterfaceLookup != nil {
-		if interfaceDef := BuiltinInterfaceLookup(bt.Name); interfaceDef != nil {
-			bt.InterfaceDef = interfaceDef
-			return bt.InterfaceDef
-		}
+	val, ok := env.Get(bt.Name)
+	if !ok {
+		return nil
 	}
-	
-	// Fallback: look up in the environment
-	// Builtin interfaces are always registered in the root environment
-	if env != nil {
-		rootEnv := env.GetRoot()
-		val, ok := rootEnv.Get(bt.Name)
-		if ok {
-			bt.InterfaceDef = val.(*InterfaceDefinition)
-			return bt.InterfaceDef
-		}
-	}
-	
-	return nil
+	bt.InterfaceDef = val.(*InterfaceDefinition)
+	return bt.InterfaceDef
 }
 func (bt *Builtin) GetEnumDefinition(env *Env) *EnumDefinition {
 	if bt.EnumDef != nil {
 		return bt.EnumDef
 	}
-	// Builtin enums are always registered in the root environment
-	rootEnv := env.GetRoot()
-	val, ok := rootEnv.Get(bt.Name)
+	val, ok := env.Get(bt.Name)
 	if !ok {
 		return nil
 	}
@@ -582,9 +537,7 @@ func (bt *Builtin) GetRecordDefinition(env *Env) *RecordDefinition {
 	if bt.RecordDef != nil {
 		return bt.RecordDef
 	}
-	// Builtin records are always registered in the root environment
-	rootEnv := env.GetRoot()
-	val, ok := rootEnv.Get(bt.Name)
+	val, ok := env.Get(bt.Name)
 	if !ok {
 		return nil
 	}
@@ -596,9 +549,7 @@ func (bt *Builtin) GetFunctionDefinition(env *Env) *FunctionDefinition {
 	if bt.FunctionDef != nil {
 		return bt.FunctionDef
 	}
-	// Builtin functions are always registered in the root environment
-	rootEnv := env.GetRoot()
-	val, ok := rootEnv.Get(bt.Name)
+	val, ok := env.Get(bt.Name)
 	if !ok {
 		return nil
 	}

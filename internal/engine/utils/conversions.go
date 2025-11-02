@@ -17,7 +17,15 @@ const (
 
 // ToString converts a value to its string representation.
 // This handles all Polyloft types including primitive wrappers, class instances, etc.
+// For better environment handling, use ToStringWithEnv when an environment is available.
 func ToString(v any) string {
+	return ToStringWithEnv(v, nil)
+}
+
+// ToStringWithEnv converts a value to its string representation with proper environment handling.
+// When env is provided, it's used as the parent for method calls on class instances.
+// This ensures builtin classes are accessible when toString methods are called.
+func ToStringWithEnv(v any, env *common.Env) string {
 	switch t := v.(type) {
 	case nil:
 		return strNil
@@ -73,10 +81,19 @@ func ToString(v any) string {
 		}
 		// Try to call the toString method if it exists
 		if toStringMethod, exists := t.Methods["toString"]; exists {
+			// Create method environment with proper parent chain
+			var methodEnv *common.Env
+			if env != nil {
+				// Use provided environment as parent to maintain access to builtins
+				methodEnv = &common.Env{Parent: env, Vars: map[string]any{"this": t}, Consts: map[string]bool{}}
+			} else {
+				// Fallback: create isolated environment (may fail if toString needs builtins)
+				methodEnv = &common.Env{Vars: map[string]any{"this": t}, Consts: map[string]bool{}}
+			}
 			// toStringMethod is already a common.Func, no need to cast
-			if result, err := toStringMethod(&common.Env{Vars: map[string]any{"this": t}, Consts: map[string]bool{}}, []any{}); err == nil {
+			if result, err := toStringMethod(methodEnv, []any{}); err == nil {
 				//print type of result
-				return ToString(result)
+				return ToStringWithEnv(result, env)
 			}
 		}
 		// Fallback to default representation
@@ -85,7 +102,14 @@ func ToString(v any) string {
 		return fmt.Sprintf("class %s", t.Name)
 	case *common.EnumValueInstance:
 		if method, ok := t.Methods["toString"]; ok {
-			if result, err := method(&common.Env{Vars: map[string]any{"this": t}, Consts: map[string]bool{}}, []any{}); err == nil {
+			// Create method environment with proper parent chain
+			var methodEnv *common.Env
+			if env != nil {
+				methodEnv = &common.Env{Parent: env, Vars: map[string]any{"this": t}, Consts: map[string]bool{}}
+			} else {
+				methodEnv = &common.Env{Vars: map[string]any{"this": t}, Consts: map[string]bool{}}
+			}
+			if result, err := method(methodEnv, []any{}); err == nil {
 				if str, ok := result.(string); ok {
 					return str
 				}
@@ -97,7 +121,14 @@ func ToString(v any) string {
 		return t.Name
 	case *common.RecordInstance:
 		if method, ok := t.Methods["toString"]; ok {
-			if result, err := method(&common.Env{Vars: map[string]any{"this": t}, Consts: map[string]bool{}}, []any{}); err == nil {
+			// Create method environment with proper parent chain
+			var methodEnv *common.Env
+			if env != nil {
+				methodEnv = &common.Env{Parent: env, Vars: map[string]any{"this": t}, Consts: map[string]bool{}}
+			} else {
+				methodEnv = &common.Env{Vars: map[string]any{"this": t}, Consts: map[string]bool{}}
+			}
+			if result, err := method(methodEnv, []any{}); err == nil {
 				if str, ok := result.(string); ok {
 					return str
 				}
@@ -106,7 +137,7 @@ func ToString(v any) string {
 		if t.Definition != nil {
 			parts := make([]string, 0, len(t.Definition.Components))
 			for _, component := range t.Definition.Components {
-				parts = append(parts, fmt.Sprintf("%s=%s", component.Name, ToString(t.Values[component.Name])))
+				parts = append(parts, fmt.Sprintf("%s=%s", component.Name, ToStringWithEnv(t.Values[component.Name], env)))
 			}
 			return fmt.Sprintf("%s(%s)", t.Definition.Name, strings.Join(parts, ", "))
 		}
