@@ -1041,7 +1041,7 @@ func installBuiltins(env *common.Env, opts Options) {
 			// range(end)
 			endVal, ok := utils.AsInt(args[0])
 			if !ok {
-				return nil, ThrowTypeError((*Env)(e), "int", args[0])
+				return nil, ThrowTypeError((*Env)(e), "Int", args[0])
 			}
 			start = 0
 			end = endVal
@@ -1050,11 +1050,11 @@ func installBuiltins(env *common.Env, opts Options) {
 			// range(start, end)
 			startVal, ok := utils.AsInt(args[0])
 			if !ok {
-				return nil, ThrowTypeError((*Env)(e), "int", args[0])
+				return nil, ThrowTypeError((*Env)(e), "Int", args[0])
 			}
 			endVal, ok := utils.AsInt(args[1])
 			if !ok {
-				return nil, ThrowTypeError((*Env)(e), "int", args[1])
+				return nil, ThrowTypeError((*Env)(e), "Int", args[1])
 			}
 			start = startVal
 			end = endVal
@@ -1063,15 +1063,15 @@ func installBuiltins(env *common.Env, opts Options) {
 			// range(start, end, step)
 			startVal, ok := utils.AsInt(args[0])
 			if !ok {
-				return nil, ThrowTypeError((*Env)(e), "int", args[0])
+				return nil, ThrowTypeError((*Env)(e), "Int", args[0])
 			}
 			endVal, ok := utils.AsInt(args[1])
 			if !ok {
-				return nil, ThrowTypeError((*Env)(e), "int", args[1])
+				return nil, ThrowTypeError((*Env)(e), "Int", args[1])
 			}
 			stepVal, ok := utils.AsInt(args[2])
 			if !ok {
-				return nil, ThrowTypeError((*Env)(e), "int", args[2])
+				return nil, ThrowTypeError((*Env)(e), "Int", args[2])
 			}
 			start = startVal
 			end = endVal
@@ -2028,7 +2028,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				ia, oka := utils.AsInt(a)
 				ib, okb := utils.AsInt(b)
 				if !oka || !okb {
-					return nil, typeError("int", a, b)
+					return nil, typeError("Int", a, b)
 				}
 				return CreateIntInstance(env, ia+ib)
 			}
@@ -2069,7 +2069,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				ia, oka := utils.AsInt(a)
 				ib, okb := utils.AsInt(b)
 				if !oka || !okb {
-					return nil, typeError("int", a, b)
+					return nil, typeError("Int", a, b)
 				}
 				return CreateIntInstance(env, ia-ib)
 			}
@@ -2120,7 +2120,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 					count, okCount = utils.AsInt(a)
 				}
 				if !okCount {
-					return nil, typeError("int", "count")
+					return nil, typeError("Int", "count")
 				}
 				return CreateStringInstance(env, strings.Repeat(str, count))
 			}
@@ -2139,7 +2139,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			ia, oka := utils.AsInt(a)
 			ib, okb := utils.AsInt(b)
 			if !oka || !okb {
-				return nil, typeError("int", a, b)
+				return nil, typeError("Int", a, b)
 			}
 
 			// Fast paths for special cases
@@ -2205,7 +2205,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				ia, oka := utils.AsInt(a)
 				ib, okb := utils.AsInt(b)
 				if !oka || !okb {
-					return nil, typeError("int", a, b)
+					return nil, typeError("Int", a, b)
 				}
 				if ib == 0 {
 					return nil, ThrowRuntimeError(env, "division by zero")
@@ -2238,7 +2238,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			ia, oka := utils.AsInt(a)
 			ib, okb := utils.AsInt(b)
 			if !oka || !okb {
-				return nil, typeError("int", a, b)
+				return nil, typeError("Int", a, b)
 			}
 			if ib == 0 {
 				return nil, ThrowRuntimeError(env, "division by zero")
