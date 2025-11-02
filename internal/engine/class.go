@@ -40,6 +40,28 @@ var (
 	typeAliasRegistry = make(map[string]map[string]*TypeAlias) // packageName -> aliasName -> TypeAlias
 )
 
+func init() {
+	// Set up callbacks for common package to access builtin registries
+	common.BuiltinClassLookup = func(internalName string) *ClassDefinition {
+		// Convert internal name to class name
+		// __StringClass__ -> String
+		className := internalName
+		if len(className) > 4 && className[:2] == "__" && className[len(className)-2:] == "__" {
+			// Remove __ prefix and __ suffix
+			className = className[2 : len(className)-2]
+			// Remove "Class" suffix if present
+			if len(className) > 5 && className[len(className)-5:] == "Class" {
+				className = className[:len(className)-5]
+			}
+		}
+		return builtinClasses[className]
+	}
+	
+	common.BuiltinInterfaceLookup = func(internalName string) *InterfaceDefinition {
+		return interfaceRegistry[internalName]
+	}
+}
+
 // TypeAlias represents a type alias definition
 type TypeAlias struct {
 	Name        string
