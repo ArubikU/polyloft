@@ -293,6 +293,7 @@ For more details, see [server/README.md](server/README.md) for the registry infr
 ### User Documentation
 - [Installation Guide](README.md#installation) - Install and update Polyloft
 - [Usage Examples](README.md#usage) - Getting started with Polyloft
+- [Import System Examples](example_project/) - Learn how to import between files and directories
 - [Package Registry](README.md#package-registry) - Publishing and using packages
 - [Troubleshooting](README.md#troubleshooting) - Common issues and solutions
 - [VSCode Extension](docs/vscode-extension.md) - IDE support with syntax highlighting, linting, and auto-completion
@@ -323,3 +324,4 @@ Layout:
 - `pkg/runtime`: public runtime API for built executables
 - `vscode-extension`: VSCode extension for Polyloft language support
 - `libs`: standard library packages
+- `example_project`: Working examples demonstrating the import system

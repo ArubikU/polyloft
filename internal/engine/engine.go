@@ -1038,6 +1038,55 @@ func installBuiltins(env *common.Env, opts Options) {
 		return utils.ToString(args[0]), nil
 	}))
 
+	env.Set("range", common.Func(func(e *common.Env, args []any) (any, error) {
+		if len(args) < 1 || len(args) > 3 {
+			return nil, ThrowArityError((*Env)(e), 1, len(args))
+		}
+		var start, end, step int
+		if len(args) == 1 {
+			// range(end)
+			endVal, ok := utils.AsInt(args[0])
+			if !ok {
+				return nil, ThrowTypeError((*Env)(e), "int", args[0])
+			}	
+			start = 0
+			end = endVal
+			step = 1
+		} else if len(args) == 2 {
+			// range(start, end)
+			startVal, ok := utils.AsInt(args[0])
+			if !ok {
+				return nil, ThrowTypeError((*Env)(e), "int", args[0])
+			}
+			endVal, ok := utils.AsInt(args[1])
+			if !ok {
+				return nil, ThrowTypeError((*Env)(e), "int", args[1])
+			}
+			start = startVal
+			end = endVal
+			step = 1
+		} else {
+			// range(start, end, step)
+			startVal, ok := utils.AsInt(args[0])
+			if !ok {
+				return nil, ThrowTypeError((*Env)(e), "int", args[0])
+			}
+			endVal, ok := utils.AsInt(args[1])
+			if !ok {
+				return nil, ThrowTypeError((*Env)(e), "int", args[1])
+			}
+			stepVal, ok := utils.AsInt(args[2])
+			if !ok {
+				return nil, ThrowTypeError((*Env)(e), "int", args[2])
+			}
+			start = startVal
+			end = endVal
+			step = stepVal
+		}
+		return CreateRangeInstance((*Env)(e), start, end, step)
+	}))
+
+
 	// Install Net module
 	InstallNetModule(env, opts)
 	InstallHttpModule(env, opts)

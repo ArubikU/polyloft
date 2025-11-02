@@ -1,0 +1,26 @@
+// Importar desde el archivo padre (miarchivo.pf)
+import miarchivo { saludar, MiClase, CONSTANTE }
+
+def procesarDatos(texto: String):
+    // Usar la función importada
+    mensaje = saludar(texto)
+    println(mensaje)
+    
+    // Usar la clase importada
+    obj = MiClase(CONSTANTE)
+    println("Valor de MiClase: " + obj.obtenerValor())
+    
+    return mensaje + " - procesado"
+end
+
+class ClaseCarpeta1:
+    nombre: String
+    
+    ClaseCarpeta1(n: String):
+        this.nombre = n
+    end
+    
+    def mostrar():
+        println("Clase desde carpeta1: " + this.nombre)
+    end
+end

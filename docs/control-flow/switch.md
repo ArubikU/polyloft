@@ -272,7 +272,7 @@ end
 class StateMachine:
     var state: State
     
-    def init():
+    StateMachine():
         this.state = State.IDLE
     end
     
@@ -325,7 +325,7 @@ end
 
 class Circle < Shape:
     let radius: Float
-    def init(r: Float):
+    Circle(r: Float):
         this.radius = r
     end
     def area():
@@ -336,7 +336,7 @@ end
 class Rectangle < Shape:
     let width: Float
     let height: Float
-    def init(w: Float, h: Float):
+    Rectangle(w: Float, h: Float):
         this.width = w
         this.height = h
     end

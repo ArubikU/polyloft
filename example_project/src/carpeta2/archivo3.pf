@@ -1,0 +1,19 @@
+// Importar desde carpeta hermana (carpeta1/archivo2.pf)
+import carpeta1.archivo2 { procesarDatos, ClaseCarpeta1 }
+
+// También podemos importar directamente desde miarchivo.pf
+import miarchivo { saludar, CONSTANTE }
+
+println("=== Ejemplo de importación entre carpetas ===")
+
+// Usar función de carpeta1
+resultado = procesarDatos("Mundo")
+println("Resultado: " + resultado)
+
+// Usar clase de carpeta1
+obj = ClaseCarpeta1("Mi objeto")
+obj.mostrar()
+
+// Usar función importada directamente de miarchivo
+println(saludar("Usuario"))
+println("Constante: " + CONSTANTE)

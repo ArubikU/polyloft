@@ -61,7 +61,7 @@ class Person:
     let name: String
     let age: Int
     
-    def init(name: String, age: Int):
+    Person(name: String, age: Int):
         this.name = name
         this.age = age
     end
@@ -74,10 +74,79 @@ end
 let p = Person("Alice", 25)
 ```
 
+### Access Modifiers
+```pf
+class BankAccount:
+    public let accountId        // Accessible everywhere
+    private var balance         // Only in this class
+    protected var lastAccess    // In class and subclasses
+    
+    BankAccount(id, initialBalance):
+        this.accountId = id
+        this.balance = initialBalance
+        this.lastAccess = Sys.time()
+    end
+    
+    public def getBalance() -> Float
+        return this.balance
+    end
+    
+    private def updateAccess():
+        this.lastAccess = Sys.time()
+    end
+end
+
+// Static members
+class Config:
+    static var appName = "MyApp"
+    
+    static def getSetting(key) -> any
+        return settings.get(key)
+    end
+end
+```
+
+### Annotations
+```pf
+class Animal:
+    def speak():
+        println("Some sound")
+    end
+end
+
+class Dog < Animal:
+    @Override
+    def speak():
+        println("Woof!")
+    end
+end
+```
+
+### Interfaces
+```pf
+interface Drawable:
+    draw() -> void
+end
+
+class Circle implements Drawable:
+    let radius
+    
+    Circle(r):
+        this.radius = r
+    end
+    
+    @Override
+    def draw():
+        println("Drawing circle")
+    end
+end
+```
+
 ## Control Flow
 
 ### If-Else
 ```pf
+// Multi-line
 if condition:
     // code
 else:
@@ -87,10 +156,16 @@ else:
         // code
     end
 end
+
+// Inline syntax
+if condition: statement
+elif other: statement
+else: statement
 ```
 
 ### For Loop
 ```pf
+// Multi-line
 for i in range(10):
     println(i)
 end
@@ -98,14 +173,22 @@ end
 for item in array:
     println(item)
 end
+
+// Inline syntax
+for i in range(10): println(i)
+for item in array: process(item)
 ```
 
 ### Loop (while-like)
 ```pf
+// Multi-line
 loop count < 10:
     println(count)
     count = count + 1
 end
+
+// Inline syntax
+loop count < 10: count = count + 1
 
 // Infinite loop
 loop:
@@ -137,13 +220,37 @@ end
 ## Exception Handling
 
 ```pf
+// Basic try-catch
 try:
     riskyOperation()
 catch e:
     println("Error: #{e}")
 end
 
+// Typed catch
+try:
+    processFile("data.txt")
+catch e: FileNotFoundException:
+    println("File not found")
+catch e: IOException:
+    println("IO error: #{e}")
+end
+
+// Throw exceptions
 throw "Error message"
+
+// Custom error types
+class ValidationError < Exception:
+    let field
+    let message
+    
+    ValidationError(fieldName, msg):
+        this.field = fieldName
+        this.message = msg
+    end
+end
+
+throw ValidationError("email", "Invalid format")
 ```
 
 ## Enums
@@ -424,7 +531,7 @@ end
 class Counter:
     var count: Int
     
-    def init():
+    Counter():
         this.count = 0
     end
     
@@ -432,7 +539,7 @@ class Counter:
         this.count = this.count + 1
     end
     
-    def getValue(): Int
+    def getValue() -> Int
         return this.count
     end
 end
@@ -466,17 +573,24 @@ comment
 
 ```
 var let const final
-def class record enum
+def class record enum interface
 if else switch case default
 for loop do end break continue
 try catch throw
 async await
 true false nil
 this super
-return
-public private static
-sealed abstract interface
+return implements
+public private protected static
+sealed abstract
 and or not in instanceof
+```
+
+## Annotations
+
+```
+@Override    // Mark method overrides
+// More annotations can be added in the future
 ```
 
 ## Best Practices
