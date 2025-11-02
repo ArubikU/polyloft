@@ -20,12 +20,6 @@ import (
 // Package engine hosts evaluation for Polyloft.
 // Options control execution behavior (flags, limits, debug hooks, etc.).
 
-// rangeMarker is an internal type to mark range expressions in index context
-type rangeMarker struct {
-	start int
-	end   int
-}
-
 func isPowerOfTwo(n int) bool {
 	if n <= 0 {
 		return false
@@ -1048,7 +1042,7 @@ func installBuiltins(env *common.Env, opts Options) {
 			endVal, ok := utils.AsInt(args[0])
 			if !ok {
 				return nil, ThrowTypeError((*Env)(e), "int", args[0])
-			}	
+			}
 			start = 0
 			end = endVal
 			step = 1
@@ -1085,7 +1079,6 @@ func installBuiltins(env *common.Env, opts Options) {
 		}
 		return CreateRangeInstance((*Env)(e), start, end, step)
 	}))
-
 
 	// Install Net module
 	InstallNetModule(env, opts)
