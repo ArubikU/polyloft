@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"io"
+	"math/bits"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,6 +24,13 @@ import (
 type rangeMarker struct {
 	start int
 	end   int
+}
+
+func isPowerOfTwo(n int) bool {
+	if n <= 0 {
+		return false
+	}
+	return (n & (n - 1)) == 0
 }
 
 // bindParametersWithVariadic binds function parameters to arguments, handling variadic parameters
@@ -340,183 +348,146 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 			return nil, false, err
 		}
 
-		// Determine if we're using destructuring (multiple iteration variables)
+		instance, ok := it.(*ClassInstance)
+		if !ok {
+			return nil, false, ThrowTypeError(env, "iterable", it)
+		}
+
+		iterableInterfaceDef := common.BuiltinInterfaceIterable.GetInterfaceDefinition(env)
+		if iterableInterfaceDef == nil {
+			return nil, false, fmt.Errorf("Iterable interface not found")
+		}
+
+		if !instance.ParentClass.ImplementsInterface(iterableInterfaceDef) {
+			return nil, false, fmt.Errorf("object of type %s does not implement Iterable", instance.ClassName)
+		}
+
+		// Pre-resolve __length() and __get()
+		__lengthFunc, ok := common.ExtractFunc(instance.Methods["__length"])
+		if !ok {
+			return nil, false, fmt.Errorf("Iterable missing valid __length()")
+		}
+		__getFunc, ok := common.ExtractFunc(instance.Methods["__get"])
+		if !ok {
+			return nil, false, fmt.Errorf("Iterable missing valid __get()")
+		}
+
+		lengthVal, err := __lengthFunc(env, nil)
+		if err != nil {
+			return nil, false, err
+		}
+		length, ok := utils.AsInt(lengthVal)
+		if !ok {
+			return nil, false, fmt.Errorf("__length() must return integer")
+		}
+
 		useDestructuring := len(s.Names) > 1
-		// Check if the object implements Iterable interface
-		if instance, ok := it.(*ClassInstance); ok {
-			// Check if class implements Iterable
-			iterableInterfaceDef := common.BuiltinInterfaceIterable.GetInterfaceDefinition(env)
-			if iterableInterfaceDef == nil {
-				return nil, false, fmt.Errorf("Iterable interface not found")
-			}
 
-			// Check if instance implements Iterable interface
-			implementsIterable := instance.ParentClass.ImplementsInterface(iterableInterfaceDef)
-
-			if !implementsIterable {
-				return nil, false, fmt.Errorf("object of type %s does not implement Iterable interface", instance.ClassName)
-			}
-			// New methods of iterable are __length and __get(index)
-			__lengthMethod, ok := instance.Methods["__length"]
-			if !ok {
-				return nil, false, fmt.Errorf("Iterable object missing __length() method")
-			}
-			__lengthFunc, ok := common.ExtractFunc(__lengthMethod)
-			if !ok {
-				return nil, false, fmt.Errorf("__length is not a function")
-			}
-			__lengthResult, err := __lengthFunc(env, []any{})
+		for idx := 0; idx < length; idx++ {
+			el, err := __getFunc(env, []any{idx})
 			if err != nil {
 				return nil, false, err
 			}
-			length, ok := utils.AsInt(__lengthResult)
-			if !ok {
-				return nil, false, fmt.Errorf("__length() must return an integer")
-			}
-			__getMethod, ok := instance.Methods["__get"]
-			if !ok {
-				return nil, false, fmt.Errorf("Iterable object missing __get() method")
-			}
-			__getFunc, ok := common.ExtractFunc(__getMethod)
-			if !ok {
-				return nil, false, fmt.Errorf("__get is not a function")
-			}
-			// Iterate from 0 to length-1
-			for idx := 0; idx < length; idx++ {
-				// Call __get(index) method
-				el, err := __getFunc(env, []any{idx})
-				if err != nil {
-					return nil, false, err
-				}
 
-				// Handle destructuring using Unstructured interface if needed
-				if useDestructuring {
-					// Check if element implements Unstructured interface
-					if elInstance, ok := el.(*ClassInstance); ok {
-						unstructuredInterfaceDef := common.BuiltinInterfaceUnstructured.GetInterfaceDefinition(env)
-						implementsUnstructured := false
-						if unstructuredInterfaceDef != nil && elInstance.ParentClass != nil {
-							for _, interfaceDef := range elInstance.ParentClass.Implements {
-								if interfaceDef == unstructuredInterfaceDef {
-									implementsUnstructured = true
-									break
-								}
-							}
+			if useDestructuring {
+				switch elVal := el.(type) {
+				case *ClassInstance:
+					unstructuredInterfaceDef := common.BuiltinInterfaceUnstructured.GetInterfaceDefinition(env)
+					isUnstructured := elVal.ParentClass != nil &&
+						elVal.ParentClass.ImplementsInterface(unstructuredInterfaceDef)
+
+					if isUnstructured {
+						// Pre-fetch methods once
+						piecesFunc, _ := common.ExtractFunc(elVal.Methods["__pieces"])
+						getPieceFunc, _ := common.ExtractFunc(elVal.Methods["__get_piece"])
+
+						numPiecesVal, err := piecesFunc(env, nil)
+						if err != nil {
+							return nil, false, err
+						}
+						numPieces, ok := utils.AsInt(numPiecesVal)
+						if !ok {
+							return nil, false, fmt.Errorf("pieces() must return integer")
 						}
 
-						if implementsUnstructured {
-							// Element implements Unstructured, use pieces() and getPiece()
-							piecesMethod, ok := elInstance.Methods["__pieces"]
-							if !ok {
-								return nil, false, fmt.Errorf("Unstructured object missing pieces() method")
-							}
-							piecesFunc, ok := common.ExtractFunc(piecesMethod)
-							if !ok {
-								return nil, false, fmt.Errorf("pieces is not a function")
-							}
-							piecesResult, err := piecesFunc(env, []any{})
+						if len(s.Names) != numPieces {
+							return nil, false, fmt.Errorf("destructuring mismatch: expected %d vars, got %d", len(s.Names), numPieces)
+						}
+
+						for i, name := range s.Names {
+							piece, err := getPieceFunc(env, []any{i})
 							if err != nil {
 								return nil, false, err
 							}
-							numPieces, ok := utils.AsInt(piecesResult)
-							if !ok {
-								return nil, false, fmt.Errorf("pieces() must return an integer")
-							}
-
-							// Check if number of variables matches number of pieces
-							if len(s.Names) != numPieces {
-								return nil, false, fmt.Errorf("destructuring mismatch: expected %d variables, got %d pieces", len(s.Names), numPieces)
-							}
-
-							// Get each piece using getPiece(index)
-							getPieceMethod, ok := elInstance.Methods["__get_piece"]
-							if !ok {
-								return nil, false, fmt.Errorf("Unstructured object missing getPiece() method")
-							}
-							getPieceFunc, ok := common.ExtractFunc(getPieceMethod)
-							if !ok {
-								return nil, false, fmt.Errorf("getPiece is not a function")
-							}
-							for i, name := range s.Names {
-								piece, err := getPieceFunc(env, []any{i})
-								if err != nil {
-									return nil, false, err
-								}
-								env.Set(name, piece)
-							}
-						} else {
-							// Element doesn't implement Unstructured, set first var to element, rest to nil
-							for i, name := range s.Names {
-								if i == 0 {
-									env.Set(name, el)
-								} else {
-									env.Set(name, nil)
-								}
-							}
+							env.Set(name, piece)
 						}
-					} else {
-						// Element is not a ClassInstance - check if it's an array for destructuring
-						if elArray, ok := el.([]any); ok {
-							// Destructure the array into variables
-							for i, name := range s.Names {
-								if i < len(elArray) {
-									env.Set(name, elArray[i])
-								} else {
-									env.Set(name, nil)
-								}
-							}
+						break
+					}
+
+					// Fallback: no Unstructured interface
+					for i, name := range s.Names {
+						if i == 0 {
+							env.Set(name, elVal)
 						} else {
-							// Not an array, set first var to element, rest to nil
-							for i, name := range s.Names {
-								if i == 0 {
-									env.Set(name, el)
-								} else {
-									env.Set(name, nil)
-								}
-							}
+							env.Set(name, nil)
 						}
 					}
-				} else {
-					// Single variable: set it to the element
-					varName := s.Name
-					if len(s.Names) > 0 {
-						varName = s.Names[0]
-					}
-					env.Set(varName, el)
-				}
 
-				// Evaluate where clause if present
-				if s.Where != nil {
-					whereResult, err := evalExpr(env, s.Where)
-					if err != nil {
-						return nil, false, err
+				case []any:
+					for i, name := range s.Names {
+						if i < len(elVal) {
+							env.Set(name, elVal[i])
+						} else {
+							env.Set(name, nil)
+						}
 					}
-					// Skip this iteration if where clause is false
-					if !utils.AsBool(whereResult) {
-						continue
+
+				default:
+					// Fallback if not destructurable
+					for i, name := range s.Names {
+						if i == 0 {
+							env.Set(name, elVal)
+						} else {
+							env.Set(name, nil)
+						}
 					}
 				}
+			} else {
+				// No destructuring
+				varName := s.Name
+				if len(s.Names) > 0 {
+					varName = s.Names[0]
+				}
+				env.Set(varName, el)
+			}
 
-				// Execute loop body
-				brk, cont, ret, val, err := runBlock(env, s.Body)
+			// Optional where clause
+			if s.Where != nil {
+				whereResult, err := evalExpr(env, s.Where)
 				if err != nil {
 					return nil, false, err
 				}
-				if ret {
-					return val, true, nil
-				}
-				if brk {
-					break
-				}
-				if cont {
+				if !utils.AsBool(whereResult) {
 					continue
 				}
 			}
-		} else {
-			// Not a ClassInstance - can't be iterable
-			return nil, false, ThrowTypeError(env, "iterable", it)
+
+			brk, cont, ret, val, err := runBlock(env, s.Body)
+			if err != nil {
+				return nil, false, err
+			}
+			if ret {
+				return val, true, nil
+			}
+			if brk {
+				break
+			}
+			if cont {
+				continue
+			}
 		}
 		return nil, false, nil
+
 	case *ast.LoopStmt:
 		// Support both infinite loop and conditional loop
 		// loop ... end          -> infinite loop
@@ -1563,6 +1534,14 @@ func runBlock(env *common.Env, body []ast.Stmt) (brk, cont, ret bool, val any, e
 	return false, false, false, nil, nil
 }
 
+// createNumResult creates an Int or Float instance based on the value
+func createNumResult(env *common.Env, f float64) (any, error) {
+	if utils.CanBeInt(f) {
+		return CreateIntInstance(env, int(f))
+	}
+	return CreateFloatInstance(env, f)
+}
+
 func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 	switch x := e.(type) {
 	case *ast.Ident:
@@ -1971,63 +1950,30 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		// Fast path for primitive integer operations (before expensive checks)
-		if aInt, aOk := a.(int); aOk {
-			if bInt, bOk := b.(int); bOk {
-				switch x.Op {
-				case ast.OpPlus:
-					return aInt + bInt, nil
-				case ast.OpMinus:
-					return aInt - bInt, nil
-				case ast.OpMul:
-					return aInt * bInt, nil
-				case ast.OpDiv:
-					if bInt == 0 {
-						return nil, ThrowRuntimeError(env, "division by zero")
-					}
-					return aInt / bInt, nil
-				case ast.OpMod:
-					if bInt == 0 {
-						return nil, ThrowRuntimeError(env, "division by zero")
-					}
-					return aInt % bInt, nil
-				case ast.OpEq:
-					return aInt == bInt, nil
-				case ast.OpNeq:
-					return aInt != bInt, nil
-				case ast.OpLt:
-					return aInt < bInt, nil
-				case ast.OpLte:
-					return aInt <= bInt, nil
-				case ast.OpGt:
-					return aInt > bInt, nil
-				case ast.OpGte:
-					return aInt >= bInt, nil
-				}
-			}
-		}
-
 		switch x.Op {
 		case ast.OpPlus:
-			// Check for operator overloading first
+			// Fast path: operator overloading
 			if result, handled, err := tryOperatorOverload(env, "+", "add", a, b); handled {
 				return result, err
 			}
-			// strings (check both primitive and String class instances)
+
+			// String concatenation check (early exit)
 			aStr := extractPrimitiveValue(a)
 			if sa, ok := aStr.(string); ok {
 				return sa + utils.ToString(b), nil
 			}
-			// numbers
-			// Check if operands are ClassInstances to determine if any is Float
+
+			// Numeric addition - quick type check
 			aClass, aIsClass := a.(*ClassInstance)
 			bClass, bIsClass := b.(*ClassInstance)
 
 			if aIsClass && bIsClass {
 				floatType := common.BuiltinTypeFloat.GetClassDefinition(env)
-				// If any operand is Float, return Float
-				if aClass.ParentClass.IsSubclassOf(floatType) || bClass.ParentClass.IsSubclassOf(floatType) {
+				aIsFloat := aClass.ParentClass.IsSubclassOf(floatType)
+				bIsFloat := bClass.ParentClass.IsSubclassOf(floatType)
+
+				// Any float -> return float
+				if aIsFloat || bIsFloat {
 					fa, oka := utils.AsFloat(a)
 					fb, okb := utils.AsFloat(b)
 					if !oka || !okb {
@@ -2035,7 +1981,8 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 					}
 					return CreateFloatInstance(env, fa+fb)
 				}
-				// Both are Int, return Int
+
+				// Both ints -> return int
 				ia, oka := utils.AsInt(a)
 				ib, okb := utils.AsInt(b)
 				if !oka || !okb {
@@ -2044,7 +1991,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				return CreateIntInstance(env, ia+ib)
 			}
 
-			// Fallback to float for non-ClassInstance operands
+			// Fallback for non-ClassInstance operands
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
@@ -2052,18 +1999,22 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			}
 			return CreateFloatInstance(env, fa+fb)
 		case ast.OpMinus:
-			// Check for operator overloading first
+			// Fast path: operator overloading
 			if result, handled, err := tryOperatorOverload(env, "-", "subtract", a, b); handled {
 				return result, err
 			}
-			// Check if operands are ClassInstances to determine if any is Float
+
+			// Quick type check
 			aClass, aIsClass := a.(*ClassInstance)
 			bClass, bIsClass := b.(*ClassInstance)
 
 			if aIsClass && bIsClass {
 				floatType := common.BuiltinTypeFloat.GetClassDefinition(env)
-				// If any operand is Float, return Float
-				if aClass.ParentClass.IsSubclassOf(floatType) || bClass.ParentClass.IsSubclassOf(floatType) {
+				aIsFloat := aClass.ParentClass.IsSubclassOf(floatType)
+				bIsFloat := bClass.ParentClass.IsSubclassOf(floatType)
+
+				// Any float -> return float
+				if aIsFloat || bIsFloat {
 					fa, oka := utils.AsFloat(a)
 					fb, okb := utils.AsFloat(b)
 					if !oka || !okb {
@@ -2071,7 +2022,8 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 					}
 					return CreateFloatInstance(env, fa-fb)
 				}
-				// Both are Int, return Int
+
+				// Both ints -> return int
 				ia, oka := utils.AsInt(a)
 				ib, okb := utils.AsInt(b)
 				if !oka || !okb {
@@ -2080,7 +2032,7 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				return CreateIntInstance(env, ia-ib)
 			}
 
-			// Fallback to float for non-ClassInstance operands
+			// Fallback for non-ClassInstance operands
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
@@ -2088,40 +2040,51 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			}
 			return CreateFloatInstance(env, fa-fb)
 		case ast.OpMul:
-			// Check for operator overloading first
+			// Fast path: operator overloading
 			if result, handled, err := tryOperatorOverload(env, "*", "multiply", a, b); handled {
 				return result, err
 			}
 
-			//a and b must be *ClassInstance
+			// Type check - both must be ClassInstance
 			aClass, ok := a.(*ClassInstance)
 			bClass, ok2 := b.(*ClassInstance)
 			if !ok || !ok2 {
 				return nil, typeError("ClassInstance", a, b)
 			}
 
+			// Cache type definitions
 			floatType := common.BuiltinTypeFloat.GetClassDefinition(env)
 			stringType := common.BuiltinTypeString.GetClassDefinition(env)
 			intType := common.BuiltinTypeInt.GetClassDefinition(env)
 
-			if aClass.ParentClass.IsSubclassOf(stringType) && bClass.ParentClass.IsSubclassOf(intType) {
-				count, ok := utils.AsInt(b)
-				if !ok {
-					return nil, typeError("int", b)
+			// Early type detection
+			aIsString := aClass.ParentClass.IsSubclassOf(stringType)
+			bIsString := bClass.ParentClass.IsSubclassOf(stringType)
+			aIsInt := aClass.ParentClass.IsSubclassOf(intType)
+			bIsInt := bClass.ParentClass.IsSubclassOf(intType)
+			aIsFloat := aClass.ParentClass.IsSubclassOf(floatType)
+			bIsFloat := bClass.ParentClass.IsSubclassOf(floatType)
+
+			// String repetition: string * int or int * string
+			if (aIsString && bIsInt) || (bIsString && aIsInt) {
+				var str string
+				var count int
+				var okCount bool
+				if aIsString {
+					str = utils.ToString(a)
+					count, okCount = utils.AsInt(b)
+				} else {
+					str = utils.ToString(b)
+					count, okCount = utils.AsInt(a)
 				}
-				originalStr := utils.ToString(a)
-				return CreateStringInstance(env, strings.Repeat(originalStr, count))
-			}
-			if bClass.ParentClass.IsSubclassOf(stringType) && aClass.ParentClass.IsSubclassOf(intType) {
-				count, ok := utils.AsInt(a)
-				if !ok {
-					return nil, typeError("int", a)
+				if !okCount {
+					return nil, typeError("int", "count")
 				}
-				originalStr := utils.ToString(b)
-				return CreateStringInstance(env, strings.Repeat(originalStr, count))
+				return CreateStringInstance(env, strings.Repeat(str, count))
 			}
-			//check if any of the 2 are float
-			if bClass.ParentClass.IsSubclassOf(floatType) || aClass.ParentClass.IsSubclassOf(floatType) {
+
+			// Float multiplication: any float -> return float
+			if aIsFloat || bIsFloat {
 				fa, oka := utils.AsFloat(a)
 				fb, okb := utils.AsFloat(b)
 				if !oka || !okb {
@@ -2130,39 +2093,73 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				return CreateFloatInstance(env, fa*fb)
 			}
 
+			// Integer multiplication with optimizations
 			ia, oka := utils.AsInt(a)
 			ib, okb := utils.AsInt(b)
 			if !oka || !okb {
 				return nil, typeError("int", a, b)
 			}
+
+			// Fast paths for special cases
+			if ia == 0 || ib == 0 {
+				return CreateIntInstance(env, 0)
+			}
+			if ia == 1 {
+				return CreateIntInstance(env, ib)
+			}
+			if ib == 1 {
+				return CreateIntInstance(env, ia)
+			}
+			// Fast negation: x * -1 = -x
+			if ia == -1 {
+				return CreateIntInstance(env, -ib)
+			}
+			if ib == -1 {
+				return CreateIntInstance(env, -ia)
+			}
+
+			// Bitshift optimization for power of 2 (only for positive numbers)
+			if ib > 0 && isPowerOfTwo(ib) {
+				return CreateIntInstance(env, ia<<uint(bits.TrailingZeros(uint(ib))))
+			}
+			if ia > 0 && isPowerOfTwo(ia) {
+				return CreateIntInstance(env, ib<<uint(bits.TrailingZeros(uint(ia))))
+			}
+
 			return CreateIntInstance(env, ia*ib)
 
 		case ast.OpDiv:
-			// Check for operator overloading first
+			// Fast path: operator overloading
 			if result, handled, err := tryOperatorOverload(env, "/", "divide", a, b); handled {
 				return result, err
 			}
-			// Check if operands are ClassInstances to determine if any is Float
+
+			// Quick type check
 			aClass, aIsClass := a.(*ClassInstance)
 			bClass, bIsClass := b.(*ClassInstance)
 
+			// Case 1: both are class instances
 			if aIsClass && bIsClass {
 				floatType := common.BuiltinTypeFloat.GetClassDefinition(env)
-				// If any operand is Float, return Float
-				if aClass.ParentClass.IsSubclassOf(floatType) || bClass.ParentClass.IsSubclassOf(floatType) {
+
+				// Detect float type early
+				aIsFloat := aClass.ParentClass.IsSubclassOf(floatType)
+				bIsFloat := bClass.ParentClass.IsSubclassOf(floatType)
+
+				// Choose float conversion if any float
+				if aIsFloat || bIsFloat {
 					fa, oka := utils.AsFloat(a)
 					fb, okb := utils.AsFloat(b)
 					if !oka || !okb {
 						return nil, typeError("number", a, b)
 					}
-					result := fa / fb
-					// If result is a whole number, return Int
-					if utils.CanBeInt(result) {
-						return CreateIntInstance(env, int(result))
+					if fb == 0 {
+						return nil, ThrowRuntimeError(env, "division by zero")
 					}
-					return CreateFloatInstance(env, result)
+					return createNumResult(env, fa/fb)
 				}
-				// Both are Int, perform division
+
+				// Both are ints
 				ia, oka := utils.AsInt(a)
 				ib, okb := utils.AsInt(b)
 				if !oka || !okb {
@@ -2171,31 +2168,42 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 				if ib == 0 {
 					return nil, ThrowRuntimeError(env, "division by zero")
 				}
-				// Check if division results in a whole number
-				result := float64(ia) / float64(ib)
-				if utils.CanBeInt(result) {
-					return CreateIntInstance(env, int(result))
+				// Bitshift optimization for division by power of 2
+				if ib > 0 && isPowerOfTwo(ib) && ia >= 0 {
+					result := ia >> uint(bits.TrailingZeros(uint(ib)))
+					return CreateIntInstance(env, result)
 				}
-				return CreateFloatInstance(env, result)
+				return createNumResult(env, float64(ia)/float64(ib))
 			}
 
-			// Fallback to float for non-ClassInstance operands
+			// Case 2: fallback to numeric division
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
 				return nil, typeError("number", a, b)
 			}
-			result := fa / fb
-			// If result is a whole number, return Int
-			if utils.CanBeInt(result) {
-				return CreateIntInstance(env, int(result))
+			if fb == 0 {
+				return nil, ThrowRuntimeError(env, "division by zero")
 			}
-			return CreateFloatInstance(env, result)
+			return createNumResult(env, fa/fb)
 		case ast.OpMod:
+			// Fast path: operator overloading
+			if result, handled, err := tryOperatorOverload(env, "%", "modulo", a, b); handled {
+				return result, err
+			}
+
+			// Only works with integers
 			ia, oka := utils.AsInt(a)
 			ib, okb := utils.AsInt(b)
 			if !oka || !okb {
 				return nil, typeError("int", a, b)
+			}
+			if ib == 0 {
+				return nil, ThrowRuntimeError(env, "division by zero")
+			}
+			// Bitwise AND optimization: x % (2^n) = x & (2^n - 1) for positive x
+			if ib > 0 && isPowerOfTwo(ib) && ia >= 0 {
+				return CreateIntInstance(env, ia&(ib-1))
 			}
 			return CreateIntInstance(env, ia%ib)
 		case ast.OpEq:
@@ -2212,6 +2220,13 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			}
 			return CreateBoolInstance(env, !equal(a, b))
 		case ast.OpLt:
+			// Fast path: integer comparison (no float conversion needed)
+			if aInt, aOk := utils.AsInt(a); aOk {
+				if bInt, bOk := utils.AsInt(b); bOk {
+					return CreateBoolInstance(env, aInt < bInt)
+				}
+			}
+			// Fallback: float comparison
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
@@ -2219,6 +2234,13 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			}
 			return CreateBoolInstance(env, fa < fb)
 		case ast.OpLte:
+			// Fast path: integer comparison
+			if aInt, aOk := utils.AsInt(a); aOk {
+				if bInt, bOk := utils.AsInt(b); bOk {
+					return CreateBoolInstance(env, aInt <= bInt)
+				}
+			}
+			// Fallback: float comparison
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
@@ -2226,6 +2248,13 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			}
 			return CreateBoolInstance(env, fa <= fb)
 		case ast.OpGt:
+			// Fast path: integer comparison
+			if aInt, aOk := utils.AsInt(a); aOk {
+				if bInt, bOk := utils.AsInt(b); bOk {
+					return CreateBoolInstance(env, aInt > bInt)
+				}
+			}
+			// Fallback: float comparison
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
@@ -2233,6 +2262,13 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			}
 			return CreateBoolInstance(env, fa > fb)
 		case ast.OpGte:
+			// Fast path: integer comparison
+			if aInt, aOk := utils.AsInt(a); aOk {
+				if bInt, bOk := utils.AsInt(b); bOk {
+					return CreateBoolInstance(env, aInt >= bInt)
+				}
+			}
+			// Fallback: float comparison
 			fa, oka := utils.AsFloat(a)
 			fb, okb := utils.AsFloat(b)
 			if !oka || !okb {
@@ -2240,15 +2276,23 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 			}
 			return CreateBoolInstance(env, fa >= fb)
 		case ast.OpAnd:
-			if !utils.AsBool(a) {
+			// Short-circuit: don't evaluate b if a is false
+			// This is critical for performance and correctness
+			aVal := utils.AsBool(a)
+			if !aVal {
 				return CreateBoolInstance(env, false)
 			}
-			return CreateBoolInstance(env, utils.AsBool(b))
+			bVal := utils.AsBool(b)
+			return CreateBoolInstance(env, bVal)
 		case ast.OpOr:
-			if utils.AsBool(a) {
+			// Short-circuit: don't evaluate b if a is true
+			// This is critical for performance and correctness
+			aVal := utils.AsBool(a)
+			if aVal {
 				return CreateBoolInstance(env, true)
 			}
-			return CreateBoolInstance(env, utils.AsBool(b))
+			bVal := utils.AsBool(b)
+			return CreateBoolInstance(env, bVal)
 		default:
 			return nil, ThrowNotImplementedError(env, fmt.Sprintf("binary operator %d", x.Op))
 		}
@@ -2450,32 +2494,75 @@ func ThrowAttributeErrorWithHint(env *Env, attrName string, typeName string, ava
 	return exc
 }
 func equal(a, b any) bool {
+	// Fast path: pointer equality (same object reference)
+	if a == b {
+		return true
+	}
+
 	// Extract primitive values from class instances
 	aVal := extractPrimitiveValue(a)
 	bVal := extractPrimitiveValue(b)
 
+	// Fast path: after extraction, check pointer equality again
+	if aVal == bVal {
+		return true
+	}
+
+	// Type-specific comparisons with optimized paths
 	switch aa := aVal.(type) {
 	case nil:
 		return bVal == nil
-	case string:
-		bb, ok := bVal.(string)
-		return ok && aa == bb
 	case bool:
-		bb, ok := bVal.(bool)
-		return ok && aa == bb
-	case float32:
-		bb, ok := utils.AsFloat(bVal)
-		return ok && float64(aa) == bb
-	case float64:
-		bb, ok := utils.AsFloat(bVal)
-		return ok && aa == bb
-	case int64:
-		bb, ok := utils.AsFloat(bVal)
-		return ok && float64(aa) == bb
+		// Fast path: direct bool comparison
+		if bb, ok := bVal.(bool); ok {
+			return aa == bb
+		}
+		return false
 	case int:
-		bb, ok := utils.AsFloat(bVal)
-		return ok && float64(aa) == bb
+		// Fast path: int-to-int comparison (most common case)
+		if bb, ok := bVal.(int); ok {
+			return aa == bb
+		}
+		// Fallback: convert to float for comparison with other numeric types
+		if bb, ok := utils.AsFloat(bVal); ok {
+			return float64(aa) == bb
+		}
+		return false
+	case int64:
+		// Fast path: int64-to-int64
+		if bb, ok := bVal.(int64); ok {
+			return aa == bb
+		}
+		// Fallback: float comparison
+		if bb, ok := utils.AsFloat(bVal); ok {
+			return float64(aa) == bb
+		}
+		return false
+	case float64:
+		// Fast path: float64-to-float64
+		if bb, ok := bVal.(float64); ok {
+			return aa == bb
+		}
+		// Fallback: general numeric comparison
+		if bb, ok := utils.AsFloat(bVal); ok {
+			return aa == bb
+		}
+		return false
+	case float32:
+		// Convert to float64 for comparison
+		if bb, ok := utils.AsFloat(bVal); ok {
+			return float64(aa) == bb
+		}
+		return false
+	case string:
+		// Fast path: string comparison
+		if bb, ok := bVal.(string); ok {
+			// Note: Go's string comparison is already optimized (length check + memcmp)
+			return aa == bb
+		}
+		return false
 	default:
+		// Fallback: use Go's default equality
 		return aVal == bVal
 	}
 }
