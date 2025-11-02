@@ -577,7 +577,7 @@ func InstallArrayBuiltin(env *Env) error {
 		for i, item := range items {
 			parts[i] = utils.ToString(item)
 		}
-		return CreateStringInstance(callEnv, "["+strings.Join(parts, ", ")+"]")
+		return CreateStringInstance((*Env)(callEnv), "["+strings.Join(parts, ", ")+"]")
 	}, []string{})
 
 	// serialize() -> String
@@ -629,7 +629,7 @@ func InstallArrayBuiltin(env *Env) error {
 	// Static methods
 	arrayClass.AddStaticMethod("deserialize", arrayType, []ast.Parameter{
 		{Name: "data", Type: stringType},
-	}, common.Func(func(env *common.Env, args []any) (any, error) {
+	}, common.Func(func(callEnv *common.Env, args []any) (any, error) {
 		jsonStr := utils.ToString(args[0])
 
 		var data []any
@@ -637,7 +637,7 @@ func InstallArrayBuiltin(env *Env) error {
 			return nil, err
 		}
 
-		return CreateArrayInstance(env, data)
+		return CreateArrayInstance((*Env)(callEnv), data)
 	}))
 
 	// Build the class

@@ -813,7 +813,7 @@ func (p *Parser) parseBlockOrInline(colonLine int) ([]ast.Stmt, bool, error) {
 		}
 		return []ast.Stmt{st}, true, nil
 	}
-	
+
 	// Multi-line block: parse until terminator
 	body, err := p.parseBlock()
 	if err != nil {
@@ -832,17 +832,17 @@ func (p *Parser) parseIf() (ast.Stmt, error) {
 	if !p.accept(lexer.COLON) {
 		return nil, p.errf("expected ':' after if condition")
 	}
-	
+
 	// Track colon position for inline detection
 	colonLine := p.items[p.pos-1].Start.Line
-	
+
 	thenB, isInline, err := p.parseBlockOrInline(colonLine)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	clauses := []ast.IfClause{{Cond: cond, Body: thenB}}
-	
+
 	// Parse elif clauses
 	for p.curr().Tok == lexer.KW_ELIF {
 		p.next()
@@ -853,21 +853,21 @@ func (p *Parser) parseIf() (ast.Stmt, error) {
 		if !p.accept(lexer.COLON) {
 			return nil, p.errf("expected ':' after elif condition")
 		}
-		
+
 		elifColonLine := p.items[p.pos-1].Start.Line
 		b, elifInline, err := p.parseBlockOrInline(elifColonLine)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// If this elif is inline, the whole if-elif-else chain must be inline
 		if elifInline {
 			isInline = true
 		}
-		
+
 		clauses = append(clauses, ast.IfClause{Cond: c, Body: b})
 	}
-	
+
 	// Parse else clause
 	var elseB []ast.Stmt
 	if p.curr().Tok == lexer.KW_ELSE {
@@ -875,28 +875,28 @@ func (p *Parser) parseIf() (ast.Stmt, error) {
 		if !p.accept(lexer.COLON) {
 			return nil, p.errf("expected ':' after else")
 		}
-		
+
 		elseColonLine := p.items[p.pos-1].Start.Line
 		b, elseInline, err := p.parseBlockOrInline(elseColonLine)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// If this else is inline, the whole if-elif-else chain must be inline
 		if elseInline {
 			isInline = true
 		}
-		
+
 		elseB = b
 	}
-	
+
 	// Only require 'end' if not inline
 	if !isInline {
 		if !p.accept(lexer.KW_END) {
 			return nil, p.errf("expected 'end' to close if")
 		}
 	}
-	
+
 	return &ast.IfStmt{Clauses: clauses, Else: elseB}, nil
 }
 
@@ -943,15 +943,15 @@ func (p *Parser) parseForIn() (ast.Stmt, error) {
 	if !p.accept(lexer.COLON) {
 		return nil, p.errf("expected ':' after for-in header")
 	}
-	
+
 	// Track colon position for inline detection
 	colonLine := p.items[p.pos-1].Start.Line
-	
+
 	body, isInline, err := p.parseBlockOrInline(colonLine)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Only require 'end' if not inline
 	if !isInline {
 		if !p.accept(lexer.KW_END) {
@@ -983,7 +983,7 @@ func (p *Parser) parseLoop() (ast.Stmt, error) {
 	var condition ast.Expr
 	var colonLine int
 	hasColon := false
-	
+
 	if p.curr().Tok != lexer.COLON {
 		// Try to parse a condition - if this fails or is not present, it's an infinite loop
 		// We need to detect if we're at a statement start (backward compatibility)
@@ -1020,7 +1020,7 @@ func (p *Parser) parseLoop() (ast.Stmt, error) {
 	var body []ast.Stmt
 	var isInline bool
 	var err error
-	
+
 	if hasColon {
 		body, isInline, err = p.parseBlockOrInline(colonLine)
 		if err != nil {
@@ -1034,14 +1034,14 @@ func (p *Parser) parseLoop() (ast.Stmt, error) {
 		}
 		isInline = false
 	}
-	
+
 	// Only require 'end' if not inline
 	if !isInline {
 		if !p.accept(lexer.KW_END) {
 			return nil, p.errf("expected 'end' to close loop")
 		}
 	}
-	
+
 	return &ast.LoopStmt{Condition: condition, Body: body}, nil
 }
 
@@ -2219,6 +2219,7 @@ func (p *Parser) parseExpr(minPrec int) (ast.Expr, error) {
 				if err != nil {
 					return nil, err
 				}
+
 				elems = append(elems, e)
 				if p.accept(lexer.COMMA) {
 					continue
@@ -3450,7 +3451,7 @@ func (p *Parser) parseSwitch() (ast.Stmt, error) {
 				return nil, p.errf("expected ':' after case value(s)")
 			}
 			p.next() // consume ':'
-			
+
 			// Track colon line for inline detection
 			colonLine := p.items[p.pos-1].Start.Line
 
@@ -3486,7 +3487,7 @@ func (p *Parser) parseSwitch() (ast.Stmt, error) {
 				return nil, p.errf("expected ':' after default")
 			}
 			p.next() // consume ':'
-			
+
 			// Track colon line for inline detection
 			colonLine := p.items[p.pos-1].Start.Line
 

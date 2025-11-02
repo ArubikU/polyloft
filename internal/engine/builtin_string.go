@@ -16,8 +16,7 @@ func InstallStringBuiltin(env *Env) error {
 	stringClass := NewClassBuilder("String")
 
 	// Add field with native string type
-	nativeStringType := &ast.Type{Name: "string", IsBuiltin: true}
-	stringClass.AddField("_value", nativeStringType, []string{"private"})
+	stringClass.AddField("_value", ast.ANY, []string{"private"})
 
 	// Step 2: Now get type references for method signatures
 	intType := common.BuiltinTypeInt.GetTypeDefinition(env)

@@ -365,7 +365,7 @@ type Env struct {
 	PositionStack    []PositionInfo      // stack of positions for better stack traces
 	ImportedClasses  map[string]string   // className -> packageName, tracks imported classes
 	ImportedPackages map[string]struct{} // packageName -> struct{}, tracks imported packages
-	
+
 	// Fast variable slots for common loop variables (0-9 represent i, j, k, etc.)
 	// Uses array access instead of map lookup for ~2-3x faster access
 	FastSlots [10]any        // Indexed slots for common variables
@@ -729,7 +729,7 @@ func (e *Env) Get(k string) (any, bool) {
 			}
 		}
 	}
-	
+
 	// Standard path: check map in environment chain
 	for cur := e; cur != nil; cur = cur.Parent {
 		if v, ok := cur.Vars[k]; ok {
@@ -745,11 +745,27 @@ func (e *Env) Get(k string) (any, bool) {
 			}
 		}
 	}
+	fmt.Printf("Variable '%s' not found in environment chain: %s\n", k, strings.Join(func() []string {
+		var names []string
+		for cur := e; cur != nil; cur = cur.Parent {
+			names = append(names, fmt.Sprintf("{Vars: %v}", cur.Vars))
+		}
+		return names
+	}(), " -> "))
 	return nil, false
 }
 
 func (e *Env) This() (any, bool) {
 	return e.Get("this")
+}
+
+// GetRoot returns the root environment (the one without a parent)
+func (e *Env) GetRoot() *Env {
+	root := e
+	for root.Parent != nil {
+		root = root.Parent
+	}
+	return root
 }
 
 // Define defines a new variable, optionally as a constant

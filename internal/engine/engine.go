@@ -1084,6 +1084,20 @@ func installBuiltins(env *common.Env, opts Options) {
 	InstallNetModule(env, opts)
 	InstallHttpModule(env, opts)
 
+	// Install Int and Float builtins as classes (so other types can reference them)
+	if err := InstallNumberBuiltin((*Env)(env)); err != nil {
+		fmt.Printf("Warning: Failed to install Number builtins: %v\n", err)
+	}
+
+	// Install Bool builtin as a class
+	if err := InstallBoolBuiltin((*Env)(env)); err != nil {
+		fmt.Printf("Warning: Failed to install Bool builtin: %v\n", err)
+	}
+
+	// Install String builtin as a class (can now reference Int for parameters)
+	if err := InstallStringBuiltin((*Env)(env)); err != nil {
+		fmt.Printf("Warning: Failed to install String builtin: %v\n", err)
+	}
 	// Install IO and Bytes builtins
 	if err := InstallBytesBuiltin(env); err != nil {
 		fmt.Printf("Warning: Failed to install Bytes builtin: %v\n", err)
@@ -1123,21 +1137,6 @@ func installBuiltins(env *common.Env, opts Options) {
 	// Install Generic builtin FIRST (wraps native Go types)
 	if err := InstallGenericBuiltin((*Env)(env)); err != nil {
 		fmt.Printf("Warning: Failed to install Generic builtin: %v\n", err)
-	}
-
-	// Install Int and Float builtins as classes (so other types can reference them)
-	if err := InstallNumberBuiltin((*Env)(env)); err != nil {
-		fmt.Printf("Warning: Failed to install Number builtins: %v\n", err)
-	}
-
-	// Install Bool builtin as a class
-	if err := InstallBoolBuiltin((*Env)(env)); err != nil {
-		fmt.Printf("Warning: Failed to install Bool builtin: %v\n", err)
-	}
-
-	// Install String builtin as a class (can now reference Int for parameters)
-	if err := InstallStringBuiltin((*Env)(env)); err != nil {
-		fmt.Printf("Warning: Failed to install String builtin: %v\n", err)
 	}
 
 	// Install unified Array builtin
@@ -1617,11 +1616,37 @@ func evalExpr(env *common.Env, e ast.Expr) (any, error) {
 	case *ast.ArrayLit:
 		arr := make([]any, 0, len(x.Elems))
 		for _, e := range x.Elems {
-			v, err := evalExpr(env, e)
-			if err != nil {
-				return nil, err
+			//check if is type ast.RangeExpr
+			if rangeExpr, ok := e.(*ast.RangeExpr); ok {
+				startVal, err := evalExpr(env, rangeExpr.Start)
+				if err != nil {
+					return nil, err
+				}
+				endVal, err := evalExpr(env, rangeExpr.End)
+				if err != nil {
+					return nil, err
+				}
+				// Create a range of numbers from start to end
+				start, ok1 := utils.AsInt(startVal)
+				end, ok2 := utils.AsInt(endVal)
+				if !ok1 || !ok2 {
+					return nil, ThrowTypeError(env, "integer", "range indices")
+				}
+				for i := start; i <= end; i++ {
+					intInstance, err := CreateIntInstance(env, i)
+					if err != nil {
+						return nil, err
+					}
+					arr = append(arr, intInstance)
+				}
+			} else {
+				v, err := evalExpr(env, e)
+				if err != nil {
+					return nil, err
+				}
+				arr = append(arr, v)
 			}
-			arr = append(arr, v)
+
 		}
 		// Create an Array instance - builtin class must be available
 		arrayInstance, err := CreateArrayInstance(env, arr)
