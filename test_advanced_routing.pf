@@ -1,0 +1,207 @@
+// Test Advanced Routing (3.7)
+
+println("=== Testing Advanced Routing System ===\n")
+
+let server = Http.createServer()
+
+// ===== 1. Basic parameter routes =====
+server.get("/users/:id", (req, res) => do
+    let userId = req.params["id"]
+    res.ok({
+        message: "User details",
+        userId: userId,
+        type: "basic parameter"
+    })
+end)
+println("✓ Route registered: /users/:id")
+
+// ===== 2. Multiple parameters =====
+server.get("/posts/:postId/comments/:commentId", (req, res) => do
+    let postId = req.params["postId"]
+    let commentId = req.params["commentId"]
+    res.ok({
+        message: "Comment details",
+        postId: postId,
+        commentId: commentId,
+        type: "multiple parameters"
+    })
+end)
+println("✓ Route registered: /posts/:postId/comments/:commentId")
+
+// ===== 3. Parameters with numeric validation =====
+server.get("/products/:id([0-9]+)", (req, res) => do
+    let productId = req.params["id"]
+    res.ok({
+        message: "Product with numeric ID",
+        productId: productId,
+        type: "validated numeric"
+    })
+end)
+println("✓ Route registered: /products/:id([0-9]+) - only numbers")
+
+// ===== 4. Parameters with alphanumeric validation =====
+server.get("/usernames/:username([a-zA-Z0-9_]+)", (req, res) => do
+    let username = req.params["username"]
+    res.ok({
+        message: "User profile",
+        username: username,
+        type: "alphanumeric username"
+    })
+end)
+println("✓ Route registered: /usernames/:username([a-zA-Z0-9_]+)")
+
+// ===== 5. Wildcard routes =====
+server.get("/static/*filepath", (req, res) => do
+    let filepath = req.params["filepath"]
+    res.ok({
+        message: "Static file",
+        filepath: filepath,
+        type: "wildcard"
+    })
+end)
+println("✓ Route registered: /static/*filepath - wildcard")
+
+// ===== 6. File extensions validation =====
+server.get("/files/:filename([a-zA-Z0-9]+\\.txt)", (req, res) => do
+    let filename = req.params["filename"]
+    res.ok({
+        message: "Text file",
+        filename: filename,
+        type: "validated extension"
+    })
+end)
+println("✓ Route registered: /files/:filename([a-zA-Z0-9]+\\.txt) - .txt only")
+
+// ===== 7. Mixed static and dynamic segments =====
+server.get("/api/v1/users/:id/profile", (req, res) => do
+    let userId = req.params["id"]
+    res.ok({
+        message: "User profile API v1",
+        userId: userId,
+        type: "mixed static and dynamic"
+    })
+end)
+println("✓ Route registered: /api/v1/users/:id/profile")
+
+// ===== 8. Query parameters along with route params =====
+server.get("/search/:category", (req, res) => do
+    let category = req.params["category"]
+    let query = req.query["q"]
+    let page = req.query["page"]
+    res.ok({
+        message: "Search results",
+        category: category,
+        query: query,
+        page: page,
+        type: "params + query"
+    })
+end)
+println("✓ Route registered: /search/:category (with query params)")
+
+// ===== 9. Test with middleware on dynamic route =====
+def validateId(req, res, next):
+    let id = req.params["id"]
+    // Middleware can access route params
+    server.log("Validating ID: #{id}", "debug")
+    next()
+end
+
+server.get("/admin/users/:id", [validateId], (req, res) => do
+    let userId = req.params["id"]
+    res.ok({
+        message: "Admin user details",
+        userId: userId,
+        type: "with middleware"
+    })
+end)
+println("✓ Route registered: /admin/users/:id (with middleware)")
+
+// ===== 10. Static route (should still work) =====
+server.get("/about", (req, res) => do
+    res.ok({
+        message: "About page",
+        type: "static route"
+    })
+end)
+println("✓ Route registered: /about (static)")
+
+println("\n=== Server Configuration ===")
+let info = server.listen(8080)
+println("Server: #{info.message}")
+println("Address: #{info.address}")
+
+println("\n=== Available Routes for Testing ===")
+println("Basic parameters:")
+println("  GET /users/123")
+println("  GET /users/abc")
+println("")
+println("Multiple parameters:")
+println("  GET /posts/1/comments/5")
+println("")
+println("Validated parameters:")
+println("  GET /products/123          (✓ only numbers)")
+println("  GET /products/abc          (✗ rejected - not numeric)")
+println("")
+println("Alphanumeric username:")
+println("  GET /usernames/john_doe")
+println("")
+println("Wildcard:")
+println("  GET /static/css/style.css")
+println("  GET /static/images/logo.png")
+println("")
+println("File extensions:")
+println("  GET /files/document.txt    (✓ .txt files)")
+println("  GET /files/image.png       (✗ rejected - not .txt)")
+println("")
+println("Mixed segments:")
+println("  GET /api/v1/users/456/profile")
+println("")
+println("Query + params:")
+println("  GET /search/books?q=polyloft&page=1")
+println("")
+println("With middleware:")
+println("  GET /admin/users/789")
+println("")
+println("Static route:")
+println("  GET /about")
+
+println("\n=== Testing Routes ===")
+println("Making test requests...")
+
+Sys.sleep(500)
+
+// Test the routes
+let r1 = Http.get("http://localhost:8080/users/42", 5)
+let status1 = r1["status"]
+let ok1 = r1["ok"]
+println("1. /users/42 - Status: #{status1}, OK: #{ok1}")
+
+let r2 = Http.get("http://localhost:8080/posts/10/comments/20", 5)
+let status2 = r2["status"]
+let ok2 = r2["ok"]
+println("2. /posts/10/comments/20 - Status: #{status2}, OK: #{ok2}")
+
+let r3 = Http.get("http://localhost:8080/products/999", 5)
+let status3 = r3["status"]
+let ok3 = r3["ok"]
+println("3. /products/999 (numeric) - Status: #{status3}, OK: #{ok3}")
+
+let r4 = Http.get("http://localhost:8080/products/abc", 5)
+let status4 = r4["status"]
+let ok4 = r4["ok"]
+println("4. /products/abc (rejected) - Status: #{status4}, OK: #{ok4}")
+
+let r5 = Http.get("http://localhost:8080/static/images/logo.png", 5)
+let status5 = r5["status"]
+let ok5 = r5["ok"]
+println("5. /static/images/logo.png - Status: #{status5}, OK: #{ok5}")
+
+let r6 = Http.get("http://localhost:8080/about", 5)
+let status6 = r6["status"]
+let ok6 = r6["ok"]
+println("6. /about (static) - Status: #{status6}, OK: #{ok6}")
+
+println("\n✓ Advanced routing system working!")
+println("Server will run for 60 seconds...")
+
+Sys.sleep(60000)

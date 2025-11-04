@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +33,7 @@ func InstallHttpModule(env *Env, opts Options) {
 		AddField("url", stringType, []string{"public"}).
 		AddField("headers", mapType, []string{"public"}).
 		AddField("query", mapType, []string{"public"}).
+		AddField("params", mapType, []string{"public"}).  // 3.7: Route parameters
 		AddField("body", ast.ANY, []string{"public"})
 
 	// Step 2: Create HttpResponse builder and get its type BEFORE building
@@ -460,6 +462,7 @@ func newHttpServer(e *common.Env, args []any) (any, error) {
 	// Initialize the router field
 	router := &httpRouter{
 		routes:             make(map[string]map[string]*routeHandler),
+		dynamicRoutes:      make(map[string][]*routeHandler),
 		mu:                 &sync.RWMutex{},
 		globalMiddlewares:  []common.Func{},
 		errorHandler:       nil,
@@ -824,11 +827,29 @@ func convertHeaders(headers http.Header) map[string]any {
 type routeHandler struct {
 	handler     common.Func
 	middlewares []common.Func
+	pattern     *routePattern // For dynamic routes
+}
+
+// routePattern represents a parsed route pattern with parameters
+type routePattern struct {
+	segments []routeSegment
+	isStatic bool
+	original string
+}
+
+// routeSegment represents a part of the route
+type routeSegment struct {
+	isParam   bool
+	isWildcard bool
+	name      string
+	value     string
+	validator *regexp.Regexp // For validation like :id([0-9]+)
 }
 
 // httpRouter manages HTTP routes
 type httpRouter struct {
-	routes            map[string]map[string]*routeHandler // method -> path -> handler
+	routes            map[string]map[string]*routeHandler // method -> path -> handler (static routes)
+	dynamicRoutes     map[string][]*routeHandler          // method -> []handler (dynamic routes)
 	mu                *sync.RWMutex
 	globalMiddlewares []common.Func
 	errorHandler      common.Func
@@ -840,25 +861,173 @@ func (r *httpRouter) addRoute(method, path string, handler common.Func, middlewa
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if r.routes[method] == nil {
-		r.routes[method] = make(map[string]*routeHandler)
-	}
-	r.routes[method][path] = &routeHandler{
+	// Parse the route pattern to check for dynamic segments
+	pattern := parseRoutePattern(path)
+	
+	rHandler := &routeHandler{
 		handler:     handler,
 		middlewares: middlewares,
+		pattern:     pattern,
 	}
+
+	if pattern.isStatic {
+		// Static route - use map for O(1) lookup
+		if r.routes[method] == nil {
+			r.routes[method] = make(map[string]*routeHandler)
+		}
+		r.routes[method][path] = rHandler
+	} else {
+		// Dynamic route - add to slice for matching
+		if r.dynamicRoutes == nil {
+			r.dynamicRoutes = make(map[string][]*routeHandler)
+		}
+		r.dynamicRoutes[method] = append(r.dynamicRoutes[method], rHandler)
+	}
+}
+
+// parseRoutePattern parses a route pattern into segments
+// Supports: /users/:id, /users/:id([0-9]+), /files/*filepath
+func parseRoutePattern(path string) *routePattern {
+	pattern := &routePattern{
+		original: path,
+		isStatic: true,
+	}
+
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+
+		segment := routeSegment{}
+
+		// Check for wildcard: *name
+		if strings.HasPrefix(part, "*") {
+			segment.isWildcard = true
+			segment.name = part[1:]
+			pattern.isStatic = false
+		} else if strings.HasPrefix(part, ":") {
+			// Parameter with optional validation: :id or :id([0-9]+)
+			segment.isParam = true
+			pattern.isStatic = false
+
+			// Check for validation pattern
+			if idx := strings.Index(part, "("); idx > 0 {
+				segment.name = part[1:idx]
+				validatorStr := part[idx+1 : len(part)-1] // Remove ( and )
+				if compiled, err := regexp.Compile("^" + validatorStr + "$"); err == nil {
+					segment.validator = compiled
+				}
+			} else {
+				segment.name = part[1:]
+			}
+		} else {
+			// Static segment
+			segment.value = part
+		}
+
+		pattern.segments = append(pattern.segments, segment)
+	}
+
+	return pattern
+}
+
+// matchRoute attempts to match a request path against a route pattern
+// Returns matched params if successful, nil otherwise
+func (rh *routeHandler) matchRoute(reqPath string) map[string]string {
+	if rh.pattern.isStatic {
+		if reqPath == rh.pattern.original {
+			return make(map[string]string)
+		}
+		return nil
+	}
+
+	params := make(map[string]string)
+	reqParts := strings.Split(strings.Trim(reqPath, "/"), "/")
+	patternSegs := rh.pattern.segments
+
+	// Handle wildcards
+	if len(patternSegs) > 0 && patternSegs[len(patternSegs)-1].isWildcard {
+		// Wildcard must match all remaining parts
+		if len(reqParts) < len(patternSegs) {
+			return nil
+		}
+		
+		// Match all segments before wildcard
+		for i := 0; i < len(patternSegs)-1; i++ {
+			if !matchSegment(patternSegs[i], reqParts[i], params) {
+				return nil
+			}
+		}
+		
+		// Wildcard captures remaining path
+		wildcardSeg := patternSegs[len(patternSegs)-1]
+		params[wildcardSeg.name] = strings.Join(reqParts[len(patternSegs)-1:], "/")
+		return params
+	}
+
+	// Regular matching - must have same number of segments
+	if len(reqParts) != len(patternSegs) {
+		return nil
+	}
+
+	for i, seg := range patternSegs {
+		if !matchSegment(seg, reqParts[i], params) {
+			return nil
+		}
+	}
+
+	return params
+}
+
+// matchSegment matches a single segment
+func matchSegment(seg routeSegment, value string, params map[string]string) bool {
+	if seg.isParam {
+		// Validate if validator exists
+		if seg.validator != nil && !seg.validator.MatchString(value) {
+			return false
+		}
+		params[seg.name] = value
+		return true
+	}
+	
+	// Static segment must match exactly
+	return seg.value == value
 }
 
 func (r *httpRouter) handleRequest(env *common.Env, w http.ResponseWriter, req *http.Request) {
 	r.mu.RLock()
-	methodRoutes := r.routes[req.Method]
+	staticRoutes := r.routes[req.Method]
+	dynamicRoutes := r.dynamicRoutes[req.Method]
 	errorHandler := r.errorHandler
 	globalMiddlewares := r.globalMiddlewares
 	r.mu.RUnlock()
 
-	// Find matching route
-	routeHandler, found := methodRoutes[req.URL.Path]
-	if !found {
+	// Try to find matching route (static first, then dynamic)
+	var routeHandler *routeHandler
+	var routeParams map[string]string
+
+	// 1. Try static route first (O(1) lookup)
+	if staticRoutes != nil {
+		if handler, found := staticRoutes[req.URL.Path]; found {
+			routeHandler = handler
+			routeParams = make(map[string]string)
+		}
+	}
+
+	// 2. Try dynamic routes if no static match
+	if routeHandler == nil && dynamicRoutes != nil {
+		for _, handler := range dynamicRoutes {
+			if params := handler.matchRoute(req.URL.Path); params != nil {
+				routeHandler = handler
+				routeParams = params
+				break
+			}
+		}
+	}
+
+	// 3. No route found
+	if routeHandler == nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"error": "Not Found"}`))
 		return
@@ -911,6 +1080,12 @@ func (r *httpRouter) handleRequest(env *common.Env, w http.ResponseWriter, req *
 			requestInstance.Fields["url"], _ = CreateStringInstance(env, req.URL.String())
 			requestInstance.Fields["headers"], _ = CreateMapInstance(env, convertHeaders(req.Header))
 			requestInstance.Fields["query"], _ = CreateMapInstance(env, queryParams)
+			// Convert routeParams (map[string]string) to map[string]any for CreateMapInstance
+			routeParamsAny := make(map[string]any)
+			for k, v := range routeParams {
+				routeParamsAny[k] = v
+			}
+			requestInstance.Fields["params"], _ = CreateMapInstance(env, routeParamsAny)
 			requestInstance.Fields["body"], _ = CreateGenericInstance(env, bodyData)
 		}
 	}
