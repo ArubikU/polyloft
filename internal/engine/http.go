@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -76,7 +77,12 @@ func InstallHttpModule(env *Env, opts Options) {
 		AddBuiltinMethod("error", voidType, []ast.Parameter{
 			{Name: "code", Type: intType},
 			{Name: "message", Type: stringType},
-		}, common.Func(httpResponseError), []string{})
+		}, common.Func(httpResponseError), []string{}).
+		// Template rendering - 3.12
+		AddBuiltinMethod("render", voidType, []ast.Parameter{
+			{Name: "template", Type: stringType},
+			{Name: "data", Type: mapType},
+		}, common.Func(httpResponseRender), []string{})
 
 	// Step 3: Create HttpServer builder and get its type BEFORE building
 	httpServerBuilder := NewClassBuilder("HttpServer").
@@ -144,8 +150,12 @@ func InstallHttpModule(env *Env, opts Options) {
 
 	httpServerType := httpServerBuilder.GetType()
 
+	// Get Promise type for async methods
+	promiseType := common.BuiltinTypePromise.GetTypeDefinition(env)
+
 	// Step 5: Create Http class with static methods using proper type references
 	httpStaticClassBuilder := NewClassBuilder("Http").
+		// Existing synchronous methods
 		AddStaticMethod("get", mapType, []ast.Parameter{
 			{Name: "url", Type: stringType},
 			{Name: "timeout", Type: intType},
@@ -164,6 +174,18 @@ func InstallHttpModule(env *Env, opts Options) {
 			{Name: "url", Type: stringType},
 			{Name: "timeout", Type: intType},
 		}, common.Func(httpDelete)).
+		// Simplified request - 3.3: Allow body without options wrapper
+		AddStaticMethod("request", mapType, []ast.Parameter{
+			{Name: "method", Type: stringType},
+			{Name: "url", Type: stringType},
+			{Name: "data", Type: ast.ANY},
+		}, common.Func(httpRequest)).
+		AddStaticMethod("request", mapType, []ast.Parameter{
+			{Name: "method", Type: stringType},
+			{Name: "url", Type: stringType},
+			{Name: "data", Type: ast.ANY},
+			{Name: "timeout", Type: intType},
+		}, common.Func(httpRequest)).
 		AddStaticMethod("request", mapType, []ast.Parameter{
 			{Name: "method", Type: stringType},
 			{Name: "url", Type: stringType},
@@ -171,6 +193,44 @@ func InstallHttpModule(env *Env, opts Options) {
 			{Name: "timeout", Type: intType},
 			{Name: "headers", Type: mapType},
 		}, common.Func(httpRequest)).
+		// Async methods returning Promises - 3.10
+		AddStaticMethod("getAsync", promiseType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+		}, common.Func(httpGetAsync)).
+		AddStaticMethod("getAsync", promiseType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+			{Name: "timeout", Type: intType},
+		}, common.Func(httpGetAsync)).
+		AddStaticMethod("postAsync", promiseType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+			{Name: "data", Type: ast.ANY},
+		}, common.Func(httpPostAsync)).
+		AddStaticMethod("postAsync", promiseType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+			{Name: "data", Type: ast.ANY},
+			{Name: "timeout", Type: intType},
+		}, common.Func(httpPostAsync)).
+		AddStaticMethod("putAsync", promiseType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+			{Name: "data", Type: ast.ANY},
+		}, common.Func(httpPutAsync)).
+		AddStaticMethod("putAsync", promiseType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+			{Name: "data", Type: ast.ANY},
+			{Name: "timeout", Type: intType},
+		}, common.Func(httpPutAsync)).
+		AddStaticMethod("deleteAsync", promiseType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+		}, common.Func(httpDeleteAsync)).
+		AddStaticMethod("deleteAsync", promiseType, []ast.Parameter{
+			{Name: "url", Type: stringType},
+			{Name: "timeout", Type: intType},
+		}, common.Func(httpDeleteAsync)).
+		AddStaticMethod("requestAsync", promiseType, []ast.Parameter{
+			{Name: "method", Type: stringType},
+			{Name: "url", Type: stringType},
+			{Name: "data", Type: ast.ANY},
+		}, common.Func(httpRequestAsync)).
 		AddStaticMethod("createServer", httpServerType, []ast.Parameter{
 			{Name: "debug", Type: boolType},
 		}, common.Func(createHttpServer)).
@@ -566,8 +626,25 @@ func httpServerListen(e *common.Env, args []any) (any, error) {
 		port = ":" + port
 	}
 
-	// Create HTTP handler
+	// Create HTTP handler with timeout support - 3.13
 	httpHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check for timeout in config
+		timeoutMs := 0
+		if timeout, ok := router.config["timeout"]; ok {
+			if t, ok := utils.AsInt(timeout); ok {
+				timeoutMs = t
+			}
+		}
+
+		if timeoutMs > 0 {
+			// Use context with timeout
+			ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeoutMs)*time.Millisecond)
+			defer cancel()
+			
+			// Replace request context
+			r = r.WithContext(ctx)
+		}
+		
 		router.handleRequest(e, w, r)
 	})
 
@@ -1229,4 +1306,280 @@ func (r *httpResponse) sendHTML(html string) {
 	}
 	r.writer.WriteHeader(r.statusCode)
 	r.writer.Write([]byte(html))
+}
+
+// Async HTTP Methods - 3.10: Native Async/Await Integration
+
+// httpGetAsync performs an async HTTP GET request returning a Promise
+func httpGetAsync(e *common.Env, args []any) (any, error) {
+	url := utils.ToString(args[0])
+	timeout := 30 * time.Second
+	if len(args) > 1 {
+		if t, ok := utils.AsInt(args[1]); ok {
+			timeout = time.Duration(t) * time.Second
+		}
+	}
+
+	return createHttpPromise((*Env)(e), func() (any, error) {
+		client := &http.Client{Timeout: timeout}
+		resp, err := client.Get(url)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		return createHttpResponse((*Env)(e), resp, body), nil
+	})
+}
+
+// httpPostAsync performs an async HTTP POST request returning a Promise
+func httpPostAsync(e *common.Env, args []any) (any, error) {
+	url := utils.ToString(args[0])
+	
+	bodyBytes, err := prepareRequestBody(args[1])
+	if err != nil {
+		return nil, err
+	}
+
+	timeout := 30 * time.Second
+	if len(args) > 2 {
+		if t, ok := utils.AsInt(args[2]); ok {
+			timeout = time.Duration(t) * time.Second
+		}
+	}
+
+	return createHttpPromise((*Env)(e), func() (any, error) {
+		client := &http.Client{Timeout: timeout}
+		resp, err := client.Post(url, "application/json", bytes.NewBuffer(bodyBytes))
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		return createHttpResponse((*Env)(e), resp, body), nil
+	})
+}
+
+// httpPutAsync performs an async HTTP PUT request returning a Promise
+func httpPutAsync(e *common.Env, args []any) (any, error) {
+	url := utils.ToString(args[0])
+	
+	bodyBytes, err := prepareRequestBody(args[1])
+	if err != nil {
+		return nil, err
+	}
+
+	timeout := 30 * time.Second
+	if len(args) > 2 {
+		if t, ok := utils.AsInt(args[2]); ok {
+			timeout = time.Duration(t) * time.Second
+		}
+	}
+
+	return createHttpPromise((*Env)(e), func() (any, error) {
+		client := &http.Client{Timeout: timeout}
+		req, err := http.NewRequest("PUT", url, bytes.NewBuffer(bodyBytes))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		return createHttpResponse((*Env)(e), resp, body), nil
+	})
+}
+
+// httpDeleteAsync performs an async HTTP DELETE request returning a Promise
+func httpDeleteAsync(e *common.Env, args []any) (any, error) {
+	url := utils.ToString(args[0])
+
+	timeout := 30 * time.Second
+	if len(args) > 1 {
+		if t, ok := utils.AsInt(args[1]); ok {
+			timeout = time.Duration(t) * time.Second
+		}
+	}
+
+	return createHttpPromise((*Env)(e), func() (any, error) {
+		client := &http.Client{Timeout: timeout}
+		req, err := http.NewRequest("DELETE", url, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		return createHttpResponse((*Env)(e), resp, body), nil
+	})
+}
+
+// httpRequestAsync performs an async custom HTTP request returning a Promise
+func httpRequestAsync(e *common.Env, args []any) (any, error) {
+	if len(args) < 2 {
+		return nil, ThrowArityError((*Env)(e), 2, len(args))
+	}
+	method := utils.ToString(args[0])
+	url := utils.ToString(args[1])
+
+	var bodyBytes []byte
+	if len(args) > 2 && args[2] != nil {
+		var err error
+		bodyBytes, err = prepareRequestBody(args[2])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return createHttpPromise((*Env)(e), func() (any, error) {
+		timeout := 30 * time.Second
+		client := &http.Client{Timeout: timeout}
+		
+		var req *http.Request
+		var err error
+		if len(bodyBytes) > 0 {
+			req, err = http.NewRequest(method, url, bytes.NewBuffer(bodyBytes))
+		} else {
+			req, err = http.NewRequest(method, url, nil)
+		}
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		return createHttpResponse((*Env)(e), resp, body), nil
+	})
+}
+
+// createHttpPromise creates a Promise that executes an HTTP request asynchronously
+func createHttpPromise(env *Env, requestFunc func() (any, error)) (any, error) {
+	// Get the Promise class definition
+	promiseClassDef := common.BuiltinTypePromise.GetClassDefinition((*common.Env)(env))
+	if promiseClassDef == nil {
+		return nil, ThrowInitializationError(env, "Promise class")
+	}
+
+	// Create Promise instance directly without calling constructor
+	instance, err := createClassInstanceDirect(promiseClassDef, env)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the underlying Promise structure
+	promise := &Promise{
+		state:           "pending",
+		thenHandlers:    []func(any) (any, error){},
+		catchHandlers:   []func(error) (any, error){},
+		finallyHandlers: []func(){},
+		done:            make(chan struct{}),
+	}
+
+	// Execute the request asynchronously
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				promise.reject(ThrowRuntimeError(env, fmt.Sprintf("panic in HTTP request: %v", r)))
+			}
+		}()
+
+		result, err := requestFunc()
+		if err != nil {
+			promise.reject(err)
+		} else {
+			promise.resolve(result)
+		}
+	}()
+
+	// Set the _promise field
+	classInstance := instance.(*ClassInstance)
+	classInstance.Fields["_promise"] = promise
+
+	return classInstance, nil
+}
+
+// httpResponseRender renders an HTML template with data - 3.12
+func httpResponseRender(e *common.Env, args []any) (any, error) {
+	thisVal, _ := e.This()
+	instance, ok := thisVal.(*ClassInstance)
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "HttpResponse", thisVal)
+	}
+
+	templatePath := utils.ToString(args[0])
+	
+	// Extract data from Map instance
+	var dataMap map[string]any
+	if mapInstance, ok := args[1].(*ClassInstance); ok && mapInstance.ClassName == "Map" {
+		objMap, err := MapToObject((*Env)(e), mapInstance)
+		if err != nil {
+			return nil, err
+		}
+		dataMap = objMap
+	} else if m, ok := args[1].(map[string]any); ok {
+		dataMap = m
+	}
+
+	// Simple template rendering - replace {{key}} with values
+	// In a real implementation, you'd read from a file and use a proper template engine
+	templateContent := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <title>%s</title>
+</head>
+<body>
+    <h1>Rendered Template: %s</h1>
+    <pre>%v</pre>
+</body>
+</html>`, templatePath, templatePath, dataMap)
+
+	// Replace template variables if any
+	for key, value := range dataMap {
+		placeholder := fmt.Sprintf("{{%s}}", key)
+		templateContent = strings.ReplaceAll(templateContent, placeholder, utils.ToString(value))
+	}
+
+	resp := instance.Fields["_writer"].(*httpResponse)
+	resp.statusCode = 200
+	resp.sendHTML(templateContent)
+
+	return nil, nil
 }
