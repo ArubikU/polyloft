@@ -530,7 +530,7 @@ func InstallMapBuiltin(env *Env) error {
 		instance := thisVal.(*ClassInstance)
 
 		// Convert to Go map for JSON encoding
-		objMap, err := MapToObject(instance)
+		objMap, err := MapToObject((*Env)(callEnv), instance)
 		if err != nil {
 			return nil, err
 		}
@@ -738,15 +738,15 @@ func ConvertMapValue(env *Env, value any) any {
 }
 
 // MapToObject converts a Map instance back to a Go map[string]any for JSON serialization
-func MapToObject(mapInstance *ClassInstance) (map[string]any, error) {
+func MapToObject(env *Env, mapInstance *ClassInstance) (map[string]any, error) {
 	dataField, ok := mapInstance.Fields["_data"]
 	if !ok {
-		return nil, ThrowAttributeError(nil, "_data", "Map")
+		return nil, ThrowAttributeError(env, "_data", "Map")
 	}
 
 	hashData, ok := dataField.(map[uint64][]*mapEntry)
 	if !ok {
-		return nil, ThrowTypeError(nil, "map", dataField)
+		return nil, ThrowTypeError(env, "map", dataField)
 	}
 
 	// Convert hash-based storage to regular map for JSON
@@ -757,10 +757,10 @@ func MapToObject(mapInstance *ClassInstance) (map[string]any, error) {
 			var keyStr string
 			if keyInst, ok := entry.Key.(*ClassInstance); ok {
 				// Extract primitive value from key wrapper classes
-				stringDef := common.BuiltinTypeString.GetClassDefinition(nil)
-				intDef := common.BuiltinTypeInt.GetClassDefinition(nil)
-				floatDef := common.BuiltinTypeFloat.GetClassDefinition(nil)
-				boolDef := common.BuiltinTypeBool.GetClassDefinition(nil)
+				stringDef := common.BuiltinTypeString.GetClassDefinition((*common.Env)(env))
+				intDef := common.BuiltinTypeInt.GetClassDefinition((*common.Env)(env))
+				floatDef := common.BuiltinTypeFloat.GetClassDefinition((*common.Env)(env))
+				boolDef := common.BuiltinTypeBool.GetClassDefinition((*common.Env)(env))
 
 				if keyInst.ParentClass.IsSubclassOf(stringDef) {
 					if val, ok := keyInst.Fields["_value"].(string); ok {
@@ -795,22 +795,22 @@ func MapToObject(mapInstance *ClassInstance) (map[string]any, error) {
 
 			// Recursively convert nested ClassInstance objects and extract primitives
 			if nestedInstance, ok := entry.Value.(*ClassInstance); ok {
-				mapDef := common.BuiltinTypeMap.GetClassDefinition(nil)
-				arrayDef := common.BuiltinTypeArray.GetClassDefinition(nil)
-				listDef := common.BuiltinTypeList.GetClassDefinition(nil)
-				stringDef := common.BuiltinTypeString.GetClassDefinition(nil)
-				intDef := common.BuiltinTypeInt.GetClassDefinition(nil)
-				floatDef := common.BuiltinTypeFloat.GetClassDefinition(nil)
-				boolDef := common.BuiltinTypeBool.GetClassDefinition(nil)
+				mapDef := common.BuiltinTypeMap.GetClassDefinition((*common.Env)(env))
+				arrayDef := common.BuiltinTypeArray.GetClassDefinition((*common.Env)(env))
+				listDef := common.BuiltinTypeList.GetClassDefinition((*common.Env)(env))
+				stringDef := common.BuiltinTypeString.GetClassDefinition((*common.Env)(env))
+				intDef := common.BuiltinTypeInt.GetClassDefinition((*common.Env)(env))
+				floatDef := common.BuiltinTypeFloat.GetClassDefinition((*common.Env)(env))
+				boolDef := common.BuiltinTypeBool.GetClassDefinition((*common.Env)(env))
 
 				if nestedInstance.ParentClass.IsSubclassOf(mapDef) {
-					nestedObj, err := MapToObject(nestedInstance)
+					nestedObj, err := MapToObject(env, nestedInstance)
 					if err != nil {
 						return nil, err
 					}
 					result[keyStr] = nestedObj
 				} else if nestedInstance.ParentClass.IsSubclassOf(arrayDef) {
-					nestedSlice, err := ArrayToSlice(nestedInstance)
+					nestedSlice, err := ArrayToSlice(env, nestedInstance)
 					if err != nil {
 						return nil, err
 					}

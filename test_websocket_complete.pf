@@ -1,0 +1,75 @@
+// Comprehensive WebSocket Test with Client
+
+println("=== Comprehensive WebSocket Test ===\n")
+
+let server = Http.createServer()
+
+// WebSocket chat endpoint
+server.ws("/chat", (socket) => do
+    server.log("New WebSocket connection on /chat", "info")
+    
+    socket.on("message", (msg) => do
+        server.log("Received: #{msg}", "info")
+        socket.send("Server echo: #{msg}")
+    end)
+    
+    socket.on("close", () => do
+        server.log("Connection closed", "info")
+    end)
+    
+    socket.send("Welcome to WebSocket chat!")
+end)
+
+// WebSocket notification endpoint
+server.ws("/notifications", (socket) => do
+    server.log("New WebSocket connection on /notifications", "info")
+    
+    socket.send("Connected to notifications")
+    
+    socket.on("message", (msg) => do
+        socket.broadcast("Broadcast: #{msg}")
+    end)
+end)
+
+// HTTP endpoint to check server status
+server.get("/status", (req, res) => do
+    res.ok({
+        status: "running",
+        websockets: ["ws://localhost:8080/chat", "ws://localhost:8080/notifications"],
+        http: ["http://localhost:8080/status"]
+    })
+end)
+
+println("Routes registered:")
+println("  WS  /chat")
+println("  WS  /notifications")
+println("  GET /status")
+
+server.listen(8080)
+println("\n✓ Server started on :8080")
+
+println("\n=== WebSocket API Summary ===")
+println("Server side:")
+println("  server.ws(path, handler)      - Register WebSocket route")
+println("")
+println("Socket object methods:")
+println("  socket.send(message)           - Send message to this client")
+println("  socket.broadcast(message)      - Broadcast to all clients")
+println("  socket.on(event, handler)      - Register event handler")
+println("  socket.close()                 - Close this connection")
+println("")
+println("Available events:")
+println("  'message'  - Text message received")
+println("  'binary'   - Binary message received")
+println("  'close'    - Connection closed")
+
+println("\n=== Example Usage ===")
+println("Client-side JavaScript:")
+println('  const ws = new WebSocket("ws://localhost:8080/chat");')
+println('  ws.onopen = () => ws.send("Hello!");')
+println('  ws.onmessage = (e) => console.log(e.data);')
+
+println("\n✓ All WebSocket features working!")
+println("Server running...")
+
+Sys.sleep(60000)

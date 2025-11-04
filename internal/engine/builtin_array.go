@@ -585,7 +585,7 @@ func InstallArrayBuiltin(env *Env) error {
 		thisVal, _ := callEnv.This()
 		instance := thisVal.(*ClassInstance)
 
-		arr, err := ArrayToSlice(instance)
+		arr, err := ArrayToSlice((*Env)(callEnv), instance)
 		if err != nil {
 			return nil, err
 		}
@@ -739,28 +739,28 @@ func CreateArrayInstance(env *Env, items []any) (*ClassInstance, error) {
 }
 
 // ArrayToSlice converts an Array instance to a Go []any for JSON serialization
-func ArrayToSlice(arrayInstance *ClassInstance) ([]any, error) {
+func ArrayToSlice(env *Env, arrayInstance *ClassInstance) ([]any, error) {
 	itemsField, ok := arrayInstance.Fields["_items"]
 	if !ok {
-		return nil, ThrowAttributeError(nil, "_items", "Array")
+		return nil, ThrowAttributeError(env, "_items", "Array")
 	}
 
 	items, ok := itemsField.([]any)
 	if !ok {
-		return nil, ThrowTypeError(nil, "slice", itemsField)
+		return nil, ThrowTypeError(env, "slice", itemsField)
 	}
 
 	// Convert nested Arrays recursively
 	result := make([]any, len(items))
 	for i, item := range items {
 		if nestedArray, ok := item.(*ClassInstance); ok && nestedArray.ClassName == "Array" {
-			nestedSlice, err := ArrayToSlice(nestedArray)
+			nestedSlice, err := ArrayToSlice(env, nestedArray)
 			if err != nil {
 				return nil, err
 			}
 			result[i] = nestedSlice
 		} else if nestedMap, ok := item.(*ClassInstance); ok && nestedMap.ClassName == "Map" {
-			nestedObj, err := MapToObject(nestedMap)
+			nestedObj, err := MapToObject(env, nestedMap)
 			if err != nil {
 				return nil, err
 			}
