@@ -16,7 +16,7 @@ func TestEval_Basics(t *testing.T) {
 let x = 2 + 3 * 4
 let y = [1,2,3][1]
 let m = { foo: "bar" }
-println(x, y, m.foo)
+println(x, y, m["foo"])
 `
 	lx := &lexer.Lexer{}
 	items := lx.Scan([]byte(src))
