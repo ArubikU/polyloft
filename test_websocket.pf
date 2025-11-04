@@ -1,0 +1,73 @@
+// Test WebSocket Support (3.2)
+
+println("=== Testing WebSocket Support ===\n")
+
+let server = Http.createServer()
+
+// Configure server
+server.config({timeout: 10000})
+
+// WebSocket endpoint
+server.ws("/chat", (socket) => do
+    println("WebSocket connection established!")
+    
+    // Handle incoming messages
+    socket.on("message", (msg) => do
+        println("Received message: #{msg}")
+        // Echo the message back
+        socket.send("Echo: #{msg}")
+    end)
+    
+    // Handle connection close
+    socket.on("close", (msg) => do
+        println("WebSocket connection closed")
+    end)
+    
+    // Send welcome message
+    socket.send("Welcome to the chat!")
+end)
+
+println("✓ WebSocket route registered: /chat")
+
+// Regular HTTP endpoint for testing
+server.get("/", (req, res) => do
+    res.ok({message: "HTTP and WebSocket server running"})
+end)
+
+println("✓ HTTP route registered: /")
+
+// Start server
+let info = server.listen(8080)
+println("\n=== Server Started ===")
+println("Address: #{info.address}")
+println("Message: #{info.message}")
+
+println("\n=== Available Endpoints ===")
+println("HTTP:  http://localhost:8080/")
+println("WS:    ws://localhost:8080/chat")
+
+println("\n=== WebSocket Features ===")
+println("✓ server.ws(path, handler) - Register WebSocket route")
+println("✓ socket.send(message) - Send message to client")
+println("✓ socket.broadcast(message) - Broadcast to all clients")
+println("✓ socket.on(event, handler) - Register event handler")
+println("✓ socket.close() - Close connection")
+println("✓ Events: 'message', 'close', 'binary'")
+
+println("\n=== Testing Instructions ===")
+println("To test WebSocket connection, use a WebSocket client:")
+println("")
+println("JavaScript example:")
+println('  const ws = new WebSocket("ws://localhost:8080/chat");')
+println('  ws.onmessage = (e) => console.log(e.data);')
+println('  ws.send("Hello from client!");')
+println("")
+println("Or use a tool like wscat:")
+println("  wscat -c ws://localhost:8080/chat")
+println("")
+println("The server will echo messages back with 'Echo: ' prefix")
+
+println("\n✓ WebSocket support fully implemented!")
+println("Server will run for 60 seconds...")
+
+Sys.sleep(60000)

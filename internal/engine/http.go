@@ -15,6 +15,7 @@ import (
 	"github.com/ArubikU/polyloft/internal/ast"
 	"github.com/ArubikU/polyloft/internal/common"
 	"github.com/ArubikU/polyloft/internal/engine/utils"
+	"github.com/gorilla/websocket"
 )
 
 // InstallHttpModule installs the HTTP module using the builder pattern
@@ -146,6 +147,11 @@ func InstallHttpModule(env *Env, opts Options) {
 		AddBuiltinMethod("log", voidType, []ast.Parameter{
 			{Name: "message", Type: stringType},
 		}, common.Func(httpServerLog), []string{}).
+		// WebSocket support - 3.2
+		AddBuiltinMethod("ws", voidType, []ast.Parameter{
+			{Name: "path", Type: stringType},
+			{Name: "handler", Type: ast.ANY},
+		}, common.Func(httpServerWs), []string{}).
 		AddBuiltinMethod("listen", mapType, []ast.Parameter{
 			{Name: "port", Type: stringType},
 		}, common.Func(httpServerListen), []string{})
@@ -468,6 +474,7 @@ func newHttpServer(e *common.Env, args []any) (any, error) {
 		errorHandler:       nil,
 		config:             make(map[string]any),
 		logLevel:           "info",
+		wsHandlers:         make(map[string]common.Func),
 	}
 
 	instance.Fields["router"] = router
@@ -631,6 +638,12 @@ func httpServerListen(e *common.Env, args []any) (any, error) {
 
 	// Create HTTP handler with timeout support - 3.13
 	httpHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check if this is a WebSocket request
+		if wsHandler, isWs := router.isWebSocketRequest(r.URL.Path); isWs {
+			router.handleWebSocket((*common.Env)(e), w, r, wsHandler)
+			return
+		}
+
 		// Check for timeout in config
 		timeoutMs := 0
 		if timeout, ok := router.config["timeout"]; ok {
@@ -855,6 +868,7 @@ type httpRouter struct {
 	errorHandler      common.Func
 	config            map[string]any
 	logLevel          string
+	wsHandlers        map[string]common.Func // WebSocket handlers
 }
 
 func (r *httpRouter) addRoute(method, path string, handler common.Func, middlewares []common.Func) {
@@ -1757,4 +1771,170 @@ func httpResponseRender(e *common.Env, args []any) (any, error) {
 	resp.sendHTML(templateContent)
 
 	return nil, nil
+}
+
+// WebSocket Support - 3.2
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins for now
+	},
+}
+
+// WebSocketConnection represents a WebSocket connection
+type WebSocketConnection struct {
+	conn     *websocket.Conn
+	env      *Env
+	handlers map[string][]common.Func // event -> handlers
+	mu       sync.RWMutex
+	done     chan struct{}
+}
+
+// httpServerWs registers a WebSocket route
+func httpServerWs(e *common.Env, args []any) (any, error) {
+	thisVal, _ := e.This()
+	instance, ok := thisVal.(*ClassInstance)
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "HttpServer", thisVal)
+	}
+
+	router := instance.Fields["router"].(*httpRouter)
+	path := utils.ToString(args[0])
+	handler, ok := common.ExtractFunc(args[1])
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "function", args[1])
+	}
+
+	router.mu.Lock()
+	router.wsHandlers[path] = handler
+	router.mu.Unlock()
+
+	return nil, nil
+}
+
+// handleWebSocket handles WebSocket upgrade and connection
+func (r *httpRouter) handleWebSocket(env *common.Env, w http.ResponseWriter, req *http.Request, handler common.Func) {
+	// Upgrade HTTP connection to WebSocket
+	conn, err := upgrader.Upgrade(w, req, nil)
+	if err != nil {
+		fmt.Printf("WebSocket upgrade error: %v\n", err)
+		return
+	}
+	defer conn.Close()
+
+	// Create WebSocket connection wrapper
+	wsConn := &WebSocketConnection{
+		conn:     conn,
+		env:      env,
+		handlers: make(map[string][]common.Func),
+		done:     make(chan struct{}),
+	}
+
+	// Create WebSocket object for Polyloft
+	wsInstance := createWebSocketInstance(env, wsConn)
+
+	// Call the handler with the WebSocket instance
+	_, err = handler((*common.Env)(env), []any{wsInstance})
+	if err != nil {
+		fmt.Printf("WebSocket handler error: %v\n", err)
+		return
+	}
+
+	// Start message reading loop
+	go wsConn.readMessages()
+
+	// Wait until connection is closed
+	<-wsConn.done
+}
+
+// readMessages reads messages from the WebSocket connection
+func (ws *WebSocketConnection) readMessages() {
+	defer close(ws.done)
+
+	for {
+		messageType, message, err := ws.conn.ReadMessage()
+		if err != nil {
+			// Connection closed or error
+			ws.triggerEvent("close", string(message))
+			break
+		}
+
+		// Handle different message types
+		switch messageType {
+		case websocket.TextMessage:
+			ws.triggerEvent("message", string(message))
+		case websocket.BinaryMessage:
+			ws.triggerEvent("binary", string(message))
+		}
+	}
+}
+
+// triggerEvent triggers all handlers for an event
+func (ws *WebSocketConnection) triggerEvent(event string, data string) {
+	ws.mu.RLock()
+	handlers := ws.handlers[event]
+	ws.mu.RUnlock()
+
+	for _, handler := range handlers {
+		// Call handler with data
+		handler((*common.Env)(ws.env), []any{data})
+	}
+}
+
+// createWebSocketInstance creates a Polyloft WebSocket instance
+func createWebSocketInstance(env *Env, wsConn *WebSocketConnection) *ClassInstance {
+	// Create a simple object with WebSocket methods
+	instance := &ClassInstance{
+		ClassName: "WebSocket",
+		Fields:    make(map[string]any),
+		Methods:   make(map[string]common.Func),
+	}
+
+	// Store the connection
+	instance.Fields["_conn"] = wsConn
+
+	// Add send method
+	instance.Methods["send"] = common.Func(func(e *common.Env, args []any) (any, error) {
+		message := utils.ToString(args[0])
+		return nil, wsConn.conn.WriteMessage(websocket.TextMessage, []byte(message))
+	})
+
+	// Add broadcast method (sends to all connections - simplified version)
+	instance.Methods["broadcast"] = common.Func(func(e *common.Env, args []any) (any, error) {
+		message := utils.ToString(args[0])
+		// For now, just send to this connection
+		// In a full implementation, this would send to all connected clients
+		return nil, wsConn.conn.WriteMessage(websocket.TextMessage, []byte(message))
+	})
+
+	// Add on method for event handlers
+	instance.Methods["on"] = common.Func(func(e *common.Env, args []any) (any, error) {
+		event := utils.ToString(args[0])
+		handler, ok := common.ExtractFunc(args[1])
+		if !ok {
+			return nil, ThrowTypeError(env, "function", args[1])
+		}
+
+		wsConn.mu.Lock()
+		wsConn.handlers[event] = append(wsConn.handlers[event], handler)
+		wsConn.mu.Unlock()
+
+		return nil, nil
+	})
+
+	// Add close method
+	instance.Methods["close"] = common.Func(func(e *common.Env, args []any) (any, error) {
+		return nil, wsConn.conn.Close()
+	})
+
+	return instance
+}
+
+// Update handleRequest to check for WebSocket routes
+func (r *httpRouter) isWebSocketRequest(path string) (common.Func, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	
+	handler, ok := r.wsHandlers[path]
+	return handler, ok
 }
