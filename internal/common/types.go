@@ -745,13 +745,6 @@ func (e *Env) Get(k string) (any, bool) {
 			}
 		}
 	}
-	fmt.Printf("Variable '%s' not found in environment chain: %s\n", k, strings.Join(func() []string {
-		var names []string
-		for cur := e; cur != nil; cur = cur.Parent {
-			names = append(names, fmt.Sprintf("{Vars: %v}", cur.Vars))
-		}
-		return names
-	}(), " -> "))
 	return nil, false
 }
 
