@@ -205,7 +205,7 @@ func httpGet(e *common.Env, args []any) (any, error) {
 		return nil, err
 	}
 
-	return createHttpResponse(resp, body), nil
+	return createHttpResponse((*Env)(e), resp, body), nil
 }
 
 // httpPost performs an HTTP POST request
@@ -236,7 +236,7 @@ func httpPost(e *common.Env, args []any) (any, error) {
 		return nil, err
 	}
 
-	return createHttpResponse(resp, body), nil
+	return createHttpResponse((*Env)(e), resp, body), nil
 }
 
 // httpPut performs an HTTP PUT request
@@ -276,7 +276,7 @@ func httpPut(e *common.Env, args []any) (any, error) {
 		return nil, err
 	}
 
-	return createHttpResponse(resp, body), nil
+	return createHttpResponse((*Env)(e), resp, body), nil
 }
 
 // httpDelete performs an HTTP DELETE request
@@ -310,7 +310,7 @@ func httpDelete(e *common.Env, args []any) (any, error) {
 		return nil, err
 	}
 
-	return createHttpResponse(resp, body), nil
+	return createHttpResponse((*Env)(e), resp, body), nil
 }
 
 // httpRequest performs a custom HTTP request
@@ -370,7 +370,7 @@ func httpRequest(e *common.Env, args []any) (any, error) {
 		return nil, err
 	}
 
-	return createHttpResponse(resp, body), nil
+	return createHttpResponse((*Env)(e), resp, body), nil
 }
 
 // createHttpServer creates a new HTTP server instance
@@ -667,9 +667,16 @@ func httpResponseHtml(e *common.Env, args []any) (any, error) {
 func prepareRequestBody(data any) ([]byte, error) {
 	// Handle Map instances
 	if mapInstance, ok := data.(*ClassInstance); ok && mapInstance.ClassName == "Map" {
-		objMap, err := MapToObject(mapInstance)
-		if err != nil {
-			return nil, err
+		// Note: We can't pass env here since we don't have it, so we'll use a simple extraction
+		// This is a limitation but works for most cases
+		objMap := make(map[string]any)
+		if hashData, ok := mapInstance.Fields["_data"].(map[uint64][]*mapEntry); ok {
+			for _, entries := range hashData {
+				for _, entry := range entries {
+					keyStr := utils.ToString(entry.Key)
+					objMap[keyStr] = entry.Value
+				}
+			}
 		}
 		return json.Marshal(objMap)
 	}
@@ -681,24 +688,42 @@ func prepareRequestBody(data any) ([]byte, error) {
 }
 
 // createHttpResponse creates a standardized HTTP response object
-func createHttpResponse(resp *http.Response, body []byte) map[string]any {
+func createHttpResponse(env *Env, resp *http.Response, body []byte) any {
 	// Parse body based on Content-Type
 	var bodyData any = string(body)
 	contentType := resp.Header.Get("Content-Type")
 	if strings.Contains(contentType, "application/json") && len(body) > 0 {
 		var jsonData any
 		if err := json.Unmarshal(body, &jsonData); err == nil {
-			bodyData = jsonData
+			// Convert JSON to Polyloft Map if it's an object
+			if jsonMap, ok := jsonData.(map[string]any); ok {
+				if mapInstance, err := CreateMapInstance(env, jsonMap); err == nil {
+					bodyData = mapInstance
+				} else {
+					bodyData = jsonData // Fallback to raw Go map
+				}
+			} else {
+				bodyData = jsonData // Arrays, strings, numbers, etc.
+			}
 		}
 	}
 
-	return map[string]any{
+	// Create response Map as Polyloft Map instance
+	responseMap := map[string]any{
 		"status":     float64(resp.StatusCode),
 		"ok":         resp.StatusCode >= 200 && resp.StatusCode < 300,
 		"statusText": resp.Status,
 		"body":       bodyData,
 		"headers":    convertHeaders(resp.Header),
 	}
+	
+	// Convert the response map to a Polyloft Map instance
+	if mapInstance, err := CreateMapInstance(env, responseMap); err == nil {
+		return mapInstance
+	}
+	
+	// Fallback to plain Go map if conversion fails
+	return responseMap
 }
 
 // convertHeaders converts http.Header to map[string]any
@@ -824,6 +849,7 @@ func (r *httpRouter) handleRequest(env *common.Env, w http.ResponseWriter, req *
 		writer:     w,
 		statusCode: 200,
 		headers:    make(map[string]string),
+		env:        (*Env)(env),
 	}
 
 	// Create HttpResponse instance using the class constructor
@@ -892,15 +918,23 @@ func (r *httpRouter) handleRequest(env *common.Env, w http.ResponseWriter, req *
 }
 
 // extractMiddlewares extracts middleware functions from an array or single function
+// Only checks for _items field, validates that extracted values are valid middleware functions with 3 parameters
 func extractMiddlewares(arg any) []common.Func {
 	var middlewares []common.Func
 	
-	// Try to extract as array/list of middlewares
-	if listInstance, ok := arg.(*ClassInstance); ok && listInstance.ClassName == "List" {
-		if items, ok := listInstance.Fields["_items"].([]any); ok {
-			for _, item := range items {
-				if fn, ok := common.ExtractFunc(item); ok {
-					middlewares = append(middlewares, fn)
+	// Try to extract from any object with _items field (List or Array-like)
+	if instance, ok := arg.(*ClassInstance); ok {
+		// Check if it has _items field
+		if items, hasItems := instance.Fields["_items"]; hasItems {
+			if itemSlice, ok := items.([]any); ok {
+				for _, item := range itemSlice {
+					// Extract function and validate it's a proper middleware
+					if fn, ok := common.ExtractFunc(item); ok {
+						// Validate middleware has exactly 3 parameters (req, res, next)
+						if isValidMiddleware(item) {
+							middlewares = append(middlewares, fn)
+						}
+					}
 				}
 			}
 		}
@@ -908,17 +942,39 @@ func extractMiddlewares(arg any) []common.Func {
 		// Handle plain Go slice
 		for _, item := range slice {
 			if fn, ok := common.ExtractFunc(item); ok {
-				middlewares = append(middlewares, fn)
+				// Validate middleware has exactly 3 parameters (req, res, next)
+				if isValidMiddleware(item) {
+					middlewares = append(middlewares, fn)
+				}
 			}
 		}
 	} else {
 		// Try single middleware function
 		if fn, ok := common.ExtractFunc(arg); ok {
-			middlewares = append(middlewares, fn)
+			// Validate middleware has exactly 3 parameters (req, res, next)
+			if isValidMiddleware(arg) {
+				middlewares = append(middlewares, fn)
+			}
 		}
 	}
 	
 	return middlewares
+}
+
+// isValidMiddleware checks if a function has exactly 3 parameters (req, res, next)
+func isValidMiddleware(fn any) bool {
+	// Check FunctionDefinition
+	if funcDef, ok := fn.(*common.FunctionDefinition); ok {
+		return len(funcDef.Params) == 3
+	}
+	
+	// Check LambdaDefinition
+	if lambdaDef, ok := fn.(*common.LambdaDefinition); ok {
+		return len(lambdaDef.Params) == 3
+	}
+	
+	// If we can't determine parameter count, reject it to be safe
+	return false
 }
 
 // httpServerUse registers a global middleware
@@ -973,10 +1029,10 @@ func httpServerConfig(e *common.Env, args []any) (any, error) {
 
 	router := instance.Fields["router"].(*httpRouter)
 	
-	// Extract config map
+	// Extract config map using MapToObject
 	var configMap map[string]any
 	if mapInstance, ok := args[0].(*ClassInstance); ok && mapInstance.ClassName == "Map" {
-		objMap, err := MapToObject(mapInstance)
+		objMap, err := MapToObject((*Env)(e), mapInstance)
 		if err != nil {
 			return nil, err
 		}
@@ -1113,6 +1169,7 @@ type httpResponse struct {
 	statusCode int
 	headers    map[string]string
 	sent       bool
+	env        *Env // Store env for MapToObject
 }
 
 func (r *httpResponse) sendJSON(data any) {
@@ -1130,13 +1187,15 @@ func (r *httpResponse) sendJSON(data any) {
 
 	// Handle Map instances - convert to Go map for JSON encoding
 	if mapInstance, ok := data.(*ClassInstance); ok && mapInstance.ClassName == "Map" {
-		objMap, err := MapToObject(mapInstance)
-		if err != nil {
-			json.NewEncoder(r.writer).Encode(map[string]string{"error": "failed to convert Map instance: " + err.Error()})
+		if r.env != nil {
+			objMap, err := MapToObject(r.env, mapInstance)
+			if err != nil {
+				json.NewEncoder(r.writer).Encode(map[string]string{"error": "failed to convert Map: " + err.Error()})
+				return
+			}
+			json.NewEncoder(r.writer).Encode(objMap)
 			return
 		}
-		json.NewEncoder(r.writer).Encode(objMap)
-		return
 	}
 
 	// Handle regular data
