@@ -60,28 +60,84 @@ func InstallHttpModule(env *Env, opts Options) {
 		}, common.Func(httpResponseSend), []string{}).
 		AddBuiltinMethod("html", voidType, []ast.Parameter{
 			{Name: "html", Type: stringType},
-		}, common.Func(httpResponseHtml), []string{})
+		}, common.Func(httpResponseHtml), []string{}).
+		// Response shortcuts (3.8)
+		AddBuiltinMethod("ok", voidType, []ast.Parameter{
+			{Name: "data", Type: ast.ANY},
+		}, common.Func(httpResponseOk), []string{}).
+		AddBuiltinMethod("created", voidType, []ast.Parameter{
+			{Name: "data", Type: ast.ANY},
+		}, common.Func(httpResponseCreated), []string{}).
+		AddBuiltinMethod("noContent", voidType, []ast.Parameter{}, common.Func(httpResponseNoContent), []string{}).
+		AddBuiltinMethod("notFound", voidType, []ast.Parameter{
+			{Name: "message", Type: stringType},
+		}, common.Func(httpResponseNotFound), []string{}).
+		AddBuiltinMethod("notFound", voidType, []ast.Parameter{}, common.Func(httpResponseNotFound), []string{}).
+		AddBuiltinMethod("error", voidType, []ast.Parameter{
+			{Name: "code", Type: intType},
+			{Name: "message", Type: stringType},
+		}, common.Func(httpResponseError), []string{})
 
 	// Step 3: Create HttpServer builder and get its type BEFORE building
 	httpServerBuilder := NewClassBuilder("HttpServer").
 		AddField("router", ast.ANY, []string{"private"}).
+		AddField("_config", mapType, []string{"private"}).
+		AddField("_errorHandler", ast.ANY, []string{"private"}).
+		AddField("_globalMiddlewares", ast.ANY, []string{"private"}).
+		AddField("_logLevel", stringType, []string{"private"}).
 		SetBuiltinConstructor([]ast.Parameter{}, common.Func(newHttpServer)).
 		AddBuiltinMethod("get", voidType, []ast.Parameter{
 			{Name: "path", Type: stringType},
+			{Name: "handler", Type: ast.ANY},
+		}, common.Func(httpServerGet), []string{}).
+		AddBuiltinMethod("get", voidType, []ast.Parameter{
+			{Name: "path", Type: stringType},
+			{Name: "middlewares", Type: ast.ANY},
 			{Name: "handler", Type: ast.ANY},
 		}, common.Func(httpServerGet), []string{}).
 		AddBuiltinMethod("post", voidType, []ast.Parameter{
 			{Name: "path", Type: stringType},
 			{Name: "handler", Type: ast.ANY},
 		}, common.Func(httpServerPost), []string{}).
+		AddBuiltinMethod("post", voidType, []ast.Parameter{
+			{Name: "path", Type: stringType},
+			{Name: "middlewares", Type: ast.ANY},
+			{Name: "handler", Type: ast.ANY},
+		}, common.Func(httpServerPost), []string{}).
 		AddBuiltinMethod("put", voidType, []ast.Parameter{
 			{Name: "path", Type: stringType},
+			{Name: "handler", Type: ast.ANY},
+		}, common.Func(httpServerPut), []string{}).
+		AddBuiltinMethod("put", voidType, []ast.Parameter{
+			{Name: "path", Type: stringType},
+			{Name: "middlewares", Type: ast.ANY},
 			{Name: "handler", Type: ast.ANY},
 		}, common.Func(httpServerPut), []string{}).
 		AddBuiltinMethod("delete", voidType, []ast.Parameter{
 			{Name: "path", Type: stringType},
 			{Name: "handler", Type: ast.ANY},
 		}, common.Func(httpServerDelete), []string{}).
+		AddBuiltinMethod("delete", voidType, []ast.Parameter{
+			{Name: "path", Type: stringType},
+			{Name: "middlewares", Type: ast.ANY},
+			{Name: "handler", Type: ast.ANY},
+		}, common.Func(httpServerDelete), []string{}).
+		AddBuiltinMethod("use", voidType, []ast.Parameter{
+			{Name: "middleware", Type: ast.ANY},
+		}, common.Func(httpServerUse), []string{}).
+		AddBuiltinMethod("onError", voidType, []ast.Parameter{
+			{Name: "handler", Type: ast.ANY},
+		}, common.Func(httpServerOnError), []string{}).
+		AddBuiltinMethod("config", voidType, []ast.Parameter{
+			{Name: "options", Type: mapType},
+		}, common.Func(httpServerConfig), []string{}).
+		AddBuiltinMethod("log", voidType, []ast.Parameter{
+			{Name: "message", Type: stringType},
+			{Name: "level", Type: stringType},
+		}, common.Func(httpServerLog), []string{}).
+		AddBuiltinMethod("log", voidType, []ast.Parameter{
+			{Name: "message", Type: stringType},
+		}, common.Func(httpServerLog), []string{}).
 		AddBuiltinMethod("listen", mapType, []ast.Parameter{
 			{Name: "port", Type: stringType},
 		}, common.Func(httpServerListen), []string{})
@@ -343,11 +399,19 @@ func newHttpServer(e *common.Env, args []any) (any, error) {
 
 	// Initialize the router field
 	router := &httpRouter{
-		routes: make(map[string]map[string]common.Func),
-		mu:     &sync.RWMutex{},
+		routes:             make(map[string]map[string]*routeHandler),
+		mu:                 &sync.RWMutex{},
+		globalMiddlewares:  []common.Func{},
+		errorHandler:       nil,
+		config:             make(map[string]any),
+		logLevel:           "info",
 	}
 
 	instance.Fields["router"] = router
+	instance.Fields["_config"] = make(map[string]any)
+	instance.Fields["_errorHandler"] = nil
+	instance.Fields["_globalMiddlewares"] = []common.Func{}
+	instance.Fields["_logLevel"] = "info"
 
 	return nil, nil // Constructors shouldn't return the instance
 }
@@ -360,13 +424,29 @@ func httpServerGet(e *common.Env, args []any) (any, error) {
 		return nil, ThrowTypeError((*Env)(e), "HttpServer", thisVal)
 	}
 	router := instance.Fields["router"].(*httpRouter)
+	
 	path := utils.ToString(args[0])
-	handler, ok := common.ExtractFunc(args[1])
-	if !ok {
-		return nil, ThrowTypeError((*Env)(e), "function", args[1])
+	var middlewares []common.Func
+	var handler common.Func
+	
+	// Support both forms: (path, handler) and (path, middlewares, handler)
+	if len(args) == 2 {
+		h, ok := common.ExtractFunc(args[1])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(e), "function", args[1])
+		}
+		handler = h
+	} else if len(args) == 3 {
+		// Extract middlewares
+		middlewares = extractMiddlewares(args[1])
+		h, ok := common.ExtractFunc(args[2])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(e), "function", args[2])
+		}
+		handler = h
 	}
 
-	router.addRoute("GET", path, handler)
+	router.addRoute("GET", path, handler, middlewares)
 	return nil, nil
 }
 
@@ -380,12 +460,27 @@ func httpServerPost(e *common.Env, args []any) (any, error) {
 
 	router := instance.Fields["router"].(*httpRouter)
 	path := utils.ToString(args[0])
-	handler, ok := common.ExtractFunc(args[1])
-	if !ok {
-		return nil, ThrowTypeError((*Env)(e), "function", args[1])
+	var middlewares []common.Func
+	var handler common.Func
+	
+	// Support both forms: (path, handler) and (path, middlewares, handler)
+	if len(args) == 2 {
+		h, ok := common.ExtractFunc(args[1])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(e), "function", args[1])
+		}
+		handler = h
+	} else if len(args) == 3 {
+		// Extract middlewares
+		middlewares = extractMiddlewares(args[1])
+		h, ok := common.ExtractFunc(args[2])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(e), "function", args[2])
+		}
+		handler = h
 	}
 
-	router.addRoute("POST", path, handler)
+	router.addRoute("POST", path, handler, middlewares)
 	return nil, nil
 }
 
@@ -399,12 +494,27 @@ func httpServerPut(e *common.Env, args []any) (any, error) {
 
 	router := instance.Fields["router"].(*httpRouter)
 	path := utils.ToString(args[0])
-	handler, ok := common.ExtractFunc(args[1])
-	if !ok {
-		return nil, ThrowTypeError((*Env)(e), "function", args[1])
+	var middlewares []common.Func
+	var handler common.Func
+	
+	// Support both forms: (path, handler) and (path, middlewares, handler)
+	if len(args) == 2 {
+		h, ok := common.ExtractFunc(args[1])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(e), "function", args[1])
+		}
+		handler = h
+	} else if len(args) == 3 {
+		// Extract middlewares
+		middlewares = extractMiddlewares(args[1])
+		h, ok := common.ExtractFunc(args[2])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(e), "function", args[2])
+		}
+		handler = h
 	}
 
-	router.addRoute("PUT", path, handler)
+	router.addRoute("PUT", path, handler, middlewares)
 	return nil, nil
 }
 
@@ -418,12 +528,27 @@ func httpServerDelete(e *common.Env, args []any) (any, error) {
 
 	router := instance.Fields["router"].(*httpRouter)
 	path := utils.ToString(args[0])
-	handler, ok := common.ExtractFunc(args[1])
-	if !ok {
-		return nil, ThrowTypeError((*Env)(e), "function", args[1])
+	var middlewares []common.Func
+	var handler common.Func
+	
+	// Support both forms: (path, handler) and (path, middlewares, handler)
+	if len(args) == 2 {
+		h, ok := common.ExtractFunc(args[1])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(e), "function", args[1])
+		}
+		handler = h
+	} else if len(args) == 3 {
+		// Extract middlewares
+		middlewares = extractMiddlewares(args[1])
+		h, ok := common.ExtractFunc(args[2])
+		if !ok {
+			return nil, ThrowTypeError((*Env)(e), "function", args[2])
+		}
+		handler = h
 	}
 
-	router.addRoute("DELETE", path, handler)
+	router.addRoute("DELETE", path, handler, middlewares)
 	return nil, nil
 }
 
@@ -557,10 +682,21 @@ func prepareRequestBody(data any) ([]byte, error) {
 
 // createHttpResponse creates a standardized HTTP response object
 func createHttpResponse(resp *http.Response, body []byte) map[string]any {
+	// Parse body based on Content-Type
+	var bodyData any = string(body)
+	contentType := resp.Header.Get("Content-Type")
+	if strings.Contains(contentType, "application/json") && len(body) > 0 {
+		var jsonData any
+		if err := json.Unmarshal(body, &jsonData); err == nil {
+			bodyData = jsonData
+		}
+	}
+
 	return map[string]any{
 		"status":     float64(resp.StatusCode),
+		"ok":         resp.StatusCode >= 200 && resp.StatusCode < 300,
 		"statusText": resp.Status,
-		"body":       string(body),
+		"body":       bodyData,
 		"headers":    convertHeaders(resp.Header),
 	}
 }
@@ -582,29 +718,44 @@ func convertHeaders(headers http.Header) map[string]any {
 	return result
 }
 
-// httpRouter manages HTTP routes
-type httpRouter struct {
-	routes map[string]map[string]common.Func // method -> path -> handler
-	mu     *sync.RWMutex
+// routeHandler holds a handler and its middlewares
+type routeHandler struct {
+	handler     common.Func
+	middlewares []common.Func
 }
 
-func (r *httpRouter) addRoute(method, path string, handler common.Func) {
+// httpRouter manages HTTP routes
+type httpRouter struct {
+	routes            map[string]map[string]*routeHandler // method -> path -> handler
+	mu                *sync.RWMutex
+	globalMiddlewares []common.Func
+	errorHandler      common.Func
+	config            map[string]any
+	logLevel          string
+}
+
+func (r *httpRouter) addRoute(method, path string, handler common.Func, middlewares []common.Func) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if r.routes[method] == nil {
-		r.routes[method] = make(map[string]common.Func)
+		r.routes[method] = make(map[string]*routeHandler)
 	}
-	r.routes[method][path] = handler
+	r.routes[method][path] = &routeHandler{
+		handler:     handler,
+		middlewares: middlewares,
+	}
 }
 
 func (r *httpRouter) handleRequest(env *common.Env, w http.ResponseWriter, req *http.Request) {
 	r.mu.RLock()
 	methodRoutes := r.routes[req.Method]
+	errorHandler := r.errorHandler
+	globalMiddlewares := r.globalMiddlewares
 	r.mu.RUnlock()
 
 	// Find matching route
-	handler, found := methodRoutes[req.URL.Path]
+	routeHandler, found := methodRoutes[req.URL.Path]
 	if !found {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"error": "Not Found"}`))
@@ -701,12 +852,259 @@ func (r *httpRouter) handleRequest(env *common.Env, w http.ResponseWriter, req *
 		return
 	}
 
-	// Call handler with class instances
-	_, err := handler(env, []any{requestInstance, responseInstance})
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf(`{"error": "%v"}`, err)))
+	// Execute middleware chain and handler
+	middlewareChain := append([]common.Func{}, globalMiddlewares...)
+	middlewareChain = append(middlewareChain, routeHandler.middlewares...)
+	
+	// Create next function for middleware chain
+	var executeChain func(int) error
+	executeChain = func(index int) error {
+		if index < len(middlewareChain) {
+			// Create next function to be passed to middleware
+			nextFunc := common.Func(func(e *common.Env, args []any) (any, error) {
+				return nil, executeChain(index + 1)
+			})
+			
+			// Call middleware with req, res, next
+			_, err := middlewareChain[index](env, []any{requestInstance, responseInstance, nextFunc})
+			return err
+		}
+		
+		// All middlewares passed, call the actual handler
+		_, err := routeHandler.handler(env, []any{requestInstance, responseInstance})
+		return err
 	}
+	
+	// Execute the chain with error handling
+	err := executeChain(0)
+	if err != nil {
+		// Use custom error handler if available
+		if errorHandler != nil {
+			errorHandler(env, []any{err, requestInstance, responseInstance})
+		} else {
+			// Default error response
+			if !responseObj.sent {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(fmt.Sprintf(`{"error": "%v"}`, err)))
+			}
+		}
+	}
+}
+
+// extractMiddlewares extracts middleware functions from an array or single function
+func extractMiddlewares(arg any) []common.Func {
+	var middlewares []common.Func
+	
+	// Try to extract as array/list of middlewares
+	if listInstance, ok := arg.(*ClassInstance); ok && listInstance.ClassName == "List" {
+		if items, ok := listInstance.Fields["_items"].([]any); ok {
+			for _, item := range items {
+				if fn, ok := common.ExtractFunc(item); ok {
+					middlewares = append(middlewares, fn)
+				}
+			}
+		}
+	} else if slice, ok := arg.([]any); ok {
+		// Handle plain Go slice
+		for _, item := range slice {
+			if fn, ok := common.ExtractFunc(item); ok {
+				middlewares = append(middlewares, fn)
+			}
+		}
+	} else {
+		// Try single middleware function
+		if fn, ok := common.ExtractFunc(arg); ok {
+			middlewares = append(middlewares, fn)
+		}
+	}
+	
+	return middlewares
+}
+
+// httpServerUse registers a global middleware
+func httpServerUse(e *common.Env, args []any) (any, error) {
+	thisVal, _ := e.This()
+	instance, ok := thisVal.(*ClassInstance)
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "HttpServer", thisVal)
+	}
+
+	router := instance.Fields["router"].(*httpRouter)
+	middleware, ok := common.ExtractFunc(args[0])
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "function", args[0])
+	}
+
+	router.mu.Lock()
+	router.globalMiddlewares = append(router.globalMiddlewares, middleware)
+	router.mu.Unlock()
+
+	return nil, nil
+}
+
+// httpServerOnError registers a global error handler
+func httpServerOnError(e *common.Env, args []any) (any, error) {
+	thisVal, _ := e.This()
+	instance, ok := thisVal.(*ClassInstance)
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "HttpServer", thisVal)
+	}
+
+	router := instance.Fields["router"].(*httpRouter)
+	handler, ok := common.ExtractFunc(args[0])
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "function", args[0])
+	}
+
+	router.mu.Lock()
+	router.errorHandler = handler
+	router.mu.Unlock()
+
+	return nil, nil
+}
+
+// httpServerConfig configures the server
+func httpServerConfig(e *common.Env, args []any) (any, error) {
+	thisVal, _ := e.This()
+	instance, ok := thisVal.(*ClassInstance)
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "HttpServer", thisVal)
+	}
+
+	router := instance.Fields["router"].(*httpRouter)
+	
+	// Extract config map
+	var configMap map[string]any
+	if mapInstance, ok := args[0].(*ClassInstance); ok && mapInstance.ClassName == "Map" {
+		objMap, err := MapToObject(mapInstance)
+		if err != nil {
+			return nil, err
+		}
+		configMap = objMap
+	} else if m, ok := args[0].(map[string]any); ok {
+		configMap = m
+	}
+
+	router.mu.Lock()
+	for key, value := range configMap {
+		router.config[key] = value
+	}
+	router.mu.Unlock()
+
+	return nil, nil
+}
+
+// httpServerLog logs a message with an optional level
+func httpServerLog(e *common.Env, args []any) (any, error) {
+	message := utils.ToString(args[0])
+	level := "info"
+	if len(args) > 1 {
+		level = utils.ToString(args[1])
+	}
+
+	// Simple logging implementation
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	fmt.Printf("[%s] [%s] %s\n", timestamp, strings.ToUpper(level), message)
+
+	return nil, nil
+}
+
+// Response shortcut methods (3.8)
+
+// httpResponseOk sends a 200 OK response with data
+func httpResponseOk(e *common.Env, args []any) (any, error) {
+	thisVal, _ := e.This()
+	instance, ok := thisVal.(*ClassInstance)
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "HttpResponse", thisVal)
+	}
+
+	instance.Fields["_statusCode"] = 200
+	resp := instance.Fields["_writer"].(*httpResponse)
+	resp.statusCode = 200
+	resp.sendJSON(args[0])
+
+	return nil, nil
+}
+
+// httpResponseCreated sends a 201 Created response with data
+func httpResponseCreated(e *common.Env, args []any) (any, error) {
+	thisVal, _ := e.This()
+	instance, ok := thisVal.(*ClassInstance)
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "HttpResponse", thisVal)
+	}
+
+	instance.Fields["_statusCode"] = 201
+	resp := instance.Fields["_writer"].(*httpResponse)
+	resp.statusCode = 201
+	resp.sendJSON(args[0])
+
+	return nil, nil
+}
+
+// httpResponseNoContent sends a 204 No Content response
+func httpResponseNoContent(e *common.Env, args []any) (any, error) {
+	thisVal, _ := e.This()
+	instance, ok := thisVal.(*ClassInstance)
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "HttpResponse", thisVal)
+	}
+
+	resp := instance.Fields["_writer"].(*httpResponse)
+	resp.statusCode = 204
+	if !resp.sent {
+		resp.sent = true
+		for k, v := range resp.headers {
+			resp.writer.Header().Set(k, v)
+		}
+		resp.writer.WriteHeader(204)
+	}
+
+	return nil, nil
+}
+
+// httpResponseNotFound sends a 404 Not Found response
+func httpResponseNotFound(e *common.Env, args []any) (any, error) {
+	thisVal, _ := e.This()
+	instance, ok := thisVal.(*ClassInstance)
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "HttpResponse", thisVal)
+	}
+
+	message := "Not Found"
+	if len(args) > 0 {
+		message = utils.ToString(args[0])
+	}
+
+	instance.Fields["_statusCode"] = 404
+	resp := instance.Fields["_writer"].(*httpResponse)
+	resp.statusCode = 404
+	resp.sendJSON(map[string]any{"error": message})
+
+	return nil, nil
+}
+
+// httpResponseError sends a custom error response
+func httpResponseError(e *common.Env, args []any) (any, error) {
+	thisVal, _ := e.This()
+	instance, ok := thisVal.(*ClassInstance)
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "HttpResponse", thisVal)
+	}
+
+	code, ok := utils.AsInt(args[0])
+	if !ok {
+		return nil, ThrowTypeError((*Env)(e), "number", args[0])
+	}
+	message := utils.ToString(args[1])
+
+	instance.Fields["_statusCode"] = code
+	resp := instance.Fields["_writer"].(*httpResponse)
+	resp.statusCode = code
+	resp.sendJSON(map[string]any{"error": message})
+
+	return nil, nil
 }
 
 // httpResponse wraps http.ResponseWriter with convenience methods
