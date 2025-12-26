@@ -347,6 +347,186 @@ func evalStmt(env *common.Env, st ast.Stmt) (val any, returned bool, err error) 
 			return nil, false, ThrowTypeError(env, "iterable", it)
 		}
 
+		// Optimization: Native iteration for Array, Tuple, and Range
+		// This bypasses the overhead of the Iterable interface and method calls
+		if instance.ClassName == "Array" || instance.ClassName == "Tuple" {
+			var items []any
+			if instance.ClassName == "Array" {
+				if val, ok := instance.Fields["_items"].([]any); ok {
+					items = val
+				}
+			} else {
+				if val, ok := instance.Fields["_elements"].([]any); ok {
+					items = val
+				}
+			}
+
+			if items != nil {
+				useDestructuring := len(s.Names) > 1
+				for _, el := range items {
+					if useDestructuring {
+						// Destructuring logic
+						switch elVal := el.(type) {
+						case *ClassInstance:
+							unstructuredInterfaceDef := common.BuiltinInterfaceUnstructured.GetInterfaceDefinition(env)
+							isUnstructured := elVal.ParentClass != nil &&
+								elVal.ParentClass.ImplementsInterface(unstructuredInterfaceDef)
+
+							if isUnstructured {
+								piecesFunc, _ := common.ExtractFunc(elVal.Methods["__pieces"])
+								getPieceFunc, _ := common.ExtractFunc(elVal.Methods["__get_piece"])
+
+								numPiecesVal, err := piecesFunc(env, nil)
+								if err != nil {
+									return nil, false, err
+								}
+								numPieces, ok := utils.AsInt(numPiecesVal)
+								if !ok {
+									return nil, false, fmt.Errorf("pieces() must return integer")
+								}
+
+								if len(s.Names) != numPieces {
+									return nil, false, fmt.Errorf("destructuring mismatch: expected %d vars, got %d", len(s.Names), numPieces)
+								}
+
+								for i, name := range s.Names {
+									piece, err := getPieceFunc(env, []any{i})
+									if err != nil {
+										return nil, false, err
+									}
+									env.Set(name, piece)
+								}
+							} else {
+								// Fallback: no Unstructured interface
+								for i, name := range s.Names {
+									if i == 0 {
+										env.Set(name, elVal)
+									} else {
+										env.Set(name, nil)
+									}
+								}
+							}
+						case []any:
+							for i, name := range s.Names {
+								if i < len(elVal) {
+									env.Set(name, elVal[i])
+								} else {
+									env.Set(name, nil)
+								}
+							}
+						default:
+							for i, name := range s.Names {
+								if i == 0 {
+									env.Set(name, el)
+								} else {
+									env.Set(name, nil)
+								}
+							}
+						}
+					} else {
+						varName := s.Name
+						if len(s.Names) > 0 {
+							varName = s.Names[0]
+						}
+						env.Set(varName, el)
+					}
+
+					// Optional where clause
+					if s.Where != nil {
+						whereResult, err := evalExpr(env, s.Where)
+						if err != nil {
+							return nil, false, err
+						}
+						if !utils.AsBool(whereResult) {
+							continue
+						}
+					}
+
+					brk, cont, ret, val, err := runBlock(env, s.Body)
+					if err != nil {
+						return nil, false, err
+					}
+					if ret {
+						return val, true, nil
+					}
+					if brk {
+						break
+					}
+					if cont {
+						continue
+					}
+				}
+				return nil, false, nil
+			}
+		}
+
+		if instance.ClassName == "Range" {
+			start, _ := utils.AsInt(instance.Fields["_start"])
+			end, _ := utils.AsInt(instance.Fields["_end"])
+			step, _ := utils.AsInt(instance.Fields["_step"])
+
+			for i := start; ; i += step {
+				if step > 0 && i > end {
+					break
+				}
+				if step < 0 && i < end {
+					break
+				}
+
+				el, err := CreateIntInstance(env, i)
+				if err != nil {
+					return nil, false, err
+				}
+
+				useDestructuring := len(s.Names) > 1
+				if useDestructuring {
+					for idx, name := range s.Names {
+						if idx == 0 {
+							env.Set(name, el)
+						} else {
+							env.Set(name, nil)
+						}
+					}
+				} else {
+					varName := s.Name
+					if len(s.Names) > 0 {
+						varName = s.Names[0]
+					}
+					env.Set(varName, el)
+				}
+
+				// Optional where clause
+				if s.Where != nil {
+					whereResult, err := evalExpr(env, s.Where)
+					if err != nil {
+						return nil, false, err
+					}
+					if !utils.AsBool(whereResult) {
+						continue
+					}
+				}
+
+				brk, cont, ret, val, err := runBlock(env, s.Body)
+				if err != nil {
+					return nil, false, err
+				}
+				if ret {
+					return val, true, nil
+				}
+				if brk {
+					break
+				}
+				if cont {
+					continue
+				}
+
+				if i == end {
+					break
+				}
+			}
+			return nil, false, nil
+		}
+
 		iterableInterfaceDef := common.BuiltinInterfaceIterable.GetInterfaceDefinition(env)
 		if iterableInterfaceDef == nil {
 			return nil, false, fmt.Errorf("Iterable interface not found")
