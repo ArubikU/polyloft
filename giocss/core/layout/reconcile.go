@@ -1,4 +1,4 @@
-﻿package layout
+package layout
 
 import (
 	"encoding/json"
@@ -176,6 +176,11 @@ func nativeNodeProps(node *Node) map[string]any {
 	return out
 }
 
+func isAbsoluteOrFixedPositioned(childCSS map[string]string) bool {
+	pos := strings.ToLower(strings.TrimSpace(childCSS["position"]))
+	return pos == "absolute" || pos == "fixed"
+}
+
 func layoutNodeToNativeWithBox(node *Node, x int, y int, width int, height int, viewportW int, viewportH int, ss *uicore.StyleSheet, parentCSS map[string]string) map[string]any {
 	if node == nil {
 		return map[string]any{}
@@ -295,10 +300,15 @@ func layoutNodeToNativeWithBox(node *Node, x int, y int, width int, height int, 
 					rowTracks = append(rowTracks, max(48, contentHeight))
 				}
 			}
+			absoluteFixedGridChildren := make([]*Node, 0, len(node.Children))
 			for _, child := range node.Children {
 				childCSS := ResolveNodeStyle(child, ss, viewportW)
 				childCSS = MergeInheritedTextCSS(childCSS, css)
 				if strings.EqualFold(strings.TrimSpace(childCSS["display"]), "none") {
+					continue
+				}
+				if isAbsoluteOrFixedPositioned(childCSS) {
+					absoluteFixedGridChildren = append(absoluteFixedGridChildren, child)
 					continue
 				}
 				intrinsicW, intrinsicH := IntrinsicNodeSize(child, ss, viewportW, viewportH, css)
@@ -396,6 +406,10 @@ func layoutNodeToNativeWithBox(node *Node, x int, y int, width int, height int, 
 					colIndex = 0
 				}
 			}
+			for _, child := range absoluteFixedGridChildren {
+				childW, childH := IntrinsicNodeSize(child, ss, viewportW, viewportH, css)
+				children = append(children, layoutNodeToNativeWithBox(child, x+paddingLeft, y+paddingTop, childW, childH, viewportW, viewportH, ss, css))
+			}
 			return map[string]any{
 				"kind":     node.Tag,
 				"props":    props,
@@ -427,6 +441,9 @@ func layoutNodeToNativeWithBox(node *Node, x int, y int, width int, height int, 
 			childCSS := ResolveNodeStyle(child, ss, viewportW)
 			childCSS = MergeInheritedTextCSS(childCSS, css)
 			if strings.EqualFold(strings.TrimSpace(childCSS["display"]), "none") {
+				continue
+			}
+			if isAbsoluteOrFixedPositioned(childCSS) {
 				continue
 			}
 			intrinsicW, intrinsicH := IntrinsicNodeSize(child, ss, viewportW, viewportH, css)
@@ -526,6 +543,9 @@ func layoutNodeToNativeWithBox(node *Node, x int, y int, width int, height int, 
 					continue
 				}
 				childCSS := ResolveNodeStyle(child, ss, viewportW)
+				if isAbsoluteOrFixedPositioned(childCSS) {
+					continue
+				}
 				flex := NodeLayoutFloat(child, childCSS, "flex", "flex", 0)
 				if flex > 0 {
 					mainLens[i] = int((float64(remaining) * flex) / totalFlex)
@@ -559,10 +579,15 @@ func layoutNodeToNativeWithBox(node *Node, x int, y int, width int, height int, 
 			cursor = effectiveGap / 2
 		}
 
+		absoluteFixedFlexChildren := make([]*Node, 0, len(node.Children))
 		for i, child := range node.Children {
 			childCSS := ResolveNodeStyle(child, ss, viewportW)
 			childCSS = MergeInheritedTextCSS(childCSS, css)
 			if strings.EqualFold(strings.TrimSpace(childCSS["display"]), "none") {
+				continue
+			}
+			if isAbsoluteOrFixedPositioned(childCSS) {
+				absoluteFixedFlexChildren = append(absoluteFixedFlexChildren, child)
 				continue
 			}
 			intrinsicW, intrinsicH := IntrinsicNodeSize(child, ss, viewportW, viewportH, css)
@@ -683,6 +708,10 @@ func layoutNodeToNativeWithBox(node *Node, x int, y int, width int, height int, 
 				lineCrossMax = max(lineCrossMax, childW+crossMarginBefore[i]+crossMarginAfter[i])
 			}
 			cursor += mainMarginBefore[i] + mainLen + mainMarginAfter[i] + effectiveGap
+		}
+		for _, child := range absoluteFixedFlexChildren {
+			childW, childH := IntrinsicNodeSize(child, ss, viewportW, viewportH, css)
+			children = append(children, layoutNodeToNativeWithBox(child, x+paddingLeft, y+paddingTop, childW, childH, viewportW, viewportH, ss, css))
 		}
 	}
 
