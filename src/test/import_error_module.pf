@@ -1,3 +1,0 @@
-import test.nonexistent.module { SomeClass }
-
-obj = SomeClass()

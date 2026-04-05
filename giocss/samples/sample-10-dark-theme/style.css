@@ -1,0 +1,161 @@
+body {
+  background-color: #0f172a;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+}
+
+/* ── Sidebar ─────────────────────────────── */
+.sidebar {
+  width: 220px;
+  height: 100%;
+  background-color: #1e293b;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0;
+}
+
+.sidebar-logo {
+  font-size: 16px;
+  font-weight: bold;
+  color: #38bdf8;
+  padding: 0 20px;
+  margin-bottom: 28px;
+}
+
+.sidebar-section {
+  font-size: 10px;
+  font-weight: bold;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  padding: 0 20px;
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+
+.sidebar-item {
+  font-size: 14px;
+  color: #94a3b8;
+  padding: 9px 20px;
+  cursor: pointer;
+}
+
+.sidebar-item:hover {
+  color: #e2e8f0;
+  background-color: #0f172a;
+}
+
+.sidebar-item-active {
+  color: #f8fafc;
+  background-color: #0f172a;
+  border-left: 3px solid #38bdf8;
+}
+
+/* ── Main content ────────────────────────── */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 36px;
+  overflow: scroll;
+}
+
+.topbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.topbar-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #f1f5f9;
+  flex: 1;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background-color: #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-initials {
+  font-size: 13px;
+  font-weight: bold;
+  color: #0f172a;
+}
+
+/* ── Cards ───────────────────────────────── */
+.cards-row {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.dark-card {
+  background-color: #1e293b;
+  border-radius: 12px;
+  padding: 20px 22px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.dark-card:hover {
+  background-color: #243247;
+}
+
+.dark-card-value {
+  font-size: 30px;
+  font-weight: bold;
+  color: #38bdf8;
+  margin-bottom: 6px;
+}
+
+.dark-card-label {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* ── Activity list ───────────────────────── */
+.section-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #cbd5e1;
+  margin-bottom: 12px;
+}
+
+.activity-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #1e293b;
+}
+
+.activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: #38bdf8;
+  margin-right: 12px;
+}
+
+.activity-text {
+  font-size: 14px;
+  color: #94a3b8;
+  flex: 1;
+}
+
+.activity-time {
+  font-size: 12px;
+  color: #475569;
+}

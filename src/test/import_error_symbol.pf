@@ -1,3 +1,0 @@
-import test.utils.helper { NonExistentClass }
-
-obj = NonExistentClass()
